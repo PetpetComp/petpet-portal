@@ -28,6 +28,7 @@
 ## Task 1: Tooling & config
 
 **Files:**
+
 - Modify: `package.json` (scripts block)
 - Create: `.prettierrc`
 - Create: `vitest.config.mts`
@@ -36,6 +37,7 @@
 - Create: `.env.local`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: npm scripts `typecheck`, `test`, `format`; a working `vitest` config; `NEXT_PUBLIC_API_BASE_URL` available at runtime.
 
@@ -113,6 +115,7 @@ Expected: `typecheck` passes (still the CNA files), `lint` passes, `format` rewr
 git add package.json .prettierrc vitest.config.mts src/test/setup.ts .env.example
 git commit -m "chore: add typecheck/test/format scripts, prettier, vitest config"
 ```
+
 (`.env.local` is gitignored — do not add it.)
 
 ---
@@ -120,6 +123,7 @@ git commit -m "chore: add typecheck/test/format scripts, prettier, vitest config
 ## Task 2: Design tokens, root layout, providers, utils
 
 **Files:**
+
 - Modify: `src/app/globals.css` (full replace)
 - Modify: `src/app/layout.tsx` (full replace)
 - Create: `src/components/providers.tsx`
@@ -127,6 +131,7 @@ git commit -m "chore: add typecheck/test/format scripts, prettier, vitest config
 - Create: `src/app/not-found.tsx`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces:
   - `cn(...inputs: ClassValue[]): string`
@@ -167,8 +172,8 @@ git commit -m "chore: add typecheck/test/format scripts, prettier, vitest config
   --radius: 0.625rem;
 
   --font-sans:
-    var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", sans-serif;
+    var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
@@ -205,7 +210,9 @@ export function cn(...inputs: ClassValue[]) {
 export function getCookie(name: string): string | undefined {
   if (typeof document === "undefined") return undefined;
   const match = document.cookie.match(
-    new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()[\]\\/+^])/g, "\\$1") + "=([^;]*)"),
+    new RegExp(
+      "(?:^|; )" + name.replace(/([.$?*|{}()[\]\\/+^])/g, "\\$1") + "=([^;]*)",
+    ),
   );
   return match ? decodeURIComponent(match[1]) : undefined;
 }
@@ -260,7 +267,8 @@ const SidebarContext = createContext<SidebarContextValue | null>(null);
 
 export function useSidebarContext() {
   const ctx = useContext(SidebarContext);
-  if (!ctx) throw new Error("useSidebarContext must be used within SidebarProvider");
+  if (!ctx)
+    throw new Error("useSidebarContext must be used within SidebarProvider");
   return ctx;
 }
 
@@ -268,13 +276,19 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(true);
   return (
     <SidebarContext.Provider
-      value={{ isOpen, isMobile: false, setIsOpen, toggleSidebar: () => setIsOpen((v) => !v) }}
+      value={{
+        isOpen,
+        isMobile: false,
+        setIsOpen,
+        toggleSidebar: () => setIsOpen((v) => !v),
+      }}
     >
       {children}
     </SidebarContext.Provider>
   );
 }
 ```
+
 (Task 8 replaces this file with the mobile-aware version.)
 
 - [ ] **Step 5: Replace `src/app/layout.tsx`**
@@ -286,14 +300,21 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "Pet Competition Portal",
   description: "Operations portal for pet competition events",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
@@ -312,9 +333,11 @@ import Link from "next/link";
 export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
-      <p className="text-sm font-semibold tracking-wide text-muted-foreground">404</p>
-      <h1 className="text-xl font-bold text-foreground">Page not found</h1>
-      <Link href="/" className="text-sm font-medium text-primary underline">
+      <p className="text-muted-foreground text-sm font-semibold tracking-wide">
+        404
+      </p>
+      <h1 className="text-foreground text-xl font-bold">Page not found</h1>
+      <Link href="/" className="text-primary text-sm font-medium underline">
         Back to dashboard
       </Link>
     </div>
@@ -350,6 +373,7 @@ git commit -m "feat: add design tokens, root layout, providers, cn/cookie utils"
 ## Task 3: Types & constants
 
 **Files:**
+
 - Create: `src/types/common.ts`
 - Create: `src/types/auth.ts`
 - Create: `src/types/user.ts`
@@ -362,6 +386,7 @@ git commit -m "feat: add design tokens, root layout, providers, cn/cookie utils"
 - Create: `src/lib/constants/status.ts`
 
 **Interfaces:**
+
 - Produces:
   - `ApiResponse<T> = { success: boolean; message: string; data: T }`
   - `Paginated<T> = ApiResponse<{ items: T[]; meta: Meta }>`
@@ -485,6 +510,7 @@ export interface Pet extends AuditFields {
   weight: string;
 }
 ```
+
 Use this second version.
 
 - [ ] **Step 5: Create `src/types/event.ts`**
@@ -515,10 +541,7 @@ export interface EventItem extends AuditFields {
 import type { AuditFields } from "@/types/common";
 
 export type CompetitionType =
-  | "Race"
-  | "Checkpoint Race"
-  | "Contest"
-  | "Time Trial";
+  "Race" | "Checkpoint Race" | "Contest" | "Time Trial";
 
 export type PaymentStatus = "Pending" | "Paid" | "Verified";
 
@@ -546,11 +569,7 @@ export interface Competition extends AuditFields {
 import type { AuditFields } from "@/types/common";
 
 export type SponsorCategory =
-  | "Platinum"
-  | "Gold"
-  | "Silver"
-  | "Bronze"
-  | "Media Partner";
+  "Platinum" | "Gold" | "Silver" | "Bronze" | "Media Partner";
 
 export interface SponsorAssignment {
   id: string;
@@ -639,11 +658,7 @@ export const ENDPOINTS = {
 
 ```ts
 export type BadgeVariant =
-  | "neutral"
-  | "success"
-  | "warning"
-  | "danger"
-  | "info";
+  "neutral" | "success" | "warning" | "danger" | "info";
 
 export const STATUS_BADGE_MAP: Record<string, BadgeVariant> = {
   Pending: "warning",
@@ -677,6 +692,7 @@ git commit -m "feat: add domain types, route/endpoint/status constants"
 ## Task 4: API client, formatters, mocks, services
 
 **Files:**
+
 - Create: `src/lib/api-client.ts`
 - Create: `src/lib/format/date.ts`
 - Create: `src/lib/format/number.ts`
@@ -696,6 +712,7 @@ git commit -m "feat: add domain types, route/endpoint/status constants"
 - Create: `src/services/report.ts`
 
 **Interfaces:**
+
 - Consumes: `ApiResponse`, `Paginated`, `Meta` (Task 3); all entity types (Task 3); `getCookie`, `removeCookie` (Task 2); `ENDPOINTS` (Task 3).
 - Produces:
   - `apiClient.get/post/put/patch/delete<T>(endpoint, ...)` and `ApiError`
@@ -727,7 +744,10 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+async function request<T>(
+  endpoint: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const token = getCookie(TOKEN_COOKIE);
   const isForm = options.body instanceof FormData;
 
@@ -761,7 +781,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
       removeCookie(TOKEN_COOKIE);
       window.location.href = "/sign-in";
     }
-    throw new ApiError(401, message ?? "Session expired. Please sign in again.");
+    throw new ApiError(
+      401,
+      message ?? "Session expired. Please sign in again.",
+    );
   }
 
   if (res.status === 422) {
@@ -771,7 +794,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   }
 
   if (!res.ok) {
-    throw new ApiError(res.status, message ?? `Request failed (${res.status}).`);
+    throw new ApiError(
+      res.status,
+      message ?? `Request failed (${res.status}).`,
+    );
   }
 
   return data as T;
@@ -780,12 +806,21 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 export const apiClient = {
   get: <T>(endpoint: string, options?: Omit<RequestOptions, "body">) =>
     request<T>(endpoint, { ...options, method: "GET" }),
-  post: <T>(endpoint: string, body?: Record<string, unknown>, options?: Omit<RequestOptions, "body">) =>
-    request<T>(endpoint, { ...options, method: "POST", body }),
-  put: <T>(endpoint: string, body?: Record<string, unknown>, options?: Omit<RequestOptions, "body">) =>
-    request<T>(endpoint, { ...options, method: "PUT", body }),
-  patch: <T>(endpoint: string, body?: Record<string, unknown>, options?: Omit<RequestOptions, "body">) =>
-    request<T>(endpoint, { ...options, method: "PATCH", body }),
+  post: <T>(
+    endpoint: string,
+    body?: Record<string, unknown>,
+    options?: Omit<RequestOptions, "body">,
+  ) => request<T>(endpoint, { ...options, method: "POST", body }),
+  put: <T>(
+    endpoint: string,
+    body?: Record<string, unknown>,
+    options?: Omit<RequestOptions, "body">,
+  ) => request<T>(endpoint, { ...options, method: "PUT", body }),
+  patch: <T>(
+    endpoint: string,
+    body?: Record<string, unknown>,
+    options?: Omit<RequestOptions, "body">,
+  ) => request<T>(endpoint, { ...options, method: "PATCH", body }),
   delete: <T>(endpoint: string, options?: Omit<RequestOptions, "body">) =>
     request<T>(endpoint, { ...options, method: "DELETE" }),
 };
@@ -1244,7 +1279,9 @@ export const eventService = {
 
   competitions: (eventId: string): Promise<Paginated<Competition>> => {
     // return apiClient.get<Paginated<Competition>>(ENDPOINTS.events.competitions(eventId));
-    return delay(paginate(mockCompetitions.filter((c) => c.eventId === eventId)));
+    return delay(
+      paginate(mockCompetitions.filter((c) => c.eventId === eventId)),
+    );
   },
 };
 ```
@@ -1262,7 +1299,8 @@ import { delay, ok } from "@/services/common";
 export const competitionService = {
   detail: (id: string): Promise<ApiResponse<Competition>> => {
     // return apiClient.get<ApiResponse<Competition>>(ENDPOINTS.competitions.detail(id));
-    const item = mockCompetitions.find((c) => c.id === id) ?? mockCompetitions[0];
+    const item =
+      mockCompetitions.find((c) => c.id === id) ?? mockCompetitions[0];
     return delay(ok(item));
   },
 };
@@ -1351,6 +1389,7 @@ git commit -m "feat: add api client, formatters, mock fixtures, mock-backed serv
 ## Task 5: Hooks
 
 **Files:**
+
 - Create: `src/hooks/use-click-outside.ts`
 - Create: `src/hooks/use-mobile.ts`
 - Create: `src/hooks/use-disclosure.ts`
@@ -1359,6 +1398,7 @@ git commit -m "feat: add api client, formatters, mock fixtures, mock-backed serv
 - Create: `src/hooks/use-lazy-list.ts`
 
 **Interfaces:**
+
 - Consumes: `SortDir` (Task 3).
 - Produces:
   - `useClickOutside<T extends HTMLElement>(ref: RefObject<T | null>, handler: () => void): void`
@@ -1548,6 +1588,7 @@ git commit -m "feat: add reusable hooks (disclosure, debounce, sortable table, l
 ## Task 6: UI primitives — plain
 
 **Files:**
+
 - Create: `src/components/ui/button.tsx`
 - Create: `src/components/ui/input.tsx`
 - Create: `src/components/ui/textarea.tsx`
@@ -1557,6 +1598,7 @@ git commit -m "feat: add reusable hooks (disclosure, debounce, sortable table, l
 - Create: `src/components/ui/table.tsx`
 
 **Interfaces:**
+
 - Consumes: `cn` (Task 2), `BadgeVariant` (Task 3), `Slot` from `radix-ui`.
 - Produces (all named exports):
   - `Button` — props `VariantProps<typeof buttonVariants> & ButtonHTMLAttributes & { asChild?: boolean }`; export `buttonVariants`
@@ -1597,7 +1639,8 @@ export const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
+  extends
+    ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
@@ -1623,18 +1666,19 @@ Button.displayName = "Button";
 import { forwardRef, type InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, ...props }, ref) => (
-    <input
-      ref={ref}
-      className={cn(
-        "h-10 w-full rounded-[var(--radius)] border border-input bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-danger",
-        className,
-      )}
-      {...props}
-    />
-  ),
-);
+export const Input = forwardRef<
+  HTMLInputElement,
+  InputHTMLAttributes<HTMLInputElement>
+>(({ className, ...props }, ref) => (
+  <input
+    ref={ref}
+    className={cn(
+      "border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:ring-ring aria-[invalid=true]:border-danger h-10 w-full rounded-[var(--radius)] border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+      className,
+    )}
+    {...props}
+  />
+));
 Input.displayName = "Input";
 ```
 
@@ -1651,7 +1695,7 @@ export const Textarea = forwardRef<
   <textarea
     ref={ref}
     className={cn(
-      "min-h-20 w-full rounded-[var(--radius)] border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-danger",
+      "border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:ring-ring aria-[invalid=true]:border-danger min-h-20 w-full rounded-[var(--radius)] border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
       className,
     )}
     {...props}
@@ -1684,11 +1728,12 @@ const badgeVariants = cva(
 );
 
 export interface BadgeProps
-  extends HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {}
+  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
 
 export function Badge({ className, variant, ...props }: BadgeProps) {
-  return <span className={cn(badgeVariants({ variant }), className)} {...props} />;
+  return (
+    <span className={cn(badgeVariants({ variant }), className)} {...props} />
+  );
 }
 ```
 
@@ -1704,7 +1749,7 @@ export function Card({ className, ...props }: DivProps) {
   return (
     <div
       className={cn(
-        "rounded-[calc(var(--radius)+4px)] border border-border bg-card shadow-sm",
+        "border-border bg-card rounded-[calc(var(--radius)+4px)] border shadow-sm",
         className,
       )}
       {...props}
@@ -1713,18 +1758,23 @@ export function Card({ className, ...props }: DivProps) {
 }
 
 export function CardHeader({ className, ...props }: DivProps) {
-  return <div className={cn("flex flex-col gap-1.5 p-5", className)} {...props} />;
+  return (
+    <div className={cn("flex flex-col gap-1.5 p-5", className)} {...props} />
+  );
 }
 
 export function CardTitle({ className, ...props }: DivProps) {
   return (
-    <h3 className={cn("text-base font-bold text-foreground", className)} {...props} />
+    <h3
+      className={cn("text-foreground text-base font-bold", className)}
+      {...props}
+    />
   );
 }
 
 export function CardDescription({ className, ...props }: DivProps) {
   return (
-    <p className={cn("text-sm text-muted-foreground", className)} {...props} />
+    <p className={cn("text-muted-foreground text-sm", className)} {...props} />
   );
 }
 
@@ -1734,7 +1784,10 @@ export function CardContent({ className, ...props }: DivProps) {
 
 export function CardFooter({ className, ...props }: DivProps) {
   return (
-    <div className={cn("flex items-center gap-2 p-5 pt-0", className)} {...props} />
+    <div
+      className={cn("flex items-center gap-2 p-5 pt-0", className)}
+      {...props}
+    />
   );
 }
 ```
@@ -1745,10 +1798,16 @@ export function CardFooter({ className, ...props }: DivProps) {
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function Skeleton({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-[var(--radius)] bg-muted", className)}
+      className={cn(
+        "bg-muted animate-pulse rounded-[var(--radius)]",
+        className,
+      )}
       {...props}
     />
   );
@@ -1766,7 +1825,10 @@ import type {
 } from "react";
 import { cn } from "@/lib/utils";
 
-export function Table({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
+export function Table({
+  className,
+  ...props
+}: TableHTMLAttributes<HTMLTableElement>) {
   return (
     <div className="w-full overflow-x-auto">
       <table
@@ -1777,7 +1839,10 @@ export function Table({ className, ...props }: TableHTMLAttributes<HTMLTableElem
   );
 }
 
-export function THead({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
+export function THead({
+  className,
+  ...props
+}: HTMLAttributes<HTMLTableSectionElement>) {
   return <thead className={cn("bg-muted/60", className)} {...props} />;
 }
 
@@ -1785,17 +1850,26 @@ export function TBody(props: HTMLAttributes<HTMLTableSectionElement>) {
   return <tbody {...props} />;
 }
 
-export function TR({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
+export function TR({
+  className,
+  ...props
+}: HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr className={cn("border-b border-border last:border-0", className)} {...props} />
+    <tr
+      className={cn("border-border border-b last:border-0", className)}
+      {...props}
+    />
   );
 }
 
-export function TH({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
+export function TH({
+  className,
+  ...props
+}: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
       className={cn(
-        "px-3.5 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground",
+        "text-muted-foreground px-3.5 py-3 text-left text-xs font-bold tracking-wide uppercase",
         className,
       )}
       {...props}
@@ -1803,9 +1877,15 @@ export function TH({ className, ...props }: ThHTMLAttributes<HTMLTableCellElemen
   );
 }
 
-export function TD({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
+export function TD({
+  className,
+  ...props
+}: TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn("px-3.5 py-3 align-middle text-foreground", className)} {...props} />
+    <td
+      className={cn("text-foreground px-3.5 py-3 align-middle", className)}
+      {...props}
+    />
   );
 }
 ```
@@ -1827,6 +1907,7 @@ git commit -m "feat: add plain UI primitives (button, input, badge, card, table,
 ## Task 7: UI primitives — Radix-based
 
 **Files:**
+
 - Create: `src/components/ui/dialog.tsx`
 - Create: `src/components/ui/dropdown-menu.tsx`
 - Create: `src/components/ui/select.tsx`
@@ -1838,6 +1919,7 @@ git commit -m "feat: add plain UI primitives (button, input, badge, card, table,
 - Create: `src/components/ui/index.ts`
 
 **Interfaces:**
+
 - Consumes: `cn` (Task 2), `radix-ui` namespaces, `lucide-react` icons (`Check`, `ChevronDown`, `Circle`, `X`).
 - Produces (named exports):
   - `Dialog`, `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogFooter`, `DialogTitle`, `DialogDescription`, `DialogClose`
@@ -1855,7 +1937,12 @@ git commit -m "feat: add plain UI primitives (button, input, badge, card, table,
 ```tsx
 "use client";
 
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef, type HTMLAttributes } from "react";
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+  type HTMLAttributes,
+} from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -1869,17 +1956,17 @@ export const DialogContent = forwardRef<
   ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+    <DialogPrimitive.Overlay className="data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50" />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[calc(var(--radius)+4px)] border border-border bg-card p-5 shadow-lg focus:outline-none",
+        "border-border bg-card fixed top-1/2 left-1/2 z-50 w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[calc(var(--radius)+4px)] border p-5 shadow-lg focus:outline-none",
         className,
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <DialogPrimitive.Close className="text-muted-foreground hover:text-foreground focus-visible:ring-ring absolute top-4 right-4 rounded-sm focus-visible:ring-2 focus-visible:outline-none">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -1888,16 +1975,21 @@ export const DialogContent = forwardRef<
 ));
 DialogContent.displayName = "DialogContent";
 
-export function DialogHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mb-3 flex flex-col gap-1", className)} {...props} />;
+export function DialogHeader({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("mb-3 flex flex-col gap-1", className)} {...props} />
+  );
 }
 
-export function DialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function DialogFooter({
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div
-      className={cn("mt-5 flex justify-end gap-2", className)}
-      {...props}
-    />
+    <div className={cn("mt-5 flex justify-end gap-2", className)} {...props} />
   );
 }
 
@@ -1907,7 +1999,7 @@ export const DialogTitle = forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-base font-bold text-foreground", className)}
+    className={cn("text-foreground text-base font-bold", className)}
     {...props}
   />
 ));
@@ -1919,7 +2011,7 @@ export const DialogDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-muted-foreground text-sm", className)}
     {...props}
   />
 ));
@@ -1933,7 +2025,11 @@ DialogDescription.displayName = "DialogDescription";
 ```tsx
 "use client";
 
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+} from "react";
 import { DropdownMenu as Primitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 
@@ -1949,7 +2045,7 @@ export const DropdownMenuContent = forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-44 rounded-[var(--radius)] border border-border bg-card p-1.5 shadow-lg focus:outline-none",
+        "border-border bg-card z-50 min-w-44 rounded-[var(--radius)] border p-1.5 shadow-lg focus:outline-none",
         className,
       )}
       {...props}
@@ -1965,7 +2061,7 @@ export const DropdownMenuItem = forwardRef<
   <Primitive.Item
     ref={ref}
     className={cn(
-      "flex cursor-pointer select-none items-center gap-2 rounded-sm px-2.5 py-2 text-sm text-foreground outline-none focus:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "text-foreground focus:bg-muted flex cursor-pointer items-center gap-2 rounded-sm px-2.5 py-2 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}
@@ -1979,7 +2075,7 @@ export const DropdownMenuSeparator = forwardRef<
 >(({ className, ...props }, ref) => (
   <Primitive.Separator
     ref={ref}
-    className={cn("my-1 h-px bg-border", className)}
+    className={cn("bg-border my-1 h-px", className)}
     {...props}
   />
 ));
@@ -1991,7 +2087,10 @@ export const DropdownMenuLabel = forwardRef<
 >(({ className, ...props }, ref) => (
   <Primitive.Label
     ref={ref}
-    className={cn("px-2.5 py-1.5 text-xs font-semibold text-muted-foreground", className)}
+    className={cn(
+      "text-muted-foreground px-2.5 py-1.5 text-xs font-semibold",
+      className,
+    )}
     {...props}
   />
 ));
@@ -2003,7 +2102,11 @@ DropdownMenuLabel.displayName = "DropdownMenuLabel";
 ```tsx
 "use client";
 
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+} from "react";
 import { Select as Primitive } from "radix-ui";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -2018,14 +2121,14 @@ export const SelectTrigger = forwardRef<
   <Primitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-[var(--radius)] border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+      "border-input bg-card text-foreground focus:ring-ring flex h-10 w-full items-center justify-between rounded-[var(--radius)] border px-3 text-sm focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50",
       className,
     )}
     {...props}
   >
     {children}
     <Primitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      <ChevronDown className="text-muted-foreground h-4 w-4" />
     </Primitive.Icon>
   </Primitive.Trigger>
 ));
@@ -2040,7 +2143,7 @@ export const SelectContent = forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-[var(--radius)] border border-border bg-card p-1 shadow-lg",
+        "border-border bg-card z-50 min-w-[8rem] overflow-hidden rounded-[var(--radius)] border p-1 shadow-lg",
         position === "popper" && "w-[var(--radix-select-trigger-width)]",
         className,
       )}
@@ -2059,7 +2162,7 @@ export const SelectItem = forwardRef<
   <Primitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-2 text-sm text-foreground outline-none focus:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "text-foreground focus:bg-muted relative flex cursor-pointer items-center rounded-sm py-2 pr-2 pl-8 text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}
@@ -2080,7 +2183,11 @@ SelectItem.displayName = "SelectItem";
 ```tsx
 "use client";
 
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+} from "react";
 import { Checkbox as Primitive } from "radix-ui";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -2092,7 +2199,7 @@ export const Checkbox = forwardRef<
   <Primitive.Root
     ref={ref}
     className={cn(
-      "flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border border-input bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+      "border-input bg-card focus-visible:ring-ring data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
       className,
     )}
     {...props}
@@ -2110,7 +2217,11 @@ Checkbox.displayName = "Checkbox";
 ```tsx
 "use client";
 
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+} from "react";
 import { RadioGroup as Primitive } from "radix-ui";
 import { Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -2119,7 +2230,11 @@ export const RadioGroup = forwardRef<
   ElementRef<typeof Primitive.Root>,
   ComponentPropsWithoutRef<typeof Primitive.Root>
 >(({ className, ...props }, ref) => (
-  <Primitive.Root ref={ref} className={cn("grid gap-2", className)} {...props} />
+  <Primitive.Root
+    ref={ref}
+    className={cn("grid gap-2", className)}
+    {...props}
+  />
 ));
 RadioGroup.displayName = "RadioGroup";
 
@@ -2130,7 +2245,7 @@ export const RadioGroupItem = forwardRef<
   <Primitive.Item
     ref={ref}
     className={cn(
-      "flex h-4.5 w-4.5 items-center justify-center rounded-full border border-input bg-card text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary",
+      "border-input bg-card text-primary focus-visible:ring-ring data-[state=checked]:border-primary flex h-4.5 w-4.5 items-center justify-center rounded-full border focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
       className,
     )}
     {...props}
@@ -2148,7 +2263,11 @@ RadioGroupItem.displayName = "RadioGroupItem";
 ```tsx
 "use client";
 
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+} from "react";
 import { Switch as Primitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 
@@ -2159,12 +2278,12 @@ export const Switch = forwardRef<
   <Primitive.Root
     ref={ref}
     className={cn(
-      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted",
+      "peer focus-visible:ring-ring data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
       className,
     )}
     {...props}
   >
-    <Primitive.Thumb className="pointer-events-none block h-5 w-5 rounded-full bg-card shadow-sm transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0" />
+    <Primitive.Thumb className="bg-card pointer-events-none block h-5 w-5 rounded-full shadow-sm transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0" />
   </Primitive.Root>
 ));
 Switch.displayName = "Switch";
@@ -2175,7 +2294,11 @@ Switch.displayName = "Switch";
 ```tsx
 "use client";
 
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+} from "react";
 import { Tabs as Primitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 
@@ -2188,7 +2311,7 @@ export const TabsList = forwardRef<
   <Primitive.List
     ref={ref}
     className={cn(
-      "inline-flex items-center gap-1 rounded-[var(--radius)] bg-muted p-1",
+      "bg-muted inline-flex items-center gap-1 rounded-[var(--radius)] p-1",
       className,
     )}
     {...props}
@@ -2203,7 +2326,7 @@ export const TabsTrigger = forwardRef<
   <Primitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+      "text-muted-foreground focus-visible:ring-ring data-[state=active]:bg-card data-[state=active]:text-foreground inline-flex items-center justify-center rounded-sm px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm",
       className,
     )}
     {...props}
@@ -2229,7 +2352,11 @@ TabsContent.displayName = "TabsContent";
 ```tsx
 "use client";
 
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+} from "react";
 import { Tooltip as Primitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 
@@ -2246,7 +2373,7 @@ export const TooltipContent = forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 rounded-md bg-foreground px-2.5 py-1.5 text-xs text-background shadow-md",
+        "bg-foreground text-background z-50 rounded-md px-2.5 py-1.5 text-xs shadow-md",
         className,
       )}
       {...props}
@@ -2280,6 +2407,7 @@ export * from "./tooltip";
 
 Run: `npm run typecheck && npm run lint`
 Expected: PASS. Likely fix-ups:
+
 - If `ElementRef` / `ComponentPropsWithoutRef` are not exported from `react` in this version, import from `react` still works in 19; if not, use `React.ComponentRef` and `React.ComponentProps`. Adjust consistently across all Task 7 files.
 - If a Radix namespace member differs (e.g. `Primitive.Icon` vs `Primitive.SelectIcon`), open the matching `node_modules/radix-ui/dist/<name>.d.ts` and use the exact exported name.
 - `h-4.5` / `w-4.5` are valid Tailwind v4 arbitrary-free fractional utilities; if the build rejects them, use `h-[18px] w-[18px]`.
@@ -2296,6 +2424,7 @@ git commit -m "feat: add Radix-based UI primitives (dialog, select, dropdown, ta
 ## Task 8: Common composites
 
 **Files:**
+
 - Create: `src/components/common/page-heading.tsx`
 - Create: `src/components/common/form-field.tsx`
 - Create: `src/components/common/status-badge.tsx`
@@ -2308,6 +2437,7 @@ git commit -m "feat: add Radix-based UI primitives (dialog, select, dropdown, ta
 - Create: `src/components/common/index.ts`
 
 **Interfaces:**
+
 - Consumes: `ui/*` (Task 6, 7), `cn` (Task 2), `useSortableTable` + `useLazyList` (Task 5), `statusToBadgeVariant` + `BadgeVariant` (Task 3).
 - Produces (named exports):
   - `PageHeading({ title, description?, actions? })`
@@ -2337,12 +2467,16 @@ export function PageHeading({
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-foreground text-2xl font-bold tracking-tight">
+          {title}
+        </h1>
         {description ? (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <p className="text-muted-foreground mt-1 text-sm">{description}</p>
         ) : null}
       </div>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex items-center gap-2">{actions}</div>
+      ) : null}
     </div>
   );
 }
@@ -2375,16 +2509,18 @@ export function FormField({
     <div className={cn("flex flex-col gap-1.5", className)}>
       <label
         htmlFor={htmlFor}
-        className="text-xs font-bold uppercase tracking-wide text-muted-foreground"
+        className="text-muted-foreground text-xs font-bold tracking-wide uppercase"
       >
         {label}
-        {required ? <span className="ml-0.5 text-danger">*</span> : null}
+        {required ? <span className="text-danger ml-0.5">*</span> : null}
       </label>
       {children}
       {hint && !error ? (
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p className="text-muted-foreground text-xs">{hint}</p>
       ) : null}
-      {error ? <p className="text-xs font-medium text-danger">{error}</p> : null}
+      {error ? (
+        <p className="text-danger text-xs font-medium">{error}</p>
+      ) : null}
     </div>
   );
 }
@@ -2394,7 +2530,10 @@ export function FormField({
 
 ```tsx
 import { Badge } from "@/components/ui/badge";
-import { statusToBadgeVariant, type BadgeVariant } from "@/lib/constants/status";
+import {
+  statusToBadgeVariant,
+  type BadgeVariant,
+} from "@/lib/constants/status";
 
 export function StatusBadge({
   status,
@@ -2427,9 +2566,9 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
       {icon ? <div className="text-muted-foreground">{icon}</div> : null}
-      <p className="text-sm font-bold text-foreground">{title}</p>
+      <p className="text-foreground text-sm font-bold">{title}</p>
       {description ? (
-        <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
+        <p className="text-muted-foreground max-w-sm text-sm">{description}</p>
       ) : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
@@ -2453,7 +2592,7 @@ export function FilterBar({
   onClear?: () => void;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-end gap-3 rounded-[calc(var(--radius)+4px)] border border-border bg-card p-4">
+    <div className="border-border bg-card mb-4 flex flex-wrap items-end gap-3 rounded-[calc(var(--radius)+4px)] border p-4">
       <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {children}
       </div>
@@ -2495,7 +2634,7 @@ export function Pagination({
       >
         Previous
       </Button>
-      <span className="text-sm text-muted-foreground">
+      <span className="text-muted-foreground text-sm">
         Page {page} of {pageCount}
       </span>
       <Button
@@ -2617,8 +2756,8 @@ export function ResultDialog({
           <Icon
             className={
               tone === "success"
-                ? "h-12 w-12 text-success"
-                : "h-12 w-12 text-danger"
+                ? "text-success h-12 w-12"
+                : "text-danger h-12 w-12"
             }
           />
         </div>
@@ -2685,12 +2824,14 @@ export function DataTable<T>({
 
   if (rows.length === 0) {
     return (
-      <>{renderEmpty ? renderEmpty() : <EmptyState title="No records found" />}</>
+      <>
+        {renderEmpty ? renderEmpty() : <EmptyState title="No records found" />}
+      </>
     );
   }
 
   return (
-    <div className="rounded-[calc(var(--radius)+4px)] border border-border bg-card">
+    <div className="border-border bg-card rounded-[calc(var(--radius)+4px)] border">
       <Table>
         <THead>
           <TR>
@@ -2730,7 +2871,10 @@ export function DataTable<T>({
         </TBody>
       </Table>
       {lazy && hasMore ? (
-        <div ref={sentinelRef} className="py-3 text-center text-xs text-muted-foreground">
+        <div
+          ref={sentinelRef}
+          className="text-muted-foreground py-3 text-center text-xs"
+        >
           Loading more…
         </div>
       ) : null}
@@ -2775,6 +2919,7 @@ git commit -m "feat: add composite widgets (PageHeading, DataTable, ConfirmDialo
 ## Task 9: Layout shell
 
 **Files:**
+
 - Modify (full replace): `src/components/layouts/sidebar/sidebar-context.tsx`
 - Create: `src/components/layouts/sidebar/nav-data.ts`
 - Create: `src/components/layouts/sidebar/icons.tsx`
@@ -2786,6 +2931,7 @@ git commit -m "feat: add composite widgets (PageHeading, DataTable, ConfirmDialo
 - Create: `src/components/layouts/default-layout.tsx`
 
 **Interfaces:**
+
 - Consumes: `useIsMobile` (Task 5), `ROUTES` (Task 3), `authService` (Task 4), `ui/*`, `cn`.
 - Produces:
   - `useSidebarContext()` -> `{ isOpen, isMobile, toggleSidebar, setIsOpen }`
@@ -2812,7 +2958,8 @@ const SidebarContext = createContext<SidebarContextValue | null>(null);
 
 export function useSidebarContext() {
   const ctx = useContext(SidebarContext);
-  if (!ctx) throw new Error("useSidebarContext must be used within SidebarProvider");
+  if (!ctx)
+    throw new Error("useSidebarContext must be used within SidebarProvider");
   return ctx;
 }
 
@@ -2885,15 +3032,28 @@ export const NAV_ITEMS: NavItem[] = [
     href: ROUTES.eventManagement.root,
     icon: "event",
     items: [
-      { title: "Event Registration", href: ROUTES.eventManagement.eventRegistration },
-      { title: "Committee Registration", href: ROUTES.eventManagement.committeeRegistration },
-      { title: "Partner Registration", href: ROUTES.eventManagement.partnerRegistration },
+      {
+        title: "Event Registration",
+        href: ROUTES.eventManagement.eventRegistration,
+      },
+      {
+        title: "Committee Registration",
+        href: ROUTES.eventManagement.committeeRegistration,
+      },
+      {
+        title: "Partner Registration",
+        href: ROUTES.eventManagement.partnerRegistration,
+      },
     ],
   },
   { title: "Competition", href: ROUTES.competition, icon: "competition" },
   { title: "User Management", href: ROUTES.userManagement, icon: "users" },
   { title: "Pet Management", href: ROUTES.petManagement, icon: "pets" },
-  { title: "Sponsorship Brand", href: ROUTES.sponsorshipBrand, icon: "sponsor" },
+  {
+    title: "Sponsorship Brand",
+    href: ROUTES.sponsorshipBrand,
+    icon: "sponsor",
+  },
   { title: "Report", href: ROUTES.report, icon: "report" },
 ];
 ```
@@ -2958,7 +3118,13 @@ import { NAV_ICONS } from "./icons";
 import { Submenu } from "./submenu";
 import type { NavItem } from "./nav-data";
 
-export function MenuItem({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+export function MenuItem({
+  item,
+  collapsed,
+}: {
+  item: NavItem;
+  collapsed: boolean;
+}) {
   const pathname = usePathname();
   const Icon = NAV_ICONS[item.icon];
   const isGroup = !!item.items?.length;
@@ -2985,7 +3151,10 @@ export function MenuItem({ item, collapsed }: { item: NavItem; collapsed: boolea
           {!collapsed && <span className="flex-1 text-left">{item.title}</span>}
           {!collapsed && (
             <ChevronDown
-              className={cn("h-4 w-4 transition-transform", open && "rotate-180")}
+              className={cn(
+                "h-4 w-4 transition-transform",
+                open && "rotate-180",
+              )}
             />
           )}
         </button>
@@ -3022,7 +3191,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-[72px] bottom-0 z-40 border-r border-border bg-card p-3 transition-[width,transform]",
+        "border-border bg-card fixed top-[72px] bottom-0 left-0 z-40 border-r p-3 transition-[width,transform]",
         isMobile
           ? cn("w-60", isOpen ? "translate-x-0 shadow-lg" : "-translate-x-full")
           : cn(isOpen ? "w-60" : "w-[76px]"),
@@ -3073,7 +3242,7 @@ export function AccountMenu() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground"
+          className="border-border bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full border"
           aria-label="Open account menu"
         >
           <User className="h-5 w-5" />
@@ -3113,19 +3282,19 @@ export function Navbar() {
   const { toggleSidebar } = useSidebarContext();
 
   return (
-    <header className="sticky top-0 z-50 h-[72px] border-b border-border bg-card/95 backdrop-blur">
+    <header className="border-border bg-card/95 sticky top-0 z-50 h-[72px] border-b backdrop-blur">
       <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between gap-5 px-6">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={toggleSidebar}
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-border"
+            className="border-border flex h-10 w-10 items-center justify-center rounded-lg border"
             aria-label="Toggle sidebar"
           >
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2 text-lg font-extrabold">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <span className="bg-primary text-primary-foreground flex h-9 w-9 items-center justify-center rounded-xl">
               P
             </span>
             <span>Petpet</span>
@@ -3185,22 +3354,28 @@ git commit -m "feat: add portal shell (sidebar with submenu, navbar, default lay
 ## Task 10: Auth route group
 
 **Files:**
+
 - Create: `src/app/(auth)/layout.tsx`
 - Create: `src/app/(auth)/sign-in/page.tsx`
 - Create: `src/app/(auth)/forgot-password/page.tsx`
 - Create: `src/app/(auth)/reset-password/page.tsx`
 
 **Interfaces:**
+
 - Consumes: `ui/*`, `common/FormField`, `ROUTES`.
 - Produces: routes `/sign-in`, `/forgot-password`, `/reset-password` — static markup only, no submit logic.
 
 - [ ] **Step 1: Create `src/app/(auth)/layout.tsx`**
 
 ```tsx
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm rounded-[calc(var(--radius)+6px)] border border-border bg-card p-6 shadow-sm">
+    <div className="bg-background flex min-h-screen items-center justify-center p-4">
+      <div className="border-border bg-card w-full max-w-sm rounded-[calc(var(--radius)+6px)] border p-6 shadow-sm">
         {children}
       </div>
     </div>
@@ -3221,8 +3396,8 @@ export default function SignInPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-lg font-bold text-foreground">Sign in</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="text-foreground text-lg font-bold">Sign in</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Access the Pet Competition Portal.
         </p>
       </div>
@@ -3231,7 +3406,12 @@ export default function SignInPage() {
           <Input id="username" name="username" autoComplete="username" />
         </FormField>
         <FormField label="Password" htmlFor="password" required>
-          <Input id="password" name="password" type="password" autoComplete="current-password" />
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+          />
         </FormField>
         <Button type="submit" className="w-full">
           Sign in
@@ -3239,7 +3419,7 @@ export default function SignInPage() {
       </form>
       <Link
         href={ROUTES.auth.forgotPassword}
-        className="text-center text-sm font-medium text-primary underline"
+        className="text-primary text-center text-sm font-medium underline"
       >
         Forgot password?
       </Link>
@@ -3261,8 +3441,8 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-lg font-bold text-foreground">Forgot password</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="text-foreground text-lg font-bold">Forgot password</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           We will send a reset link to your email.
         </p>
       </div>
@@ -3276,7 +3456,7 @@ export default function ForgotPasswordPage() {
       </form>
       <Link
         href={ROUTES.auth.signIn}
-        className="text-center text-sm font-medium text-primary underline"
+        className="text-primary text-center text-sm font-medium underline"
       >
         Back to sign in
       </Link>
@@ -3298,15 +3478,27 @@ export default function ResetPasswordPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-lg font-bold text-foreground">Reset password</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Choose a new password.</p>
+        <h1 className="text-foreground text-lg font-bold">Reset password</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Choose a new password.
+        </p>
       </div>
       <form className="flex flex-col gap-4">
         <FormField label="New password" htmlFor="password" required>
-          <Input id="password" name="password" type="password" autoComplete="new-password" />
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+          />
         </FormField>
         <FormField label="Confirm password" htmlFor="confirm" required>
-          <Input id="confirm" name="confirm" type="password" autoComplete="new-password" />
+          <Input
+            id="confirm"
+            name="confirm"
+            type="password"
+            autoComplete="new-password"
+          />
         </FormField>
         <Button type="submit" className="w-full">
           Reset password
@@ -3314,7 +3506,7 @@ export default function ResetPasswordPage() {
       </form>
       <Link
         href={ROUTES.auth.signIn}
-        className="text-center text-sm font-medium text-primary underline"
+        className="text-primary text-center text-sm font-medium underline"
       >
         Back to sign in
       </Link>
@@ -3340,6 +3532,7 @@ git commit -m "feat: add auth route group (sign-in, forgot/reset password) stati
 ## Task 11: Portal routes, dashboard, domain placeholders, proxy
 
 **Files:**
+
 - Create: `src/app/(portal)/layout.tsx`
 - Create: `src/app/(portal)/dashboard/page.tsx`
 - Create: `src/app/(portal)/event-management/page.tsx` + `_components/.gitkeep`
@@ -3355,6 +3548,7 @@ git commit -m "feat: add auth route group (sign-in, forgot/reset password) stati
 - Create: `src/proxy.ts`
 
 **Interfaces:**
+
 - Consumes: `DefaultLayout` (Task 9), `PageHeading` + `Card*` (Task 6/8), `reportService` (Task 4), `ROUTES` (Task 3).
 - Produces: every portal route renders inside `DefaultLayout`; `/` redirects to `/dashboard`; `proxy` redirects unauthenticated requests to `/sign-in`.
 
@@ -3363,7 +3557,11 @@ git commit -m "feat: add auth route group (sign-in, forgot/reset password) stati
 ```tsx
 import { DefaultLayout } from "@/components/layouts/default-layout";
 
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
+export default function PortalLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return <DefaultLayout>{children}</DefaultLayout>;
 }
 ```
@@ -3390,12 +3588,12 @@ export default async function DashboardPage() {
         {tiles.map((tile) => (
           <Card key={tile.label}>
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-muted-foreground">
+              <CardTitle className="text-muted-foreground text-sm font-semibold">
                 {tile.label}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-foreground">{tile.value}</p>
+              <p className="text-foreground text-3xl font-bold">{tile.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -3410,17 +3608,17 @@ export default async function DashboardPage() {
 Each placeholder page is the same shape. Create one file per row below, at
 `src/app/(portal)/<path>/page.tsx`, with `<Title>` and `<Description>` substituted:
 
-| File path | Title | Description |
-|---|---|---|
-| `event-management/page.tsx` | `Event Management` | `Manage events, schedules, organizers, and status.` |
-| `event-management/event-registration/page.tsx` | `Event Registration` | `Register participants and pets to event competitions.` |
-| `event-management/committee-registration/page.tsx` | `Committee Registration` | `Assign committee members to competitions.` |
-| `event-management/partner-registration/page.tsx` | `Partner Registration` | `Register sponsors and media partners to events.` |
-| `competition/page.tsx` | `Competition` | `Run races, drawings, and leaderboards.` |
-| `user-management/page.tsx` | `User Management` | `Manage platform users and contact information.` |
-| `pet-management/page.tsx` | `Pet Management` | `Manage registered pets and ownership.` |
-| `sponsorship-brand/page.tsx` | `Sponsorship Brand` | `Manage sponsor brands, tiers, and campaigns.` |
-| `report/page.tsx` | `Report` | `Reporting module.` |
+| File path                                          | Title                    | Description                                             |
+| -------------------------------------------------- | ------------------------ | ------------------------------------------------------- |
+| `event-management/page.tsx`                        | `Event Management`       | `Manage events, schedules, organizers, and status.`     |
+| `event-management/event-registration/page.tsx`     | `Event Registration`     | `Register participants and pets to event competitions.` |
+| `event-management/committee-registration/page.tsx` | `Committee Registration` | `Assign committee members to competitions.`             |
+| `event-management/partner-registration/page.tsx`   | `Partner Registration`   | `Register sponsors and media partners to events.`       |
+| `competition/page.tsx`                             | `Competition`            | `Run races, drawings, and leaderboards.`                |
+| `user-management/page.tsx`                         | `User Management`        | `Manage platform users and contact information.`        |
+| `pet-management/page.tsx`                          | `Pet Management`         | `Manage registered pets and ownership.`                 |
+| `sponsorship-brand/page.tsx`                       | `Sponsorship Brand`      | `Manage sponsor brands, tiers, and campaigns.`          |
+| `report/page.tsx`                                  | `Report`                 | `Reporting module.`                                     |
 
 Template (substitute the two placeholders):
 
@@ -3432,7 +3630,7 @@ export default function Page() {
   return (
     <>
       <PageHeading title="<Title>" description="<Description>" />
-      <div className="rounded-[calc(var(--radius)+4px)] border border-border bg-card">
+      <div className="border-border bg-card rounded-[calc(var(--radius)+4px)] border">
         <EmptyState
           title="Coming soon"
           description="This module has not been implemented yet."
@@ -3513,6 +3711,7 @@ Expected: all PASS. `build` output lists routes: `/`, `/sign-in`, `/forgot-passw
 - [ ] **Step 8: Verify — dev smoke**
 
 Run: `npm run dev`. In a browser:
+
 1. Visit `/` with no `session` cookie -> redirected to `/sign-in`.
 2. Set a cookie manually in devtools: `document.cookie = "session=dev; path=/"`. Reload `/` -> lands on `/dashboard` showing three stat tiles (3, 3, 3).
 3. Click every sidebar link -> each opens its placeholder page with "Coming soon".
@@ -3534,16 +3733,18 @@ git commit -m "feat: add portal layout, dashboard, domain placeholder routes, au
 ## Task 12: README + final sweep
 
 **Files:**
+
 - Modify: `README.md`
 - Create: `docs/architecture.md`
 
 **Interfaces:**
+
 - Consumes: everything.
 - Produces: onboarding docs.
 
 - [ ] **Step 1: Replace `README.md`**
 
-```markdown
+````markdown
 # Pet Competition Portal
 
 Operations portal for pet competition events (events, competitions, users, pets,
@@ -3556,6 +3757,7 @@ npm install
 cp .env.example .env.local   # set NEXT_PUBLIC_API_BASE_URL
 npm run dev
 ```
+````
 
 The app currently runs on **mock data** (`src/lib/mocks/`). Every `src/services/*`
 function returns a mock shaped in the real API return type; the real `apiClient`
@@ -3563,19 +3765,20 @@ call is written and commented out, ready to enable.
 
 ## Scripts
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Start dev server |
-| `npm run build` | Production build |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier write |
-| `npm run test` | Vitest (no tests yet) |
+| Command             | Purpose               |
+| ------------------- | --------------------- |
+| `npm run dev`       | Start dev server      |
+| `npm run build`     | Production build      |
+| `npm run typecheck` | `tsc --noEmit`        |
+| `npm run lint`      | ESLint                |
+| `npm run format`    | Prettier write        |
+| `npm run test`      | Vitest (no tests yet) |
 
 ## Structure
 
 See `docs/architecture.md`.
-```
+
+````
 
 - [ ] **Step 2: Create `docs/architecture.md`**
 
@@ -3619,7 +3822,7 @@ See `docs/architecture.md`.
 3. Build the page in `src/app/(portal)/<domain>/page.tsx` using `DataTable`,
    `FilterBar`, `PageHeading`; put page-only pieces in the sibling `_components/`.
 4. Wire the route in `src/lib/constants/routes.ts` and `nav-data.ts` if new.
-```
+````
 
 - [ ] **Step 3: Verify**
 
@@ -3641,18 +3844,18 @@ git commit -m "docs: add README quickstart and architecture guide"
 
 **1. Spec coverage**
 
-| Spec section | Task |
-|---|---|
-| §3 approach C `components/` split | Tasks 6–9 |
-| §4 directory layout | Tasks 2–11 (each dir created in its owning task) |
-| §5 primitives table | Tasks 6, 7 |
-| §5 composites table | Task 8 |
-| §6 layout shell (providers, sidebar ctx, sidebar, navbar, default-layout) | Tasks 2 (providers + stub), 9 |
-| §7 api-client / endpoints / services / mocks / types | Tasks 3, 4 |
-| §8 hooks | Task 5 |
-| §9 config (globals.css, layout metadata, .prettierrc, vitest, scripts, .env.example, proxy) | Tasks 1, 2, 11 |
-| §10 non-goals | Respected — no CRUD, no real auth, no test files, no exact color match |
-| §11 verification | Task 11 Steps 7–8, Task 12 Step 3 |
+| Spec section                                                                                | Task                                                                   |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| §3 approach C `components/` split                                                           | Tasks 6–9                                                              |
+| §4 directory layout                                                                         | Tasks 2–11 (each dir created in its owning task)                       |
+| §5 primitives table                                                                         | Tasks 6, 7                                                             |
+| §5 composites table                                                                         | Task 8                                                                 |
+| §6 layout shell (providers, sidebar ctx, sidebar, navbar, default-layout)                   | Tasks 2 (providers + stub), 9                                          |
+| §7 api-client / endpoints / services / mocks / types                                        | Tasks 3, 4                                                             |
+| §8 hooks                                                                                    | Task 5                                                                 |
+| §9 config (globals.css, layout metadata, .prettierrc, vitest, scripts, .env.example, proxy) | Tasks 1, 2, 11                                                         |
+| §10 non-goals                                                                               | Respected — no CRUD, no real auth, no test files, no exact color match |
+| §11 verification                                                                            | Task 11 Steps 7–8, Task 12 Step 3                                      |
 
 Gap fixed vs spec: spec said `middleware.ts`; Next 16 requires `src/proxy.ts` — corrected in Global Constraints and Task 11.
 

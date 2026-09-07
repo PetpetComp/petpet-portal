@@ -168,31 +168,31 @@ Each primitive: named export, `forwardRef` where it wraps a DOM element,
 `className` merged via `cn()`, variants via `cva`. No `"use client"` unless the
 primitive needs interactivity/Radix (most Radix ones do).
 
-| Component | Purpose | Key props / notes |
-|---|---|---|
-| `Button` | action | `variant`: default/secondary/outline/ghost/destructive; `size`: sm/md/icon; `asChild` via Radix Slot |
-| `Input` / `Textarea` | text entry | native props + `className`, error ring via `aria-invalid` |
-| `Select` | single choice | Radix Select; `options: SelectItem[]` or composable parts |
-| `Checkbox` / `RadioGroup` / `Switch` | toggles | Radix primitives |
-| `Dialog` | modal base | Radix Dialog; exports `Dialog`, `DialogContent`, `DialogHeader`, `DialogFooter`, `DialogTitle`, `DialogDescription` |
-| `DropdownMenu` | menus | Radix; used by account menu, row actions |
-| `Tooltip`, `Tabs` | — | Radix |
-| `Badge` | status/label chip | `variant`: neutral/success/warning/danger/info |
-| `Card` | surface | `Card`, `CardHeader`, `CardTitle`, `CardContent`, `CardFooter` |
-| `Table` | styled table parts | `Table`, `THead`, `TBody`, `TR`, `TH`, `TD` — styling only |
-| `Skeleton` | loading block | `className` sized by caller |
+| Component                            | Purpose            | Key props / notes                                                                                                   |
+| ------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `Button`                             | action             | `variant`: default/secondary/outline/ghost/destructive; `size`: sm/md/icon; `asChild` via Radix Slot                |
+| `Input` / `Textarea`                 | text entry         | native props + `className`, error ring via `aria-invalid`                                                           |
+| `Select`                             | single choice      | Radix Select; `options: SelectItem[]` or composable parts                                                           |
+| `Checkbox` / `RadioGroup` / `Switch` | toggles            | Radix primitives                                                                                                    |
+| `Dialog`                             | modal base         | Radix Dialog; exports `Dialog`, `DialogContent`, `DialogHeader`, `DialogFooter`, `DialogTitle`, `DialogDescription` |
+| `DropdownMenu`                       | menus              | Radix; used by account menu, row actions                                                                            |
+| `Tooltip`, `Tabs`                    | —                  | Radix                                                                                                               |
+| `Badge`                              | status/label chip  | `variant`: neutral/success/warning/danger/info                                                                      |
+| `Card`                               | surface            | `Card`, `CardHeader`, `CardTitle`, `CardContent`, `CardFooter`                                                      |
+| `Table`                              | styled table parts | `Table`, `THead`, `TBody`, `TR`, `TH`, `TD` — styling only                                                          |
+| `Skeleton`                           | loading block      | `className` sized by caller                                                                                         |
 
-| Composite (`common/`) | Purpose | Contract |
-|---|---|---|
-| `PageHeading` | page title row | `{ title, description?, actions? }` |
-| `FilterBar` | filter controls container | `{ children, onClear? }`; children are `FormField`-wrapped controls |
-| `DataTable<T>` | generic list table | `{ columns: Column<T>[], rows: T[], sort?, onSortChange?, lazy?, renderEmpty? }`. `Column<T>` = `{ key, header, sortable?, cell?(row): ReactNode, className? }`. Uses `use-sortable-table` when `sort` uncontrolled, `use-lazy-list` when `lazy`. |
-| `ConfirmDialog` | destructive confirm | `{ open, onOpenChange, title, message, confirmLabel?, tone?: 'danger'|'default', onConfirm }` |
-| `ResultDialog` | success/error result | `{ open, onOpenChange, tone: 'success'|'error', title, message, actionLabel?, onAction? }` |
-| `StatusBadge` | map status -> Badge | `{ status: string, map?: Record<string,BadgeVariant> }`; defaults from `lib/constants/status.ts` |
-| `FormField` | label + control + error | `{ label, htmlFor?, required?, error?, hint?, children }` |
-| `EmptyState` | no-data placeholder | `{ icon?, title, description?, action? }` |
-| `Pagination` | page controls | `{ page, pageCount, onPageChange }` |
+| Composite (`common/`) | Purpose                   | Contract                                                                                                                                                                                                                                          |
+| --------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageHeading`         | page title row            | `{ title, description?, actions? }`                                                                                                                                                                                                               |
+| `FilterBar`           | filter controls container | `{ children, onClear? }`; children are `FormField`-wrapped controls                                                                                                                                                                               |
+| `DataTable<T>`        | generic list table        | `{ columns: Column<T>[], rows: T[], sort?, onSortChange?, lazy?, renderEmpty? }`. `Column<T>` = `{ key, header, sortable?, cell?(row): ReactNode, className? }`. Uses `use-sortable-table` when `sort` uncontrolled, `use-lazy-list` when `lazy`. |
+| `ConfirmDialog`       | destructive confirm       | `{ open, onOpenChange, title, message, confirmLabel?, tone?: 'danger'                                                                                                                                                                             | 'default', onConfirm }`                             |
+| `ResultDialog`        | success/error result      | `{ open, onOpenChange, tone: 'success'                                                                                                                                                                                                            | 'error', title, message, actionLabel?, onAction? }` |
+| `StatusBadge`         | map status -> Badge       | `{ status: string, map?: Record<string,BadgeVariant> }`; defaults from `lib/constants/status.ts`                                                                                                                                                  |
+| `FormField`           | label + control + error   | `{ label, htmlFor?, required?, error?, hint?, children }`                                                                                                                                                                                         |
+| `EmptyState`          | no-data placeholder       | `{ icon?, title, description?, action? }`                                                                                                                                                                                                         |
+| `Pagination`          | page controls             | `{ page, pageCount, onPageChange }`                                                                                                                                                                                                               |
 
 ## 6. Layout shell
 
