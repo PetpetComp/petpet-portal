@@ -1,0 +1,56 @@
+import type { User } from "@/types/user";
+
+const audit = {
+  createdDate: "2026-01-12T09:15:00Z",
+  createdBy: "system",
+  updatedDate: "2026-08-20T14:30:00Z",
+  updatedBy: "admin.petpet",
+};
+
+export const mockUsers: User[] = [
+  {
+    id: "USR-2026-0001",
+    username: "andi.pratama",
+    firstName: "Andi",
+    lastName: "Pratama",
+    email: "andi.pratama@example.com",
+    phone: "081234567801",
+    gender: "Male",
+    dob: "1995-04-12",
+    address: "Jl. Kemang Raya No. 18",
+    city: "Jakarta Selatan",
+    province: "DKI Jakarta",
+    nation: "Indonesia",
+    ...audit,
+  },
+  {
+    id: "USR-2026-0002",
+    username: "salsa.putri",
+    firstName: "Salsa",
+    lastName: "Putri",
+    email: "salsa.putri@example.com",
+    phone: "081234567802",
+    gender: "Female",
+    dob: "1997-09-21",
+    address: "Jl. Dharmahusada Indah No. 9",
+    city: "Surabaya",
+    province: "Jawa Timur",
+    nation: "Indonesia",
+    ...audit,
+  },
+  {
+    id: "USR-2026-0003",
+    username: "bima.setiawan",
+    firstName: "Bima",
+    lastName: "Setiawan",
+    email: "bima.setiawan@example.com",
+    phone: "081234567803",
+    gender: "Male",
+    dob: "1994-02-18",
+    address: "Jl. Setiabudi No. 117",
+    city: "Bandung",
+    province: "Jawa Barat",
+    nation: "Indonesia",
+    ...audit,
+  },
+];
