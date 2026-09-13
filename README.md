@@ -1,4 +1,10 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Petpet Competition Portal implements the V560 operations mockup with responsive Next.js pages, reusable UI components, local feature components, and in-memory dummy data.
+
+See [V560 architecture and verification](docs/architecture-v560.md) for the route map, ownership boundaries, and browser tests.
+
+The entry page is `/competition`. Dummy edits survive client-side navigation and reset on browser reload. Production authentication, payments, backend persistence, and tournament progression are not connected.
+
+Checks: `npm run typecheck`, `npm run lint`, `npm test -- --run`, and `npm run build`. For browser verification, run `npx playwright install chromium`, start the app on port 3001, then run `npm run test:e2e`.
 
 ## Getting Started
 
@@ -16,7 +22,7 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Routes live in `src/app/(portal)`. Feature components stay in each route domain's `_components` folder. Shared primitives and composed widgets live in `src/components/ui` and `src/components/common`.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

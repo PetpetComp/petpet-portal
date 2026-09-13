@@ -3,6 +3,7 @@ export * from "./auth";
 export * from "./user-management";
 export * from "./pet-management";
 export * from "./event-management";
+export * from "./event-operations";
 export * from "./competition";
 export * from "./sponsorship-brand";
 export * from "./report";

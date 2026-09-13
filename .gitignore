@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/.artifacts/
+/dev-v560*.log
 
 # next.js
 /.next/
