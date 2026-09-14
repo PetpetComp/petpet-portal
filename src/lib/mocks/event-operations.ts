@@ -13,6 +13,18 @@ export const mockEventRegistrations: EventRegistration[] = [
     userId: "USR-2026-0001",
     petId: "PET-00127",
     paymentStatus: "Verified",
+    priceCategory: "Early Bird",
+    registrationFee: 75000,
+    registrationDate: "2026-07-05T09:00:00Z",
+    paymentDate: "2026-07-05T09:10:00Z",
+    paymentBy: "andi.pratama",
+    paymentMethod: "Bank Transfer",
+    paymentVerificationDate: "2026-07-05T14:00:00Z",
+    paymentVerifiedBy: "admin.petpet",
+    createdDate: "2026-07-05T09:00:00Z",
+    createdBy: "andi.pratama",
+    updatedDate: "2026-07-05T14:00:00Z",
+    updatedBy: "admin.petpet",
   },
 ];
 

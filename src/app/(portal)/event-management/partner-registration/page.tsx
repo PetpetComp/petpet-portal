@@ -1,4 +1,4 @@
-import { RegistrationWorkspace } from "@/app/(portal)/event-management/_components/registration-workspace";
+import { PartnerRegistrationWorkspace } from "@/app/(portal)/event-management/partner-registration/_components/partner-registration-workspace";
 export default function Page() {
-  return <RegistrationWorkspace kind="partners" />;
+  return <PartnerRegistrationWorkspace />;
 }

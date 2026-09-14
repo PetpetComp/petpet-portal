@@ -6,24 +6,36 @@ import { Button } from "./button";
 export function ImageInput({
   value,
   onChange,
+  initials,
+  shape = "square",
 }: {
   value: string;
   onChange: (value: string) => void;
+  initials?: string;
+  shape?: "square" | "circle";
 }) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
+  const previewClassName =
+    "image-preview" + (shape === "circle" ? " image-preview-circle" : "");
   return (
     <div className="image-input">
-      {value && (
+      {value ? (
         <Image
           src={value}
           width={80}
           height={80}
           unoptimized
           alt="Selected photo"
-          className="image-preview"
+          className={previewClassName}
         />
+      ) : (
+        initials && (
+          <span className="image-placeholder image-preview-circle" aria-hidden="true">
+            {initials}
+          </span>
+        )
       )}
       <input
         ref={input}

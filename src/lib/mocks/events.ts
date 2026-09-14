@@ -11,6 +11,7 @@ export const mockEvents: EventItem[] = [
   {
     id: "EVT-2026-0001",
     name: "Jakarta Pet Festival 2026",
+    slogan: "Where Every Paw Wins",
     photo: "",
     startDate: "2026-09-05T08:00:00+07:00",
     endDate: "2026-09-06T18:00:00+07:00",

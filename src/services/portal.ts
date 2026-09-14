@@ -38,15 +38,10 @@ export function getPortalData(): PortalData {
     ),
     brands: mockSponsors.map((item) => ({
       ...flatten(item, item.name),
-      picUserId: item.picUserIds[0] ?? "",
+      picUserIds: item.picUserIds.join(","),
     })),
-    competitions: [...mockCompetitions, ...additionalCompetitions].map(
-      (item) => ({
-        ...flatten(item, item.name),
-        lanes: "4",
-        cutoff: "60",
-        checkpoints: "3",
-      }),
+    competitions: [...mockCompetitions, ...additionalCompetitions].map((item) =>
+      flatten(item, item.name),
     ),
     registrations: [...mockEventRegistrations, ...additionalRegistrations].map(
       (item) => flatten(item, "Registration " + item.id),

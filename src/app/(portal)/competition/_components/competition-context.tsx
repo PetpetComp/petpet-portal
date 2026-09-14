@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { CalendarDays, MapPin, Flag, ArrowLeft } from "lucide-react";
 import { usePortalData } from "@/components/providers/portal-data-provider";
+import { runPathFor } from "@/app/(portal)/event-management/[eventId]/competitions/_lib/competition-rules";
 import type { PortalRecord } from "@/types/portal";
 export function CompetitionContext({
   competition,
@@ -48,14 +49,10 @@ export function CompetitionContext({
           {[
             ["drawing", "Drawing"],
             [
-              competition.type === "Contest"
-                ? "contest"
-                : competition.type === "Time Trial"
-                  ? "time-trial"
-                  : "run-match",
+              runPathFor(competition.type),
               competition.type === "Contest"
                 ? "Judging"
-                : competition.type === "Time Trial"
+                : runPathFor(competition.type) === "time-trial"
                   ? "Time Trial"
                   : "Run Match",
             ],

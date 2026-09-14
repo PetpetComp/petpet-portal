@@ -14,5 +14,6 @@ export interface User extends AuditFields {
   address: string;
   city: string;
   province: string;
+  postalCode?: string;
   nation: string;
 }

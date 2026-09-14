@@ -21,6 +21,7 @@ export const ROUTES = {
     eventRegistration: "/event-management/event-registration",
     committeeRegistration: "/event-management/committee-registration",
     partnerRegistration: "/event-management/partner-registration",
+    eventParticipant: "/event-management/event-participant",
   },
   competition: "/competition",
   competitionOperations: {

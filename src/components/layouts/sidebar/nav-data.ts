@@ -30,6 +30,10 @@ export const navigation = [
         label: "Doorprize Drawing",
         href: ROUTES.eventManagement.doorprizeDrawing,
       },
+      {
+        label: "Event Participant",
+        href: ROUTES.eventManagement.eventParticipant,
+      },
     ],
   },
   { label: "Competition", icon: Flag, href: ROUTES.competition },

@@ -6,6 +6,7 @@ import { usePortalData } from "@/components/providers/portal-data-provider";
 import { PageHeading } from "@/components/common/page-heading";
 import { DataTable } from "@/components/common/data-table";
 import { Field, Input, Select } from "@/components/ui/form-controls";
+import { COMPETITION_TYPES, runPathFor } from "@/app/(portal)/event-management/[eventId]/competitions/_lib/competition-rules";
 export function CompetitionList() {
   const { data } = usePortalData();
   const [query, setQuery] = useState("");
@@ -80,11 +81,9 @@ export function CompetitionList() {
               onChange={(event) => setType(event.target.value)}
             >
               <option value="">All Types</option>
-              {["Race", "Checkpoint Race", "Contest", "Time Trial"].map(
-                (type) => (
-                  <option key={type}>{type}</option>
-                ),
-              )}
+              {COMPETITION_TYPES.map((type) => (
+                <option key={type}>{type}</option>
+              ))}
             </Select>
           </Field>
         </div>
@@ -136,16 +135,7 @@ export function CompetitionList() {
                 <Shuffle size={15} />
               </Link>
               <Link
-                href={
-                  "/competition/" +
-                  row.id +
-                  "/" +
-                  (row.type === "Contest"
-                    ? "contest"
-                    : row.type === "Time Trial"
-                      ? "time-trial"
-                      : "run-match")
-                }
+                href={"/competition/" + row.id + "/" + runPathFor(row.type)}
                 title="Run competition"
                 aria-label={"Run " + row.name}
               >
@@ -161,11 +151,7 @@ export function CompetitionList() {
             "/competition/" +
             data.competitions[0].id +
             "/" +
-            (data.competitions[0].type === "Contest"
-              ? "contest"
-              : data.competitions[0].type === "Time Trial"
-                ? "time-trial"
-                : "run-match")
+            runPathFor(data.competitions[0].type)
           }
           className="resume-competition"
         >

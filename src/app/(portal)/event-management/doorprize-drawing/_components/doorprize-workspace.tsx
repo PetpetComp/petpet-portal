@@ -1,168 +1,178 @@
 "use client";
 import { useState } from "react";
-import { Gift, Shuffle, Trophy, Plus } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { usePortalData } from "@/components/providers/portal-data-provider";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select } from "@/components/ui/form-controls";
+import { Select } from "@/components/ui/form-controls";
 import { PageHeading } from "@/components/common/page-heading";
-import { DataTable } from "@/components/common/data-table";
+import { DataTable, type Column } from "@/components/common/data-table";
+import { usePortalData } from "@/components/providers/portal-data-provider";
+import { EventInfoCard } from "@/app/(portal)/event-management/_components/event-info-card";
+import { FindEvent } from "@/app/(portal)/event-management/_components/find-event";
+import { EventPartners } from "@/app/(portal)/competition/_components/event-partners";
+import { formatDateTime } from "@/lib/format/date";
+import type { PortalRecord } from "@/types/portal";
+import { eligibleForDraw, hasPendingWinner, pickRandom } from "../_lib/doorprize-rules";
+
+const DOORPRIZE_STATUS_TONE: Record<string, string> = {
+  Waiting: "warning",
+  Claimed: "success",
+  Void: "danger",
+};
+
 export function DoorprizeWorkspace() {
   const { data, save } = usePortalData();
-  const [eventId, setEventId] = useState(data.events[0]?.id ?? "");
-  const [prizeId, setPrizeId] = useState("");
-  const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [adding, setAdding] = useState(false);
-  const [winner, setWinner] = useState("");
-  const prizes = data.prizes.filter((prize) => prize.eventId === eventId);
-  const selected = prizes.find((prize) => prize.id === prizeId) ?? prizes[0];
-  const previous = prizes.flatMap(
-    (prize) => prize.winnerUserIds?.split(",").filter(Boolean) ?? [],
-  );
-  const eligible = Array.from(
-    new Set(
-      data.registrations
-        .filter(
-          (row) => row.eventId === eventId && row.paymentStatus === "Verified",
-        )
-        .map((row) => row.userId),
-    ),
-  ).filter((id) => !previous.includes(id));
-  const selectedWinners =
-    selected?.winnerUserIds?.split(",").filter(Boolean) ?? [];
-  const canDraw =
-    !!selected &&
-    eligible.length > 0 &&
-    selectedWinners.length < Number(selected.quantity);
-  function draw() {
-    if (!canDraw || !selected) return;
-    const random = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
-    const id = eligible[Math.floor(random * eligible.length)];
-    save("prizes", {
-      ...selected,
-      winnerUserIds: [...selectedWinners, id].join(","),
-    });
-    setWinner(data.users.find((user) => user.id === id)?.name ?? id);
-    toast.success("Winner drawn");
+  const [selectedEventId, setSelectedEventId] = useState("");
+  const event = data.events.find((item) => item.id === selectedEventId);
+
+  const eventRegistrations = event ? data.registrations.filter((row) => row.eventId === event.id) : [];
+  const eligible = event ? eligibleForDraw(data.registrations, event.id) : [];
+  const currentWinner = eventRegistrations.find((row) => row.doorprizeStatus === "Waiting");
+  const canDraw = !!event && !hasPendingWinner(data.registrations, event.id) && eligible.length > 0;
+  const drawn = eventRegistrations.filter((row) => row.doorprizeStatus);
+
+  function petFor(row: PortalRecord) {
+    return data.pets.find((pet) => pet.id === row.petId);
   }
+  function ownerFor(row: PortalRecord) {
+    return data.users.find((user) => user.id === row.userId);
+  }
+  function competitionFor(row: PortalRecord) {
+    return data.competitions.find((item) => item.id === row.competitionId);
+  }
+
+  function draw() {
+    const target = pickRandom(eligible);
+    if (!target) return;
+    const now = new Date().toISOString();
+    save("registrations", {
+      ...target,
+      doorprizeStatus: "Waiting",
+      doorprizeDrawnAt: now,
+      doorprizeStatusDate: now,
+      updatedDate: now,
+      updatedBy: "Admin Petpet",
+    });
+    toast.success((petFor(target)?.name ?? "Participant") + " drawn");
+  }
+
+  function resolve(status: "Claimed" | "Void") {
+    if (!currentWinner) return;
+    save("registrations", {
+      ...currentWinner,
+      doorprizeStatus: status,
+      doorprizeStatusDate: new Date().toISOString(),
+      updatedDate: new Date().toISOString(),
+      updatedBy: "Admin Petpet",
+    });
+    toast.success("Winner status updated");
+  }
+
+  const columns: Column<PortalRecord>[] = [
+    { key: "petId", label: "Participant ID", value: (row) => row.petId },
+    { key: "ownerName", label: "Owner Name", value: (row) => ownerFor(row)?.name ?? "-" },
+    { key: "petName", label: "Pet Name", value: (row) => petFor(row)?.name ?? "-" },
+    { key: "competition", label: "Competition", value: (row) => competitionFor(row)?.name ?? "-" },
+    {
+      key: "drawnAt",
+      label: "Doorprize Drawing Time",
+      value: (row) => row.doorprizeDrawnAt ?? "",
+      render: (row) => formatDateTime(row.doorprizeDrawnAt),
+    },
+    {
+      key: "status",
+      label: "Status",
+      value: (row) => row.doorprizeStatus ?? "",
+      render: (row) => (
+        <span className={"status-badge status-" + (DOORPRIZE_STATUS_TONE[row.doorprizeStatus ?? ""] ?? "neutral")}>
+          <span className="status-dot" />
+          {row.doorprizeStatus}
+        </span>
+      ),
+    },
+    {
+      key: "statusDate",
+      label: "Status Date",
+      value: (row) => row.doorprizeStatusDate ?? "",
+      render: (row) => formatDateTime(row.doorprizeStatusDate),
+    },
+    {
+      key: "createdDate",
+      label: "Created Date",
+      value: (row) => row.createdDate ?? "",
+      render: (row) => formatDateTime(row.createdDate),
+    },
+    { key: "createdBy", label: "Created By", value: (row) => row.createdBy || "-" },
+    {
+      key: "updatedDate",
+      label: "Updated Date",
+      value: (row) => row.updatedDate ?? "",
+      render: (row) => formatDateTime(row.updatedDate),
+    },
+    { key: "updatedBy", label: "Updated By", value: (row) => row.updatedBy || "-" },
+  ];
+
   return (
     <div className="page-stack">
       <PageHeading
         title="Doorprize Drawing"
-        actions={
-          <Button variant="secondary" onClick={() => setAdding(!adding)}>
-            <Plus size={15} />
-            Add Prize
-          </Button>
-        }
+        description="Select an eligible event first, then randomly draw participant registrations for doorprizes."
       />
-      <div className="toolbar">
-        <Field label="Event">
-          <Select
-            value={eventId}
-            onChange={(event) => {
-              setEventId(event.target.value);
-              setPrizeId("");
-              setWinner("");
-            }}
-          >
-            {data.events.map((event) => (
-              <option value={event.id} key={event.id}>
-                {event.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Prize">
-          <Select
-            value={selected?.id ?? ""}
-            onChange={(event) => {
-              setPrizeId(event.target.value);
-              setWinner("");
-            }}
-          >
-            <option value="" disabled>
-              Select a prize
-            </option>
-            {prizes.map((prize) => (
-              <option key={prize.id} value={prize.id}>
-                {prize.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-      {adding && (
-        <form
-          className="form-grid"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const id = crypto.randomUUID();
-            save("prizes", { id, name, eventId, quantity, winnerUserIds: "" });
-            setPrizeId(id);
-            setAdding(false);
-            setName("");
-          }}
-        >
-          <Field label="Prize Name">
-            <Input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-            />
-          </Field>
-          <Field label="Quantity">
-            <Input
-              type="number"
-              min={1}
-              required
-              value={quantity}
-              onChange={(event) => setQuantity(event.target.value)}
-            />
-          </Field>
-          <Button type="submit">Save Prize</Button>
-        </form>
+      <FindEvent events={data.events} onSelect={(item) => setSelectedEventId(item.id)} />
+      {event && (
+        <>
+          <EventInfoCard event={event} />
+          <EventPartners eventId={event.id} />
+          <section className="form-section pet-detail-card">
+            <div className="section-head">
+              <div>
+                <div className="eyebrow">DOORPRIZE PARTICIPANTS</div>
+                <h2>Doorprize Drawing List</h2>
+                <p className="muted">
+                  Only participant registrations with Payment Status = Paid
+                  are eligible. Each eligible registration can be drawn once.
+                  Complete the current winner as Claimed or Void before
+                  drawing again.
+                </p>
+              </div>
+              <Button disabled={!canDraw} onClick={draw}>
+                <Sparkles size={15} />
+                Random Draw
+              </Button>
+            </div>
+            {currentWinner && (
+              <div className="assignment-note-card">
+                <div>
+                  <div className="eyebrow">CURRENT DRAW</div>
+                  <strong>{petFor(currentWinner)?.name ?? "-"}</strong>
+                  <p className="muted">
+                    {ownerFor(currentWinner)?.name ?? "-"} /{" "}
+                    {competitionFor(currentWinner)?.name ?? "-"}
+                  </p>
+                </div>
+                <div className="assignment-builder">
+                  <span className="status-badge status-warning">
+                    <span className="status-dot" />
+                    Waiting
+                  </span>
+                  <Select
+                    aria-label="Update winner status"
+                    value=""
+                    onChange={(evt) => {
+                      if (evt.target.value) resolve(evt.target.value as "Claimed" | "Void");
+                    }}
+                  >
+                    <option value="">Update Winner Status</option>
+                    <option value="Claimed">Claimed</option>
+                    <option value="Void">Void</option>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DataTable rows={drawn} columns={columns} label="Doorprize registrations" />
+          </section>
+        </>
       )}
-      <section className="prize-stage">
-        <Gift size={36} />
-        <span className="eyebrow">DOORPRIZE</span>
-        <h2>{selected?.name ?? "No prizes available"}</h2>
-        <div className="prize-winner" aria-live="polite">
-          {winner || "Ready to draw"}
-        </div>
-        <p>
-          {eligible.length} eligible participants / {selectedWinners.length} of{" "}
-          {selected?.quantity ?? 0} prizes awarded
-        </p>
-        <Button disabled={!canDraw} onClick={draw}>
-          <Shuffle size={17} />
-          Draw Winner
-        </Button>
-      </section>
-      <section>
-        <div className="section-head">
-          <h2>
-            <Trophy size={17} /> Winners
-          </h2>
-        </div>
-        <DataTable
-          rows={prizes.flatMap((prize) =>
-            (prize.winnerUserIds?.split(",").filter(Boolean) ?? []).map(
-              (userId) => ({
-                id: prize.id + userId,
-                name:
-                  data.users.find((user) => user.id === userId)?.name ?? userId,
-                prize: prize.name,
-              }),
-            ),
-          )}
-          columns={[
-            { key: "name", label: "Winner", value: (row) => row.name },
-            { key: "prize", label: "Prize", value: (row) => row.prize },
-          ]}
-        />
-      </section>
     </div>
   );
 }

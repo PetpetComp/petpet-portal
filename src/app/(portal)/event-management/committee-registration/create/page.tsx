@@ -1,4 +1,4 @@
-import { RegistrationWorkspace } from "@/app/(portal)/event-management/_components/registration-workspace";
+import { CommitteeWorkspace } from "@/app/(portal)/event-management/committee-registration/_components/committee-workspace";
 export default function Page() {
-  return <RegistrationWorkspace kind="committee" mode="create" />;
+  return <CommitteeWorkspace mode="create" />;
 }

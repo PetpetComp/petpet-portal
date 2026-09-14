@@ -1,15 +1,4 @@
-import { RegistrationWorkspace } from "@/app/(portal)/event-management/_components/registration-workspace";
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ registrationId: string }>;
-}) {
-  const { registrationId } = await params;
-  return (
-    <RegistrationWorkspace
-      kind="registrations"
-      mode="edit"
-      id={registrationId}
-    />
-  );
+import { redirect } from "next/navigation";
+export default function Page() {
+  redirect("/event-management/event-registration");
 }

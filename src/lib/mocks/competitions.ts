@@ -23,6 +23,8 @@ export const mockCompetitions: Competition[] = [
     onlineClose: "2026-08-31T23:59:00+07:00",
     otsOpen: "2026-09-05T06:00:00+07:00",
     otsClose: "2026-09-05T08:00:00+07:00",
+    lanes: 4,
+    registrationStatus: "Open",
     ...audit,
   },
   {
@@ -40,6 +42,12 @@ export const mockCompetitions: Competition[] = [
     onlineClose: "2026-09-01T20:00:00+07:00",
     otsOpen: "2026-09-05T07:00:00+07:00",
     otsClose: "2026-09-05T10:00:00+07:00",
+    registrationStatus: "Open",
+    contestCriteria: JSON.stringify([
+      { name: "Appearance", maxPoints: 100 },
+      { name: "Creativity", maxPoints: 100 },
+      { name: "Performance", maxPoints: 100 },
+    ]),
     ...audit,
   },
 ];

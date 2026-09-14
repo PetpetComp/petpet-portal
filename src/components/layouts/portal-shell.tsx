@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { navigation } from "./sidebar/nav-data";
+import { useSidebarContext } from "./sidebar/sidebar-context";
 
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -76,7 +77,8 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function PortalShell({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const { isOpen, toggleSidebar } = useSidebarContext();
+  const collapsed = !isOpen;
   const [mobileOpen, setMobileOpen] = useState(false);
   return (
     <div className={collapsed ? "portal sidebar-collapsed" : "portal"}>
@@ -171,7 +173,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
             size="icon"
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={toggleSidebar}
           >
             {collapsed ? (
               <PanelLeftOpen size={18} />

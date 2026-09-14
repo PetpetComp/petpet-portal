@@ -1,77 +1,79 @@
 "use client";
-import { RecordWorkspace } from "@/components/common/record-workspace";
+import { useState } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+import { PageHeading } from "@/components/common/page-heading";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { usePortalData } from "@/components/providers/portal-data-provider";
-import { DataTable } from "@/components/common/data-table";
-import type { FieldDefinition, ViewMode } from "@/types/portal";
-const fields: FieldDefinition[] = [
-  { key: "name", label: "Full Name", required: true },
-  { key: "username", label: "Username", required: true },
-  { key: "email", label: "Email", type: "email", required: true },
-  { key: "phone", label: "Phone", type: "tel", required: true },
-  {
-    key: "gender",
-    label: "Gender",
-    type: "select",
-    options: [
-      { value: "Male", label: "Male" },
-      { value: "Female", label: "Female" },
-    ],
-  },
-  { key: "dob", label: "Date of Birth", type: "date" },
-  { key: "address", label: "Address", type: "textarea" },
-  { key: "city", label: "City" },
-  { key: "province", label: "Province" },
-  { key: "nation", label: "Country" },
-];
-export function UserWorkspace({ mode, id }: { mode?: ViewMode; id?: string }) {
+import type { PortalRecord, ViewMode } from "@/types/portal";
+import { UserList } from "./user-list";
+import { UserForm } from "./user-form";
+import { UserDetail } from "./user-detail";
+import { hasLinkedRecords } from "../_lib/user-rules";
+
+export function UserWorkspace({ mode = "list", id }: { mode?: ViewMode; id?: string }) {
   const { data, save, remove } = usePortalData();
+  const [deleting, setDeleting] = useState<PortalRecord | null>(null);
+  const user = id ? data.users.find((item) => item.id === id) : undefined;
+
+  function requestDelete(record: PortalRecord) {
+    if (hasLinkedRecords(data, record.id)) {
+      toast.error("This user still has linked records. Reassign them before deleting.");
+      return;
+    }
+    setDeleting(record);
+  }
+
+  if ((mode === "detail" || mode === "edit") && !user) {
+    return (
+      <div className="page-stack">
+        <PageHeading title="User not found" />
+        <Link className="back-link" href="/user-management">
+          <ArrowLeft size={16} />
+          Back to User Management
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <RecordWorkspace
-      key={mode + (id ?? "")}
-      title="User Management"
-      singular="User"
-      basePath="/user-management"
-      records={data.users}
-      fields={fields}
-      columns={["name", "email", "phone", "city"]}
-      mode={mode}
-      id={id}
-      onSave={(record) => save("users", record)}
-      onRemove={(id) => remove("users", id)}
-      validate={(record) =>
-        data.users.some(
-          (item) =>
-            item.id !== record.id &&
-            (item.email.toLowerCase() === record.email.toLowerCase() ||
-              item.phone === record.phone),
-        )
-          ? "Email or phone is already registered."
-          : undefined
-      }
-      canRemove={(record) =>
-        data.pets.some((pet) => pet.ownerUserId === record.id) ||
-        [...data.registrations, ...data.committee].some(
-          (row) => row.userId === record.id,
-        ) ||
-        data.brands.some((row) => row.picUserId === record.id) ||
-        data.prizes.some((row) =>
-          row.winnerUserIds?.split(",").includes(record.id),
-        )
-          ? "This user still has linked records. Reassign them before deleting."
-          : undefined
-      }
-    >
-      <section className="form-section">
-        <h2>Owned Pets</h2>
-        <DataTable
-          rows={data.pets.filter((pet) => pet.ownerUserId === id)}
-          columns={[
-            { key: "name", label: "Pet", value: (row) => row.name },
-            { key: "animal", label: "Animal", value: (row) => row.animal },
-            { key: "variant", label: "Breed", value: (row) => row.variant },
-          ]}
+    <>
+      {mode === "list" && (
+        <UserList users={data.users} onRequestDelete={requestDelete} />
+      )}
+      {mode === "create" && (
+        <UserForm mode="create" users={data.users} onSave={(record) => save("users", record)} />
+      )}
+      {mode === "edit" && user && (
+        <UserForm
+          mode="edit"
+          user={user}
+          users={data.users}
+          onSave={(record) => save("users", record)}
         />
-      </section>
-    </RecordWorkspace>
+      )}
+      {mode === "detail" && user && (
+        <UserDetail
+          user={user}
+          pets={data.pets.filter((pet) => pet.ownerUserId === user.id)}
+          onRequestDelete={() => requestDelete(user)}
+        />
+      )}
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title={"Delete " + (deleting?.name ?? "user") + "?"}
+        description={
+          deleting ? deleting.name + " will be removed from this session." : ""
+        }
+        onConfirm={() => {
+          if (deleting) {
+            remove("users", deleting.id);
+            toast.success("User deleted");
+          }
+        }}
+      />
+    </>
   );
 }
