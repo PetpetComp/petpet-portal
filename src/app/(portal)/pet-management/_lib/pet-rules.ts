@@ -7,8 +7,7 @@ export function isDuplicatePet(pets: PortalRecord[], draft: PortalRecord): boole
   return pets.some(
     (pet) =>
       pet.id !== draft.id &&
-      pet.name.trim().toLowerCase() === draft.name.trim().toLowerCase() &&
-      pet.ownerUserId === draft.ownerUserId,
+      pet.name.trim().toLowerCase() === draft.name.trim().toLowerCase(),
   );
 }
 

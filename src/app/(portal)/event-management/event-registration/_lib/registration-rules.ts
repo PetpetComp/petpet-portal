@@ -1,32 +1,9 @@
+import type { Row } from "@/services/backend-records";
 import type { PortalRecord } from "@/types/portal";
-
-export const PAYMENT_STATUSES = ["Pending", "Paid", "Verified"] as const;
-
-const CHANNELS = [
-  { key: "earlyBird", category: "Early Bird" },
-  { key: "online", category: "Online" },
-  { key: "ots", category: "OTS" },
-] as const;
-
-export function resolvePriceCategory(
-  competition: PortalRecord,
-  when: Date = new Date(),
-): { category: string; fee: number } {
-  const timestamp = when.toISOString();
-  for (const channel of CHANNELS) {
-    const open = competition[channel.key + "Open"];
-    const close = competition[channel.key + "Close"];
-    if (open && close && timestamp >= open && timestamp <= close) {
-      return { category: channel.category, fee: Number(competition[channel.key + "Price"] || 0) };
-    }
-  }
-  const fallback = CHANNELS[CHANNELS.length - 1];
-  return { category: fallback.category, fee: Number(competition[fallback.key + "Price"] || 0) };
-}
 
 export function isDuplicateRegistration(
   registrations: PortalRecord[],
-  draft: PortalRecord,
+  draft: { id: string; petId: string; competitionId: string },
 ): boolean {
   return registrations.some(
     (item) =>
@@ -36,6 +13,24 @@ export function isDuplicateRegistration(
   );
 }
 
-export function isAnimalMismatch(pet: PortalRecord, competition: PortalRecord): boolean {
-  return pet.animal !== competition.animal;
+export function currentPeriod(
+  periods: Row[],
+  when: Date = new Date(),
+): Row | undefined {
+  const timestamp = when.toISOString();
+  return periods.find((period) => {
+    const start = period.registration_start_at;
+    const end = period.registration_end_at;
+    return (
+      typeof start === "string" &&
+      typeof end === "string" &&
+      timestamp >= start &&
+      timestamp <= end
+    );
+  });
+}
+
+export function periodLabel(period: Row): string {
+  const type = String(period.period_type ?? "").replaceAll("_", " ");
+  return type + " · Rp " + String(period.price ?? "-");
 }

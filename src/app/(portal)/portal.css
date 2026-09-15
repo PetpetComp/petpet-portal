@@ -564,6 +564,22 @@ tbody tr:hover {
   border-color: #cfc9fb;
   transform: translateY(-1px);
 }
+.row-action-disabled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: #b3b7c9;
+  background: var(--color-muted);
+  cursor: not-allowed;
+  font-size: 12px;
+  font-weight: 700;
+}
 .record-name {
   display: flex;
   align-items: center;

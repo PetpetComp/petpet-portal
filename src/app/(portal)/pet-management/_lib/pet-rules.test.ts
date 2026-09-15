@@ -3,25 +3,16 @@ import { isDuplicatePet, hasActiveRegistration, petInitials } from "./pet-rules"
 import { calculateAge } from "@/lib/format/date";
 
 const pets = [
-  { id: "PET-1", name: "Mochi", ownerUserId: "USR-1" },
-  { id: "PET-2", name: "Bruno", ownerUserId: "USR-2" },
+  { id: "PET-1", name: "Mochi" },
+  { id: "PET-2", name: "Bruno" },
 ];
 
 describe("isDuplicatePet", () => {
-  it("flags same name under the same owner", () => {
-    expect(
-      isDuplicatePet(pets, { id: "PET-3", name: "mochi", ownerUserId: "USR-1" }),
-    ).toBe(true);
-  });
-  it("allows same name under a different owner", () => {
-    expect(
-      isDuplicatePet(pets, { id: "PET-3", name: "Mochi", ownerUserId: "USR-2" }),
-    ).toBe(false);
+  it("flags a name already in use", () => {
+    expect(isDuplicatePet(pets, { id: "PET-3", name: "mochi" })).toBe(true);
   });
   it("ignores the record being edited", () => {
-    expect(
-      isDuplicatePet(pets, { id: "PET-1", name: "Mochi", ownerUserId: "USR-1" }),
-    ).toBe(false);
+    expect(isDuplicatePet(pets, { id: "PET-1", name: "Mochi" })).toBe(false);
   });
 });
 

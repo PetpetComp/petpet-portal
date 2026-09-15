@@ -1,4 +1,4 @@
-import { UserWorkspace } from "@/app/(portal)/user-management/_components/user-workspace";
+import { UserForm } from "@/app/(portal)/user-management/_components/user-form";
 export default function Page() {
-  return <UserWorkspace mode="create" />;
+  return <UserForm mode="create" />;
 }

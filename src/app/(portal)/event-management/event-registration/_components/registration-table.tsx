@@ -1,89 +1,98 @@
 "use client";
 import { useState } from "react";
-import { Plus, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
+import {
+  CheckCircle2,
+  ClipboardCheck,
+  Plus,
+  RotateCcw,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form-controls";
 import { DataTable, type Column } from "@/components/common/data-table";
 import { StatusBadge } from "@/components/common/status-badge";
-import { formatDate, formatDateTime } from "@/lib/format/date";
+import { usePortalData } from "@/components/providers/portal-data-provider";
+import { ENTRY_SERVICES } from "@/services/event-operations";
 import type { PortalRecord } from "@/types/portal";
-import { PAYMENT_STATUSES } from "../_lib/registration-rules";
 import { RegisterPetForm } from "./register-pet-form";
 
 interface RegistrationRow {
   id: string;
   paymentStatus: string;
+  checkinStatus: string;
+  status: string;
   petName: string;
   competitionName: string;
-  animal: string;
-  variant: string;
-  priceCategory: string;
-  registrationDate?: string;
-  registrationFee?: number;
-  paymentDate?: string;
-  paymentMethod?: string;
-  paymentVerificationDate?: string;
-  paymentVerifiedBy?: string;
-  createdDate?: string;
-  createdBy?: string;
-  updatedDate?: string;
-  updatedBy?: string;
+  registrationFee?: string;
 }
 
 export function RegistrationTable({
   event,
-  user,
   pets,
   competitions,
   registrations,
-  onSave,
 }: {
   event: PortalRecord;
-  user: PortalRecord;
   pets: PortalRecord[];
   competitions: PortalRecord[];
   registrations: PortalRecord[];
-  onSave: (registration: PortalRecord) => void;
 }) {
+  const { refresh, remove } = usePortalData();
   const [petName, setPetName] = useState("");
   const [competitionName, setCompetitionName] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("");
   const [registering, setRegistering] = useState(false);
+  const [pendingId, setPendingId] = useState("");
+  const [actionError, setActionError] = useState("");
 
-  const userRegistrations = registrations.filter(
-    (row) => row.eventId === event.id && row.userId === user.id,
+  const paymentStatuses = Array.from(
+    new Set(registrations.map((row) => row.paymentStatus).filter(Boolean)),
   );
 
-  const rows: RegistrationRow[] = userRegistrations
+  const rows: RegistrationRow[] = registrations
+    .filter((row) => row.eventId === event.id)
     .map((row) => {
       const pet = pets.find((item) => item.id === row.petId);
-      const competition = competitions.find((item) => item.id === row.competitionId);
+      const competition = competitions.find(
+        (item) => item.id === row.competitionId,
+      );
       return {
         id: row.id,
-        paymentStatus: row.paymentStatus,
+        paymentStatus: row.paymentStatus || "-",
+        checkinStatus: row.checkinStatus || "-",
+        status: row.status || "-",
         petName: pet?.name ?? "-",
         competitionName: competition?.name ?? "-",
-        animal: pet?.animal ?? "-",
-        variant: pet?.variant ?? "-",
-        priceCategory: row.priceCategory ?? "-",
-        registrationDate: row.registrationDate,
-        registrationFee: Number(row.registrationFee || 0),
-        paymentDate: row.paymentDate,
-        paymentMethod: row.paymentMethod,
-        paymentVerificationDate: row.paymentVerificationDate,
-        paymentVerifiedBy: row.paymentVerifiedBy,
-        createdDate: row.createdDate,
-        createdBy: row.createdBy,
-        updatedDate: row.updatedDate,
-        updatedBy: row.updatedBy,
+        registrationFee: row.registrationFee,
       };
     })
     .filter(
       (row) =>
         row.petName.toLowerCase().includes(petName.toLowerCase()) &&
-        row.competitionName.toLowerCase().includes(competitionName.toLowerCase()) &&
+        row.competitionName
+          .toLowerCase()
+          .includes(competitionName.toLowerCase()) &&
         (!paymentStatus || row.paymentStatus === paymentStatus),
     );
+
+  async function runAction(id: string, action: "approve" | "reject" | "checkin") {
+    if (pendingId) return;
+    setPendingId(id);
+    setActionError("");
+    try {
+      await ENTRY_SERVICES[action](id);
+      toast.success("Entry updated");
+      await refresh();
+    } catch (cause) {
+      setActionError(
+        cause instanceof Error ? cause.message : "Unable to update entry.",
+      );
+    } finally {
+      setPendingId("");
+    }
+  }
 
   const columns: Column<RegistrationRow>[] = [
     {
@@ -92,51 +101,29 @@ export function RegistrationTable({
       value: (row) => row.paymentStatus,
       render: (row) => <StatusBadge status={row.paymentStatus} />,
     },
-    { key: "petName", label: "Pet Name", value: (row) => row.petName },
-    { key: "competitionName", label: "Competition", value: (row) => row.competitionName },
-    { key: "animal", label: "Animal", value: (row) => row.animal },
-    { key: "variant", label: "Variant", value: (row) => row.variant },
-    { key: "priceCategory", label: "Price Category", value: (row) => row.priceCategory },
     {
-      key: "registrationDate",
-      label: "Registration Date",
-      value: (row) => row.registrationDate ?? "",
-      render: (row) => formatDate(row.registrationDate),
+      key: "checkinStatus",
+      label: "Check-in",
+      value: (row) => row.checkinStatus,
+    },
+    { key: "petName", label: "Pet Name", value: (row) => row.petName },
+    {
+      key: "competitionName",
+      label: "Competition",
+      value: (row) => row.competitionName,
     },
     {
       key: "registrationFee",
       label: "Registration Fee",
-      value: (row) => row.registrationFee ?? 0,
-      render: (row) => "Rp " + (row.registrationFee ?? 0).toLocaleString("id-ID"),
+      value: (row) => row.registrationFee ?? "",
+      render: (row) => (row.registrationFee ? "Rp " + row.registrationFee : "-"),
     },
     {
-      key: "paymentDate",
-      label: "Payment Date",
-      value: (row) => row.paymentDate ?? "",
-      render: (row) => formatDate(row.paymentDate),
+      key: "status",
+      label: "Status",
+      value: (row) => row.status,
+      render: (row) => <StatusBadge status={row.status} />,
     },
-    { key: "paymentMethod", label: "Payment Method", value: (row) => row.paymentMethod || "-" },
-    {
-      key: "paymentVerificationDate",
-      label: "Payment Verification Date",
-      value: (row) => row.paymentVerificationDate ?? "",
-      render: (row) => formatDate(row.paymentVerificationDate),
-    },
-    { key: "paymentVerifiedBy", label: "Payment Verified By", value: (row) => row.paymentVerifiedBy || "-" },
-    {
-      key: "createdDate",
-      label: "Created Date",
-      value: (row) => row.createdDate ?? "",
-      render: (row) => formatDateTime(row.createdDate),
-    },
-    { key: "createdBy", label: "Created By", value: (row) => row.createdBy || "-" },
-    {
-      key: "updatedDate",
-      label: "Updated Date",
-      value: (row) => row.updatedDate ?? "",
-      render: (row) => formatDateTime(row.updatedDate),
-    },
-    { key: "updatedBy", label: "Updated By", value: (row) => row.updatedBy || "-" },
   ];
 
   return (
@@ -145,7 +132,9 @@ export function RegistrationTable({
         <div>
           <div className="eyebrow">REGISTRATION LIST</div>
           <h2>Registered Pets</h2>
-          <p className="muted">Pet and competition registration data for the selected event.</p>
+          <p className="muted">
+            Pet and competition registration data for the selected event.
+          </p>
         </div>
         <Button onClick={() => setRegistering((current) => !current)}>
           <Plus size={15} />
@@ -154,14 +143,10 @@ export function RegistrationTable({
       </div>
       {registering && (
         <RegisterPetForm
-          event={event}
-          user={user}
-          pets={pets}
           competitions={competitions}
-          registrations={registrations}
-          onSave={(registration) => {
-            onSave(registration);
+          onSaved={() => {
             setRegistering(false);
+            void refresh();
           }}
           onCancel={() => setRegistering(false)}
         />
@@ -184,9 +169,12 @@ export function RegistrationTable({
           />
         </Field>
         <Field label="Payment status">
-          <Select value={paymentStatus} onChange={(evt) => setPaymentStatus(evt.target.value)}>
+          <Select
+            value={paymentStatus}
+            onChange={(evt) => setPaymentStatus(evt.target.value)}
+          >
             <option value="">All statuses</option>
-            {PAYMENT_STATUSES.map((status) => (
+            {paymentStatuses.map((status) => (
               <option key={status} value={status}>
                 {status}
               </option>
@@ -207,7 +195,75 @@ export function RegistrationTable({
           </Button>
         </div>
       </div>
-      <DataTable rows={rows} columns={columns} label="Registered pets" />
+      <DataTable
+        rows={rows}
+        columns={columns}
+        label="Registered pets"
+        actions={(row) => (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Approve entry"
+              aria-label="Approve entry"
+              disabled={!!pendingId}
+              onClick={() => void runAction(row.id, "approve")}
+            >
+              <CheckCircle2 size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Reject entry"
+              aria-label="Reject entry"
+              disabled={!!pendingId}
+              onClick={() => void runAction(row.id, "reject")}
+            >
+              <XCircle size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Check in"
+              aria-label="Check in"
+              disabled={!!pendingId}
+              onClick={() => void runAction(row.id, "checkin")}
+            >
+              <ClipboardCheck size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Remove entry"
+              aria-label="Remove entry"
+              disabled={!!pendingId}
+              onClick={async () => {
+                if (!window.confirm("Remove this registration?")) return;
+                setPendingId(row.id);
+                try {
+                  await remove("registrations", row.id);
+                  toast.success("Entry removed");
+                } catch (cause) {
+                  setActionError(
+                    cause instanceof Error
+                      ? cause.message
+                      : "Unable to remove entry.",
+                  );
+                } finally {
+                  setPendingId("");
+                }
+              }}
+            >
+              <Trash2 size={16} />
+            </Button>
+          </>
+        )}
+      />
+      {actionError && (
+        <p role="alert" className="form-error">
+          {actionError}
+        </p>
+      )}
     </section>
   );
 }

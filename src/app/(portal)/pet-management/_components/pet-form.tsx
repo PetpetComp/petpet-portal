@@ -6,57 +6,71 @@ import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form-controls";
-import { ImageInput } from "@/components/ui/image-input";
-import { SearchSelect } from "@/components/common/search-select";
+import { usePortalData } from "@/components/providers/portal-data-provider";
 import { calculateAge } from "@/lib/format/date";
 import type { PortalRecord } from "@/types/portal";
-import { ANIMAL_OPTIONS, isDuplicatePet, petInitials } from "../_lib/pet-rules";
+import { isDuplicatePet, petInitials } from "../_lib/pet-rules";
 
 const BASE_PATH = "/pet-management";
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function PetForm({
   mode,
-  pet,
-  pets,
-  users,
-  onSave,
+  id,
 }: {
   mode: "create" | "edit";
-  pet?: PortalRecord;
-  pets: PortalRecord[];
-  users: PortalRecord[];
-  onSave: (record: PortalRecord) => void;
+  id?: string;
 }) {
   const router = useRouter();
+  const { data, save } = usePortalData();
+  const pet = mode === "edit" ? data.pets.find((item) => item.id === id) : undefined;
   const [draft, setDraft] = useState<PortalRecord>(
-    () => pet ?? { id: "", name: "", ownerUserId: "", ownerName: "" },
+    () => pet ?? { id: "", name: "", speciesId: "", morphId: "" },
   );
+  const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const backPath =
     mode === "edit" && pet ? BASE_PATH + "/" + pet.id : BASE_PATH;
 
-  function set<K extends string>(key: K, value: string) {
+  if (mode === "edit" && !pet)
+    return (
+      <section className="page-stack">
+        <h1>Pet not found</h1>
+        <Link className="link-button" href={BASE_PATH}>
+          Back to Pet Management
+        </Link>
+      </section>
+    );
+
+  function set(key: string, value: string) {
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!draft.ownerUserId) {
-      setError("Please select an owner for this pet.");
+    if (pending) return;
+    if (mode === "create" && draft.speciesId && !uuid.test(draft.speciesId.trim())) {
+      setError("Species ID must be a valid UUID.");
       return;
     }
-    const next: PortalRecord = {
-      ...draft,
-      id: draft.id || "PET-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
-      ownerName: users.find((user) => user.id === draft.ownerUserId)?.name ?? "",
-    };
-    if (isDuplicatePet(pets, next)) {
-      setError("This owner already has a pet with this name.");
+    if (draft.morphId && !uuid.test(draft.morphId.trim())) {
+      setError("Morph ID must be a valid UUID.");
       return;
     }
-    onSave(next);
-    toast.success("Pet saved");
-    router.push(mode === "edit" ? BASE_PATH + "/" + next.id : BASE_PATH);
+    if (isDuplicatePet(data.pets, draft)) {
+      setError("This pet name is already in use.");
+      return;
+    }
+    setError("");
+    setPending(true);
+    try {
+      const saved = await save("pets", draft);
+      toast.success("Pet saved");
+      router.push(mode === "edit" ? BASE_PATH + "/" + saved.id : BASE_PATH);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save pet.");
+      setPending(false);
+    }
   }
 
   return (
@@ -70,24 +84,33 @@ export function PetForm({
         <p className="muted">
           {mode === "edit"
             ? "Update pet information."
-            : "Create a new pet record and assign its owner."}
+            : "Create a new pet record."}
         </p>
       </header>
       <form onSubmit={submit} className="page-stack">
-        <section className="form-section">
+        <fieldset disabled={pending} className="form-section">
           <div className="pet-photo-section">
-            <ImageInput
-              value={draft.photo ?? ""}
-              onChange={(value) => set("photo", value)}
-              initials={petInitials(draft.name || "Pet")}
-              shape="circle"
-            />
-            <p className="muted">Optional. Upload JPG, PNG, or WEBP image.</p>
+            <span className="image-placeholder image-preview-circle" aria-hidden="true">
+              {petInitials(draft.name || "Pet")}
+            </span>
+            <div>
+              <Button variant="secondary" disabled>
+                Choose Photo
+              </Button>
+              <p className="muted">
+                Not yet supported by the connected API — photos aren&apos;t
+                saved.
+              </p>
+            </div>
           </div>
           <h2>General Information</h2>
           <div className="form-grid">
             <Field label="Pet ID">
-              <Input value={draft.id} readOnly placeholder="Generated on save" />
+              <Input
+                value={draft.id}
+                readOnly
+                placeholder="Generated on save"
+              />
             </Field>
             <Field label="Pet Name *">
               <Input
@@ -96,35 +119,39 @@ export function PetForm({
                 onChange={(event) => set("name", event.target.value)}
               />
             </Field>
-            <Field label="Animal *">
-              <Select
-                required
-                value={draft.animal ?? ""}
-                onChange={(event) => set("animal", event.target.value)}
-              >
-                <option value="">Select animal</option>
-                {ANIMAL_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Variant">
+            <Field label="Species ID (UUID) *">
               <Input
-                value={draft.variant ?? ""}
-                onChange={(event) => set("variant", event.target.value)}
+                required
+                disabled={mode === "edit"}
+                value={draft.speciesId ?? ""}
+                onChange={(event) => set("speciesId", event.target.value)}
+                placeholder="Provided by your administrator"
               />
             </Field>
-            <Field label="Owner *">
-              <SearchSelect
-                items={users}
-                value={draft.ownerUserId ?? ""}
-                onChange={(id) => set("ownerUserId", id)}
-                getId={(user) => user.id}
-                getLabel={(user) => user.name}
-                getDescription={(user) => user.id}
-                placeholder="Search User ID, first name, or last name"
+            <Field label="Morph ID (UUID)">
+              <Input
+                disabled={mode === "edit"}
+                value={draft.morphId ?? ""}
+                onChange={(event) => set("morphId", event.target.value)}
+                placeholder="Provided by your administrator"
+              />
+            </Field>
+            <Field label="Owner">
+              <Input
+                disabled
+                placeholder="Not yet supported by the connected API"
+              />
+              <p className="muted">
+                Pets belong to the authenticated account — the API does not
+                allow choosing another owner.
+              </p>
+            </Field>
+            <Field label="Registration Number">
+              <Input
+                value={draft.registrationNumber ?? ""}
+                onChange={(event) =>
+                  set("registrationNumber", event.target.value)
+                }
               />
             </Field>
             <Field label="Gender">
@@ -166,7 +193,7 @@ export function PetForm({
               />
             </Field>
           </div>
-        </section>
+        </fieldset>
         {error && (
           <p role="alert" className="form-error">
             {error}
@@ -176,9 +203,9 @@ export function PetForm({
           <Link className="link-button secondary" href={backPath}>
             Cancel
           </Link>
-          <Button type="submit">
+          <Button type="submit" disabled={pending}>
             <Save size={16} />
-            {mode === "edit" ? "Save Changes" : "Save Pet"}
+            {pending ? "Saving..." : mode === "edit" ? "Save Changes" : "Save Pet"}
           </Button>
         </div>
       </form>

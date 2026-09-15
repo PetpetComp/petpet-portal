@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -12,6 +12,10 @@ import { usePortalData } from "@/components/providers/portal-data-provider";
 import { EVENT_SERVICES } from "@/services/event-management";
 import { COMPETITION_SERVICES } from "@/services/competition";
 import { ENTRY_SERVICES } from "@/services/event-operations";
+import { ORGANIZATION_SERVICES } from "@/services/organization";
+import { collectRows } from "@/services/common";
+import type { Row } from "@/services/backend-records";
+import { formatDate } from "@/lib/format/date";
 import { RecordRelations, OrganizationSelect } from "./record-relations";
 import { CompetitionSettings } from "./competition-settings";
 import type {
@@ -54,13 +58,34 @@ const config: Record<
     title: "Event Management",
     singular: "Event",
     path: "/event-management",
-    columns: ["name", "location", "startDate", "endDate", "status"],
+    columns: [
+      "name",
+      "organizer",
+      "location",
+      "address",
+      "startDate",
+      "endDate",
+      "status",
+    ],
   },
   competitions: {
     title: "Competitions",
     singular: "Competition",
     path: "",
-    columns: ["name", "location", "startDate", "capacity", "status"],
+    columns: [
+      "name",
+      "location",
+      "startDate",
+      "endDate",
+      "capacity",
+      "earlyBirdPrice",
+      "earlyBirdWindow",
+      "onlinePrice",
+      "onlineWindow",
+      "onSitePrice",
+      "onSiteWindow",
+      "status",
+    ],
   },
   registrations: {
     title: "Event Registration",
@@ -464,6 +489,17 @@ export function ApiWorkspace({
   const [selectedId, setSelectedId] = useState(id);
   const [pendingDelete, setPendingDelete] = useState("");
   const [deleteError, setDeleteError] = useState("");
+  const [organizations, setOrganizations] = useState<Row[]>([]);
+  useEffect(() => {
+    if (collection !== "events") return;
+    let active = true;
+    collectRows(ORGANIZATION_SERVICES.list).then((rows) => {
+      if (active) setOrganizations(rows);
+    });
+    return () => {
+      active = false;
+    };
+  }, [collection]);
   const inline = ["registrations", "partners"].includes(collection);
   const currentMode = inline ? inlineMode : mode;
   const currentId = inline ? selectedId : id;
@@ -475,6 +511,29 @@ export function ApiWorkspace({
   const records = data[collection].filter(
     (row) => !eventId || row.eventId === eventId,
   );
+  const [periodsByCompetition, setPeriodsByCompetition] = useState<
+    Record<string, Row[]>
+  >({});
+  const competitionIds =
+    collection === "competitions" && mode === "list"
+      ? records.map((row) => row.id).join(",")
+      : "";
+  useEffect(() => {
+    if (!competitionIds) return;
+    let active = true;
+    Promise.all(
+      competitionIds.split(",").map((competitionId) =>
+        collectRows((params) =>
+          COMPETITION_SERVICES.periods(competitionId, params),
+        ).then((rows) => [competitionId, rows] as const),
+      ),
+    ).then((entries) => {
+      if (active) setPeriodsByCompetition(Object.fromEntries(entries));
+    });
+    return () => {
+      active = false;
+    };
+  }, [competitionIds]);
   const record = records.find((row) => row.id === currentId);
   const fields =
     currentMode === "detail"
@@ -509,7 +568,33 @@ export function ApiWorkspace({
     key
       .replace(/([A-Z])/g, " $1")
       .replace(/^./, (letter) => letter.toUpperCase());
+  const periodTypeByKey: Record<string, string> = {
+    earlyBird: "EARLY_BIRD",
+    online: "ONLINE",
+    onSite: "ON_SITE",
+  };
   const display = (row: PortalRecord, key: string) => {
+    const priceMatch = key.match(/^(earlyBird|online|onSite)(Price|Window)$/);
+    if (priceMatch) {
+      const period = periodsByCompetition[row.id]?.find(
+        (item) => item.period_type === periodTypeByKey[priceMatch[1]],
+      );
+      if (!period) return "-";
+      if (priceMatch[2] === "Price") return "Rp " + String(period.price ?? "-");
+      const start = period.registration_start_at
+        ? formatDate(String(period.registration_start_at))
+        : "-";
+      const end = period.registration_end_at
+        ? formatDate(String(period.registration_end_at))
+        : "-";
+      return start + " - " + end;
+    }
+    if (key === "organizer") {
+      const org = organizations.find(
+        (item) => item.uuid === row.organizationId,
+      );
+      return org ? String(org.name) : "-";
+    }
     const relation =
       key === "eventId"
         ? data.events
@@ -550,6 +635,17 @@ export function ApiWorkspace({
         <Button onClick={goBack}>Back</Button>
       </section>
     );
+  if (
+    currentMode === "edit" &&
+    collection === "events" &&
+    record?.status === "Closed"
+  )
+    return (
+      <section className="page-stack">
+        <p>Closed events cannot be edited.</p>
+        <Button onClick={goBack}>Back</Button>
+      </section>
+    );
   const actions: ReactNode =
     currentMode === "list" ? (
       inline ? (
@@ -564,13 +660,24 @@ export function ApiWorkspace({
         </Link>
       )
     ) : currentMode === "detail" && canEdit ? (
-      <Link
-        className="link-button secondary"
-        href={path + "/" + currentId + "/edit"}
-      >
-        <Pencil size={16} />
-        Edit {info.singular}
-      </Link>
+      collection === "events" && record?.status === "Closed" ? (
+        <span
+          className="row-action-disabled"
+          title="Closed events cannot be edited."
+          aria-disabled="true"
+        >
+          <Pencil size={16} />
+          Edit {info.singular}
+        </span>
+      ) : (
+        <Link
+          className="link-button secondary"
+          href={path + "/" + currentId + "/edit"}
+        >
+          <Pencil size={16} />
+          Edit {info.singular}
+        </Link>
+      )
     ) : null;
   return (
     <div className="page-stack">
@@ -618,72 +725,89 @@ export function ApiWorkspace({
               label: label(key),
               value: (row: PortalRecord) => display(row, key),
             }))}
-            actions={(row) => (
-              <>
-                {inline ? (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={"View " + row.name}
-                    onClick={() => {
-                      setSelectedId(row.id);
-                      setInlineMode("detail");
-                    }}
-                  >
-                    <Eye size={16} />
-                  </Button>
-                ) : (
-                  <Link
-                    aria-label={"View " + row.name}
-                    href={path + "/" + row.id}
-                  >
-                    <Eye size={16} />
-                  </Link>
-                )}
-                {canEdit && (
-                  <Link
-                    aria-label={"Edit " + row.name}
-                    href={path + "/" + row.id + "/edit"}
-                  >
-                    <Pencil size={16} />
-                  </Link>
-                )}
-                {canDelete && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    disabled={!!pendingDelete}
-                    aria-label={"Delete " + row.name}
-                    onClick={async () => {
-                      if (
-                        !window.confirm(
-                          "Delete " +
-                            row.name +
-                            "? This removes the record from the server.",
-                        )
-                      )
-                        return;
-                      setPendingDelete(row.id);
-                      setDeleteError("");
-                      try {
-                        await remove(collection, row.id);
-                        toast.success(info.singular + " deleted");
-                      } catch (cause) {
-                        setDeleteError(
-                          cause instanceof Error
-                            ? cause.message
-                            : "Unable to delete.",
-                        );
-                      } finally {
-                        setPendingDelete("");
+            actions={(row) => {
+              const closed = collection === "events" && row.status === "Closed";
+              return (
+                <>
+                  {inline ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={"View " + row.name}
+                      onClick={() => {
+                        setSelectedId(row.id);
+                        setInlineMode("detail");
+                      }}
+                    >
+                      <Eye size={16} />
+                    </Button>
+                  ) : (
+                    <Link
+                      aria-label={"View " + row.name}
+                      href={path + "/" + row.id}
+                    >
+                      <Eye size={16} />
+                    </Link>
+                  )}
+                  {canEdit &&
+                    (closed ? (
+                      <span
+                        className="row-action-disabled"
+                        title="Closed events cannot be edited."
+                        aria-disabled="true"
+                      >
+                        <Pencil size={16} />
+                      </span>
+                    ) : (
+                      <Link
+                        aria-label={"Edit " + row.name}
+                        href={path + "/" + row.id + "/edit"}
+                      >
+                        <Pencil size={16} />
+                      </Link>
+                    ))}
+                  {canDelete && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={!!pendingDelete || closed}
+                      title={
+                        closed
+                          ? "Closed events cannot be removed."
+                          : "Delete " + row.name
                       }
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                )}
-              </>
-            )}
+                      aria-label={"Delete " + row.name}
+                      onClick={async () => {
+                        if (
+                          !window.confirm(
+                            "Delete " +
+                              row.name +
+                              "? This removes the record from the server.",
+                          )
+                        )
+                          return;
+                        setPendingDelete(row.id);
+                        setDeleteError("");
+                        try {
+                          await remove(collection, row.id);
+                          toast.success(info.singular + " deleted");
+                        } catch (cause) {
+                          setDeleteError(
+                            cause instanceof Error
+                              ? cause.message
+                              : "Unable to delete.",
+                          );
+                        } finally {
+                          setPendingDelete("");
+                        }
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  )}
+                </>
+              );
+            }}
           />
           {deleteError && (
             <p role="alert" className="form-error">
@@ -743,6 +867,75 @@ export function ApiWorkspace({
                 confirm
               />
               <CompetitionSettings competitionId={record.id} />
+              <section className="form-section page-stack">
+                <h2>Competition committee</h2>
+                <DataTable
+                  label="Competition committee"
+                  rows={data.committee.filter(
+                    (row) => row.competitionId === record.id,
+                  )}
+                  columns={[
+                    { key: "name", label: "Name", value: (row) => row.name },
+                    { key: "email", label: "Email", value: (row) => row.email },
+                    { key: "role", label: "Role", value: (row) => row.role },
+                    {
+                      key: "status",
+                      label: "Status",
+                      value: (row) => row.status,
+                    },
+                  ]}
+                  actions={(row) => (
+                    <Link
+                      aria-label={"View " + row.name}
+                      href={config.committee.path + "/" + row.id}
+                    >
+                      <Eye size={16} />
+                    </Link>
+                  )}
+                />
+              </section>
+              <section className="form-section page-stack">
+                <h2>Competition participants</h2>
+                <DataTable
+                  label="Competition participants"
+                  rows={data.registrations.filter(
+                    (row) => row.competitionId === record.id,
+                  )}
+                  columns={[
+                    { key: "name", label: "Entry", value: (row) => row.name },
+                    {
+                      key: "petId",
+                      label: "Pet",
+                      value: (row) =>
+                        data.pets.find((pet) => pet.id === row.petId)?.name ??
+                        "-",
+                    },
+                    {
+                      key: "paymentStatus",
+                      label: "Payment",
+                      value: (row) => row.paymentStatus,
+                    },
+                    {
+                      key: "checkinStatus",
+                      label: "Check-in",
+                      value: (row) => row.checkinStatus,
+                    },
+                    {
+                      key: "status",
+                      label: "Status",
+                      value: (row) => row.status,
+                    },
+                  ]}
+                  actions={(row) => (
+                    <Link
+                      aria-label={"View " + row.name}
+                      href={config.registrations.path + "/" + row.id}
+                    >
+                      <Eye size={16} />
+                    </Link>
+                  )}
+                />
+              </section>
             </>
           )}
           {collection === "registrations" && (

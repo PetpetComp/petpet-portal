@@ -1,4 +1,4 @@
-import { PetWorkspace } from "@/app/(portal)/pet-management/_components/pet-workspace";
+import { PetForm } from "@/app/(portal)/pet-management/_components/pet-form";
 export default function Page() {
-  return <PetWorkspace mode="create" />;
+  return <PetForm mode="create" />;
 }
