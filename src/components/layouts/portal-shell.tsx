@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,6 +17,9 @@ import { Button } from "@/components/ui/button";
 import { navigation } from "./sidebar/nav-data";
 import { useSidebarContext } from "./sidebar/sidebar-context";
 
+import { usePortalData } from "@/components/providers/portal-data-provider";
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
@@ -77,6 +80,16 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function PortalShell({ children }: { children: ReactNode }) {
+  const { errors, refresh } = usePortalData();
+  const { user, logout } = useAuth();
+
+  const [signingOut, setSigningOut] = useState(false);
+  const initials =
+    user?.name
+      .split(" ")
+      .slice(0, 2)
+      .map((word) => word[0])
+      .join("") || "P";
   const { isOpen, toggleSidebar } = useSidebarContext();
   const collapsed = !isOpen;
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -137,10 +150,10 @@ export function PortalShell({ children }: { children: ReactNode }) {
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button className="account-button" aria-label="Open account menu">
-                <span className="avatar">LA</span>
+                <span className="avatar">{initials}</span>
                 <span className="account-copy">
-                  <strong>Lifta Annisa</strong>
-                  <small>Race PIC</small>
+                  <strong>{user?.name}</strong>
+                  <small>{user?.role}</small>
                 </span>
                 <ChevronDown size={14} />
               </button>
@@ -152,13 +165,35 @@ export function PortalShell({ children }: { children: ReactNode }) {
                 sideOffset={12}
               >
                 <DropdownMenu.Label className="dropdown-label">
-                  Lifta Annisa<small>lifta.annisa@petpet.id</small>
+                  {user?.name}
+                  <small>{user?.email}</small>
                 </DropdownMenu.Label>
                 <DropdownMenu.Separator className="dropdown-separator" />
                 <DropdownMenu.Item className="dropdown-item">
                   <UserRound size={16} />
-                  Race PIC
+                  {user?.role}
                   <Check size={15} />
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator className="dropdown-separator" />
+                <DropdownMenu.Item
+                  className="dropdown-item"
+                  disabled={signingOut}
+                  onSelect={async (event) => {
+                    event.preventDefault();
+                    setSigningOut(true);
+                    try {
+                      await logout();
+                    } catch (cause) {
+                      toast.error(
+                        cause instanceof Error
+                          ? cause.message
+                          : "Unable to sign out.",
+                      );
+                      setSigningOut(false);
+                    }
+                  }}
+                >
+                  {signingOut ? "Signing out..." : "Sign out"}
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
@@ -185,11 +220,26 @@ export function PortalShell({ children }: { children: ReactNode }) {
         <Navigation />
         <div className="sidebar-bottom">
           <span className="status-dot" />
-          All systems operational<small>Petpet Portal / 2026</small>
+          Connected to Petpet API<small>Petpet Portal / 2026</small>
         </div>
       </aside>
       <div className="content-shell">
         <main id="main-content" className="page-content">
+          {Object.keys(errors).length > 0 && (
+            <section className="form-section mb-4" role="alert">
+              <h2>Some data could not be loaded</h2>
+              <ul>
+                {Object.entries(errors).map(([collection, message]) => (
+                  <li key={collection}>
+                    {collection}: {message}
+                  </li>
+                ))}
+              </ul>
+              <Button variant="secondary" onClick={() => void refresh()}>
+                Retry loading
+              </Button>
+            </section>
+          )}
           {children}
         </main>
         <footer className="portal-footer">

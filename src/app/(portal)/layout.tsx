@@ -1,15 +1,23 @@
+﻿import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { COOKIE_TOKEN } from "@/lib/constants/cookies";
+import { isValidAuthToken } from "@/lib/auth-cookie";
+import { AuthGuard } from "@/components/providers/auth-guard";
 import { PortalDataProvider } from "@/components/providers/portal-data-provider";
 import { PortalShell } from "@/components/layouts/portal-shell";
-import { getPortalData } from "@/services/portal";
 import "./portal.css";
-export default function PortalLayout({
+export default async function PortalLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  if (!isValidAuthToken((await cookies()).get(COOKIE_TOKEN)?.value))
+    redirect("/sign-in");
   return (
-    <PortalDataProvider initialData={getPortalData()}>
-      <PortalShell>{children}</PortalShell>
-    </PortalDataProvider>
+    <AuthGuard>
+      <PortalDataProvider>
+        <PortalShell>{children}</PortalShell>
+      </PortalDataProvider>
+    </AuthGuard>
   );
 }

@@ -11,31 +11,60 @@ import { exportCsv } from "@/lib/export-csv";
 import type { PortalRecord } from "@/types/portal";
 
 export function ReportWorkspace() {
-  const { data } = usePortalData();
+  const { data, errors, refresh } = usePortalData();
   const [eventId, setEventId] = useState("");
 
-  const competitions = data.competitions.filter((item) => !eventId || item.eventId === eventId);
-  const registrations = data.registrations.filter((item) => !eventId || item.eventId === eventId);
-  const verifiedRegistrations = registrations.filter((item) => item.paymentStatus === "Verified");
+  const competitions = data.competitions.filter(
+    (item) => !eventId || item.eventId === eventId,
+  );
+  const registrations = data.registrations.filter(
+    (item) => !eventId || item.eventId === eventId,
+  );
+  const verifiedRegistrations = registrations.filter(
+    (item) => item.paymentStatus === "Paid",
+  );
   const revenue = registrations
-    .filter((item) => item.paymentStatus !== "Pending")
+    .filter((item) => item.paymentStatus === "Paid")
     .reduce((sum, item) => {
       const fee = Number(item.registrationFee);
       if (fee) return sum + fee;
-      const competition = data.competitions.find((comp) => comp.id === item.competitionId);
+      const competition = data.competitions.find(
+        (comp) => comp.id === item.competitionId,
+      );
       return sum + Number(competition?.onlinePrice ?? 0);
     }, 0);
-  const doorprizeWinners = registrations.filter((item) => item.doorprizeStatus === "Claimed").length;
+  const doorprizeWinners = registrations.filter(
+    (item) => item.checkinStatus === "Checked In",
+  ).length;
 
   const rows: PortalRecord[] = competitions.map((item) => ({
     ...item,
-    participants: String(data.registrations.filter((row) => row.competitionId === item.id).length),
-    status: item.resultStatus ?? "Pending",
+    participants: String(
+      data.registrations.filter((row) => row.competitionId === item.id).length,
+    ),
+    status: item.status,
   }));
 
+  if (
+    ["events", "users", "pets", "brands", "competitions", "registrations"].some(
+      (key) => errors[key as keyof typeof errors],
+    )
+  )
+    return (
+      <section className="page-stack">
+        <h1>Report unavailable</h1>
+        <p role="alert">
+          Load all report data before viewing or exporting totals.
+        </p>
+        <Button onClick={() => void refresh()}>Retry loading</Button>
+      </section>
+    );
   return (
     <div className="page-stack">
-      <PageHeading title="Report" description="Cross-event performance summary and export." />
+      <PageHeading
+        title="Report"
+        description="Cross-event performance summary and export."
+      />
       <section className="form-section pet-detail-card">
         <div className="eyebrow">PLATFORM OVERVIEW</div>
         <div className="stats-grid">
@@ -65,7 +94,10 @@ export function ReportWorkspace() {
           </div>
           <div className="row-actions">
             <Field label="Event">
-              <Select value={eventId} onChange={(event) => setEventId(event.target.value)}>
+              <Select
+                value={eventId}
+                onChange={(event) => setEventId(event.target.value)}
+              >
                 <option value="">All Events</option>
                 {data.events.map((event) => (
                   <option key={event.id} value={event.id}>
@@ -74,7 +106,11 @@ export function ReportWorkspace() {
                 ))}
               </Select>
             </Field>
-            <Button variant="secondary" disabled={!rows.length} onClick={() => exportCsv("competition-report", rows)}>
+            <Button
+              variant="secondary"
+              disabled={!rows.length}
+              onClick={() => exportCsv("competition-report", rows)}
+            >
               <Download size={15} />
               Export CSV
             </Button>
@@ -90,15 +126,17 @@ export function ReportWorkspace() {
             <strong>{registrations.length}</strong>
           </div>
           <div className="stat">
-            <span>Verified Payments</span>
+            <span>Paid Registrations</span>
             <strong>{verifiedRegistrations.length}</strong>
           </div>
           <div className="stat">
             <span>Registration Revenue</span>
-            <strong className="revenue-value">Rp {revenue.toLocaleString("id-ID")}</strong>
+            <strong className="revenue-value">
+              Rp {revenue.toLocaleString("id-ID")}
+            </strong>
           </div>
           <div className="stat">
-            <span>Doorprize Winners Claimed</span>
+            <span>Checked-in Entries</span>
             <strong>{doorprizeWinners}</strong>
           </div>
         </div>
@@ -106,11 +144,19 @@ export function ReportWorkspace() {
           rows={rows}
           columns={[
             { key: "name", label: "Competition", value: (row) => row.name },
-            { key: "type", label: "Type", value: (row) => row.type },
-            { key: "participants", label: "Participants", value: (row) => row.participants },
+            {
+              key: "type",
+              label: "Type",
+              value: (row) => row.competitionTypeId || "-",
+            },
+            {
+              key: "participants",
+              label: "Participants",
+              value: (row) => row.participants,
+            },
             {
               key: "status",
-              label: "Results",
+              label: "Status",
               value: (row) => row.status,
               render: (row) => <StatusBadge status={row.status} />,
             },

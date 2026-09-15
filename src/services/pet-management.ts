@@ -1,18 +1,25 @@
-import type { ApiResponse, Paginated } from "@/types/common";
-import type { Pet } from "@/types/pet";
-// import { apiClient } from "@/lib/api-client";
-// import { ENDPOINTS } from "@/lib/constants/endpoints";
-import { mockPets } from "@/lib/mocks/pets";
-import { delay, ok, paginate } from "@/services/common";
-
-export const petService = {
-  list: (): Promise<Paginated<Pet>> =>
-    // return apiClient.get<Paginated<Pet>>(ENDPOINTS.pets.list);
-    delay(paginate(mockPets)),
-
-  detail: (id: string): Promise<ApiResponse<Pet>> => {
-    // return apiClient.get<ApiResponse<Pet>>(ENDPOINTS.pets.detail(id));
-    const pet = mockPets.find((p) => p.id === id) ?? mockPets[0];
-    return delay(ok(pet));
-  },
+﻿import { apiClient } from "@/lib/api-client";
+import { ENDPOINTS } from "@/lib/constants/endpoints";
+import { buildUrl } from "./common";
+import type {
+  ListParams,
+  ListResponse,
+  RecordResponse,
+  MutationResponse,
+  PetPayload,
+} from "@/types/api";
+export const PET_SERVICES = {
+  list: (params?: ListParams) =>
+    apiClient.get<ListResponse>(buildUrl(ENDPOINTS.pets.list, params)),
+  detail: (id: string) =>
+    apiClient.get<RecordResponse>(ENDPOINTS.pets.detail(id)),
+  create: (payload: PetPayload) =>
+    apiClient.post<RecordResponse>(ENDPOINTS.pets.list, { ...payload }),
+  update: (
+    id: string,
+    payload: Partial<Omit<PetPayload, "species_id" | "morph_id">>,
+  ) =>
+    apiClient.patch<RecordResponse>(ENDPOINTS.pets.detail(id), { ...payload }),
+  delete: (id: string) =>
+    apiClient.delete<MutationResponse>(ENDPOINTS.pets.detail(id)),
 };

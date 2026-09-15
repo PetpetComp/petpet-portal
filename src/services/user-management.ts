@@ -1,18 +1,41 @@
-import type { ApiResponse, Paginated } from "@/types/common";
-import type { User } from "@/types/user";
-// import { apiClient } from "@/lib/api-client";
-// import { ENDPOINTS } from "@/lib/constants/endpoints";
-import { mockUsers } from "@/lib/mocks/users";
-import { delay, ok, paginate } from "@/services/common";
-
-export const userService = {
-  list: (): Promise<Paginated<User>> =>
-    // return apiClient.get<Paginated<User>>(ENDPOINTS.users.list);
-    delay(paginate(mockUsers)),
-
-  detail: (id: string): Promise<ApiResponse<User>> => {
-    // return apiClient.get<ApiResponse<User>>(ENDPOINTS.users.detail(id));
-    const user = mockUsers.find((u) => u.id === id) ?? mockUsers[0];
-    return delay(ok(user));
-  },
+﻿import { apiClient } from "@/lib/api-client";
+import { ENDPOINTS } from "@/lib/constants/endpoints";
+import { buildUrl } from "./common";
+import type {
+  ListParams,
+  ListResponse,
+  RecordResponse,
+  MutationResponse,
+  UserPayload,
+  UserUpdatePayload,
+  UserRecord,
+} from "@/types/api";
+export const USER_SERVICES = {
+  list: (
+    params?: ListParams & { q?: string; status?: string; role?: string },
+  ) =>
+    apiClient.get<ListResponse<UserRecord>>(
+      buildUrl(ENDPOINTS.users.list, params),
+    ),
+  detail: (id: string) =>
+    apiClient.get<RecordResponse<UserRecord>>(ENDPOINTS.users.detail(id)),
+  create: (payload: UserPayload) =>
+    apiClient.post<RecordResponse<UserRecord>>(ENDPOINTS.users.list, {
+      ...payload,
+    }),
+  update: (id: string, payload: UserUpdatePayload) =>
+    apiClient.patch<RecordResponse<UserRecord>>(ENDPOINTS.users.detail(id), {
+      ...payload,
+    }),
+  delete: (id: string) =>
+    apiClient.delete<MutationResponse>(ENDPOINTS.users.detail(id)),
+  getRole: () => apiClient.get<ListResponse>(ENDPOINTS.auth.roles),
+  assignRole: (id: string, role: string) =>
+    apiClient.post<RecordResponse<UserRecord>>(ENDPOINTS.users.roles(id), {
+      role,
+    }),
+  revokeRole: (id: string, role: string) =>
+    apiClient.delete<RecordResponse<UserRecord>>(
+      ENDPOINTS.users.role(id, role),
+    ),
 };

@@ -9,7 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
-    "test:e2e": "node scripts/verify-v560.mjs",
+    "test:e2e": "node scripts/verify-api.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

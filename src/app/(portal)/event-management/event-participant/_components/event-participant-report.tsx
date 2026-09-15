@@ -7,8 +7,11 @@ import { DataTable, type Column } from "@/components/common/data-table";
 import { StatusBadge } from "@/components/common/status-badge";
 import { usePortalData } from "@/components/providers/portal-data-provider";
 import { formatDate, formatDateTime } from "@/lib/format/date";
-import { COMPETITION_TYPES } from "@/app/(portal)/event-management/[eventId]/competitions/_lib/competition-rules";
-import { buildParticipantRows, type ParticipantRow } from "../_lib/participant-rows";
+
+import {
+  buildParticipantRows,
+  type ParticipantRow,
+} from "../_lib/participant-rows";
 
 export function EventParticipantReport() {
   const { data } = usePortalData();
@@ -41,9 +44,21 @@ export function EventParticipantReport() {
 
   const columns: Column<ParticipantRow>[] = [
     { key: "eventName", label: "Event Name", value: (row) => row.eventName },
-    { key: "competitionName", label: "Competition Name", value: (row) => row.competitionName },
-    { key: "competitionType", label: "Competition Type", value: (row) => row.competitionType },
-    { key: "participantId", label: "Participant ID", value: (row) => row.participantId },
+    {
+      key: "competitionName",
+      label: "Competition Name",
+      value: (row) => row.competitionName,
+    },
+    {
+      key: "competitionType",
+      label: "Competition Type",
+      value: (row) => row.competitionType,
+    },
+    {
+      key: "participantId",
+      label: "Participant ID",
+      value: (row) => row.participantId,
+    },
     { key: "ownerName", label: "Owner Name", value: (row) => row.ownerName },
     {
       key: "petName",
@@ -72,43 +87,71 @@ export function EventParticipantReport() {
       value: (row) => row.registeredDate,
       render: (row) => formatDate(row.registeredDate),
     },
-    { key: "registeredBy", label: "Registered By", value: (row) => row.registeredBy || "-" },
+    {
+      key: "registeredBy",
+      label: "Registered By",
+      value: (row) => row.registeredBy || "-",
+    },
     {
       key: "paymentDate",
       label: "Payment Date",
       value: (row) => row.paymentDate,
       render: (row) => formatDate(row.paymentDate),
     },
-    { key: "paymentBy", label: "Payment By", value: (row) => row.paymentBy || "-" },
-    { key: "paymentMethod", label: "Payment Method", value: (row) => row.paymentMethod || "-" },
+    {
+      key: "paymentBy",
+      label: "Payment By",
+      value: (row) => row.paymentBy || "-",
+    },
+    {
+      key: "paymentMethod",
+      label: "Payment Method",
+      value: (row) => row.paymentMethod || "-",
+    },
     {
       key: "paymentAmount",
       label: "Payment Amount",
       value: (row) => row.paymentAmount,
       render: (row) => "Rp " + row.paymentAmount.toLocaleString("id-ID"),
     },
-    { key: "paymentPeriod", label: "Payment Period", value: (row) => row.paymentPeriod || "-" },
+    {
+      key: "paymentPeriod",
+      label: "Payment Period",
+      value: (row) => row.paymentPeriod || "-",
+    },
     {
       key: "verifiedDate",
       label: "Verified Date",
       value: (row) => row.verifiedDate,
       render: (row) => formatDate(row.verifiedDate),
     },
-    { key: "verifiedBy", label: "Verified By", value: (row) => row.verifiedBy || "-" },
+    {
+      key: "verifiedBy",
+      label: "Verified By",
+      value: (row) => row.verifiedBy || "-",
+    },
     {
       key: "createdDate",
       label: "Created Date",
       value: (row) => row.createdDate,
       render: (row) => formatDateTime(row.createdDate),
     },
-    { key: "createdBy", label: "Created By", value: (row) => row.createdBy || "-" },
+    {
+      key: "createdBy",
+      label: "Created By",
+      value: (row) => row.createdBy || "-",
+    },
     {
       key: "updatedDate",
       label: "Updated Date",
       value: (row) => row.updatedDate,
       render: (row) => formatDateTime(row.updatedDate),
     },
-    { key: "updatedBy", label: "Updated By", value: (row) => row.updatedBy || "-" },
+    {
+      key: "updatedBy",
+      label: "Updated By",
+      value: (row) => row.updatedBy || "-",
+    },
   ];
 
   return (
@@ -127,7 +170,9 @@ export function EventParticipantReport() {
         <div className="section-head">
           <div>
             <strong>Filters</strong>
-            <p className="muted">Use one or more filters to narrow the participant list.</p>
+            <p className="muted">
+              Use one or more filters to narrow the participant list.
+            </p>
           </div>
           <Button variant="ghost" onClick={clearFilters}>
             Clear filters
@@ -135,33 +180,48 @@ export function EventParticipantReport() {
         </div>
         <div className="form-grid">
           <Field label="Event Name">
-            <Select value={eventFilter} onChange={(event) => setEventFilter(event.target.value)}>
+            <Select
+              value={eventFilter}
+              onChange={(event) => setEventFilter(event.target.value)}
+            >
               <option value="">All events</option>
-              {Array.from(new Set(rows.map((row) => row.eventName))).map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
+              {Array.from(new Set(rows.map((row) => row.eventName))).map(
+                (value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ),
+              )}
             </Select>
           </Field>
           <Field label="Competition Name">
-            <Select value={competitionFilter} onChange={(event) => setCompetitionFilter(event.target.value)}>
+            <Select
+              value={competitionFilter}
+              onChange={(event) => setCompetitionFilter(event.target.value)}
+            >
               <option value="">All competitions</option>
-              {Array.from(new Set(rows.map((row) => row.competitionName))).map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
+              {Array.from(new Set(rows.map((row) => row.competitionName))).map(
+                (value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ),
+              )}
             </Select>
           </Field>
           <Field label="Competition Type">
-            <Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+            <Select
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value)}
+            >
               <option value="">All types</option>
-              {COMPETITION_TYPES.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
+              {Array.from(new Set(rows.map((row) => row.competitionType))).map(
+                (value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ),
+              )}
             </Select>
           </Field>
           <Field label="Owner Name">
@@ -181,11 +241,13 @@ export function EventParticipantReport() {
             />
           </Field>
           <Field label="Payment Status">
-            <Select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
+            <Select
+              value={paymentFilter}
+              onChange={(event) => setPaymentFilter(event.target.value)}
+            >
               <option value="">All statuses</option>
-              <option value="Pending">Pending</option>
+              <option value="Unpaid">Unpaid</option>
               <option value="Paid">Paid</option>
-              <option value="Verified">Verified</option>
             </Select>
           </Field>
         </div>
@@ -197,7 +259,11 @@ export function EventParticipantReport() {
             Showing {filtered.length} of {rows.length}
           </span>
         </div>
-        <DataTable rows={filtered} columns={columns} label="Event participants" />
+        <DataTable
+          rows={filtered}
+          columns={columns}
+          label="Event participants"
+        />
       </section>
     </div>
   );

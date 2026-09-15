@@ -1,29 +1,51 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #f6f8fb;
-  --color-foreground: #1f2937;
+  --color-background: #f6f7fa;
+  --color-foreground: #202536;
 
   --color-card: #ffffff;
-  --color-card-foreground: #1f2937;
+  --color-card-foreground: #202536;
 
-  --color-muted: #f0f4f8;
-  --color-muted-foreground: #667085;
+  --color-muted: #f0f2fa;
+  --color-muted-foreground: #626b7c;
 
-  --color-border: #e4e8ef;
-  --color-input: #d0d5dd;
-  --color-ring: #7f75ff;
+  --color-border: #e4e7ee;
+  --color-input: #cdd3df;
+  --color-ring: #8b7cf6;
 
-  --color-primary: #5f5be8;
+  --color-primary: #6454d9;
+  --color-primary-dark: #5140bc;
+  --color-primary-soft: #eeecff;
   --color-primary-foreground: #ffffff;
 
-  --color-danger: #d84d4d;
+  --color-danger: #e5484d;
+  --color-danger-soft: #fdedee;
   --color-danger-foreground: #ffffff;
 
-  --color-success: #1f9d6e;
-  --color-warning: #d99614;
+  --color-success: #16a26a;
+  --color-success-soft: #e8f8f0;
+  --color-warning: #d98d0f;
+  --color-warning-soft: #fdf3e0;
+  --color-info: #2e6ee0;
+  --color-info-soft: #eaf1fd;
 
-  --radius: 0.625rem;
+  --radius-sm: 0.5rem;
+  --radius: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.375rem;
+
+  --shadow-xs: 0 1px 2px rgba(28, 24, 78, 0.05);
+  --shadow-sm:
+    0 1px 2px rgba(28, 24, 78, 0.04), 0 2px 8px rgba(28, 24, 78, 0.05);
+  --shadow-md:
+    0 4px 12px rgba(28, 24, 78, 0.07), 0 2px 4px rgba(28, 24, 78, 0.05);
+  --shadow-lg:
+    0 16px 36px rgba(28, 24, 78, 0.12), 0 4px 10px rgba(28, 24, 78, 0.06);
+  --shadow-primary: 0 2px 4px rgba(65, 48, 150, 0.12);
+
+  --gradient-primary: linear-gradient(135deg, #7160df 0%, #5c4bc9 100%);
+  --gradient-surface: linear-gradient(#ffffff, #ffffff);
 
   --font-sans:
     var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
@@ -46,6 +68,6 @@ body {
   color: var(--color-foreground);
   font-family: var(--font-sans);
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }

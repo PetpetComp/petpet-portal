@@ -34,7 +34,9 @@ export function buildParticipantRows(data: {
   users: PortalRecord[];
 }): ParticipantRow[] {
   return data.registrations.map((registration) => {
-    const competition = data.competitions.find((item) => item.id === registration.competitionId);
+    const competition = data.competitions.find(
+      (item) => item.id === registration.competitionId,
+    );
     const event = data.events.find((item) => item.id === registration.eventId);
     const pet = data.pets.find((item) => item.id === registration.petId);
     const owner = data.users.find((item) => item.id === registration.userId);
@@ -42,12 +44,14 @@ export function buildParticipantRows(data: {
       id: registration.id,
       eventName: event?.name ?? "-",
       competitionName: competition?.name ?? "-",
-      competitionType: competition?.type ?? "-",
-      participantId: pet?.id ?? "-",
+      competitionType:
+        competition?.type ?? competition?.competitionTypeId ?? "-",
+      participantId:
+        pet?.id ?? registration.petId ?? registration.teamId ?? "-",
       ownerName: owner?.name ?? "-",
       petName: pet?.name ?? "-",
-      animal: pet?.animal ?? "-",
-      variant: pet?.variant ?? "-",
+      animal: pet?.animal ?? pet?.speciesId ?? "-",
+      variant: pet?.variant ?? pet?.morphId ?? "-",
       paymentStatus: registration.paymentStatus,
       registeredDate: registration.registrationDate ?? "",
       registeredBy: registration.createdBy ?? "",

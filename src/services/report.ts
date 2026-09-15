@@ -1,25 +1,23 @@
-import type { ApiResponse } from "@/types/common";
-// import { apiClient } from "@/lib/api-client";
-// import { ENDPOINTS } from "@/lib/constants/endpoints";
-import { mockEvents } from "@/lib/mocks/events";
-import { mockUsers } from "@/lib/mocks/users";
-import { mockPets } from "@/lib/mocks/pets";
-import { delay, ok } from "@/services/common";
-
+﻿import { collectRows, ok } from "./common";
+import { USER_SERVICES } from "./user-management";
+import { EVENT_SERVICES } from "./event-management";
+import { PET_SERVICES } from "./pet-management";
 export interface ReportSummary {
   totalEvents: number;
   totalUsers: number;
   totalPets: number;
 }
-
-export const reportService = {
-  summary: (): Promise<ApiResponse<ReportSummary>> =>
-    // return apiClient.get<ApiResponse<ReportSummary>>(ENDPOINTS.reports.summary);
-    delay(
-      ok({
-        totalEvents: mockEvents.length,
-        totalUsers: mockUsers.length,
-        totalPets: mockPets.length,
-      }),
-    ),
+export const REPORT_SERVICES = {
+  async summary() {
+    const [events, users, pets] = await Promise.all([
+      collectRows(EVENT_SERVICES.list),
+      collectRows(USER_SERVICES.list),
+      collectRows(PET_SERVICES.list),
+    ]);
+    return ok<ReportSummary>({
+      totalEvents: events.length,
+      totalUsers: users.length,
+      totalPets: pets.length,
+    });
+  },
 };
