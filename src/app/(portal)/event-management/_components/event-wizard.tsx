@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form-controls";
 import { ImageInput } from "@/components/ui/image-input";
-import { SearchSelect } from "@/components/common/search-select";
+import { SelectField } from "@/components/common/select-field";
 import { formatDateTime } from "@/lib/format/date";
 import { generateUniqueSlug } from "@/lib/identity";
 import { isValidEmail, isValidPhone } from "@/lib/validation";
@@ -268,7 +268,7 @@ export function EventWizard({
             in the same step.
           </p>
           <Field label="Organizer *">
-            <SearchSelect
+            <SelectField
               items={brands}
               value={organizerBrandId}
               onChange={(id) => {
@@ -333,7 +333,7 @@ export function EventWizard({
             </div>
           )}
           <Field label="PIC *">
-            <SearchSelect
+            <SelectField
               items={users}
               value={picUserId}
               onChange={(id) => {

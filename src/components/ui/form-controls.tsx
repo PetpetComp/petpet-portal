@@ -37,9 +37,14 @@ export function Field({
   label: string;
   children: ReactNode;
 }) {
+  const required = label.endsWith("*");
+  const text = required ? label.slice(0, -1).trimEnd() : label;
   return (
     <label className="form-field">
-      <span>{label}</span>
+      <span>
+        {text}
+        {required && <span className="field-required">*</span>}
+      </span>
       {children}
     </label>
   );

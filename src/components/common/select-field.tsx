@@ -27,6 +27,7 @@ function SearchBox<T>({
   renderEmpty?: (query: string) => ReactNode;
 }) {
   const id = useId();
+  const [open, setOpen] = useState(false);
   return (
     <div className="search-select">
       <div className="search-select-input">
@@ -37,15 +38,21 @@ function SearchBox<T>({
           autoComplete="off"
           placeholder={placeholder}
           value={query}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
           onChange={(event) => onQueryChange(event.target.value)}
         />
       </div>
-      {query && (
+      {open && (
         <ul className="search-select-results">
           {matches.length ? (
             matches.map((item) => (
               <li key={getId(item)}>
-                <button type="button" onClick={() => onPick(item)}>
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => onPick(item)}
+                >
                   <strong>{getLabel(item)}</strong>
                   {getDescription && <small>{getDescription(item)}</small>}
                 </button>
@@ -62,6 +69,8 @@ function SearchBox<T>({
   );
 }
 
+const VISIBLE_LIMIT = 30;
+
 function filterItems<T>(
   items: T[],
   query: string,
@@ -69,7 +78,7 @@ function filterItems<T>(
   getLabel: (item: T) => string,
   getDescription?: (item: T) => string,
 ): T[] {
-  if (!query) return [];
+  if (!query) return items.slice(0, VISIBLE_LIMIT);
   const needle = query.toLowerCase();
   return items
     .filter((item) =>
@@ -77,10 +86,10 @@ function filterItems<T>(
         .toLowerCase()
         .includes(needle),
     )
-    .slice(0, 8);
+    .slice(0, VISIBLE_LIMIT);
 }
 
-export function SearchSelect<T>({
+export function SelectField<T>({
   items,
   value,
   onChange,
@@ -144,7 +153,7 @@ export function SearchSelect<T>({
   );
 }
 
-export function MultiSearchSelect<T>({
+export function MultiSelectField<T>({
   items,
   selectedIds,
   onAdd,

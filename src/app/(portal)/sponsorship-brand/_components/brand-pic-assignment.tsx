@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
-import { MultiSearchSelect } from "@/components/common/search-select";
+import { MultiSelectField } from "@/components/common/select-field";
 import { InlineUserForm } from "@/components/common/inline-user-form";
 import type { PortalRecord } from "@/types/portal";
 
@@ -21,7 +21,7 @@ export function BrandPicAssignment({
   const [creating, setCreating] = useState(false);
   return (
     <div>
-      <MultiSearchSelect
+      <MultiSelectField
         items={users}
         selectedIds={selectedIds}
         onAdd={onAdd}

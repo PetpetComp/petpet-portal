@@ -6,7 +6,7 @@ import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Select } from "@/components/ui/form-controls";
-import { SearchSelect } from "@/components/common/search-select";
+import { SelectField } from "@/components/common/select-field";
 import type { PortalRecord } from "@/types/portal";
 import { COMMITTEE_ROLES, isDuplicateCommitteeAssignment } from "../_lib/committee-rules";
 
@@ -113,7 +113,7 @@ export function CommitteeForm({
             )}
             <div className="form-grid-span-2">
               <Field label="User *">
-                <SearchSelect
+                <SelectField
                   items={users}
                   value={userId}
                   onChange={setUserId}

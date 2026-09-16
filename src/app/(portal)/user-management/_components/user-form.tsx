@@ -1,14 +1,25 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
+import { Field, Input, Textarea } from "@/components/ui/form-controls";
+import { SelectField } from "@/components/common/select-field";
+import { Breadcrumb } from "@/components/common/breadcrumb";
 import { usePortalData } from "@/components/providers/portal-data-provider";
 import { USER_SERVICES } from "@/services/user-management";
-import { recordPayload } from "@/services/backend-records";
+import { ORGANIZATION_SERVICES } from "@/services/organization";
+import { recordPayload, type Row } from "@/services/backend-records";
+import { collectRows } from "@/services/common";
+import { REGION_SERVICES, type RegionRow } from "@/services/regions";
 import type { PortalRecord } from "@/types/portal";
 import {
   generateUsername,
@@ -20,6 +31,20 @@ import {
 
 const BASE_PATH = "/user-management";
 const PROFILE_KEYS = ["dob", "gender", "address", "city", "province", "nation"];
+const STATUSES = [
+  { code: "Active", name: "Active" },
+  { code: "Inactive", name: "Inactive" },
+  { code: "Suspended", name: "Suspended" },
+];
+const GENDERS = [
+  { code: "Male", name: "Male" },
+  { code: "Female", name: "Female" },
+];
+function cityLabel(city: RegionRow) {
+  if (!city.type) return city.name;
+  const prefix = city.type.charAt(0) + city.type.slice(1).toLowerCase();
+  return prefix + " " + city.name;
+}
 
 export function UserForm({
   mode,
@@ -31,21 +56,133 @@ export function UserForm({
   const router = useRouter();
   const { data, save, refresh } = usePortalData();
   const user = mode === "edit" ? data.users.find((item) => item.id === id) : undefined;
-  const [draft, setDraft] = useState<PortalRecord>(
-    () =>
-      user ?? {
-        id: "",
-        name: "",
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        status: "Active",
-      },
-  );
+  const currentRole = user?.roles?.split(",")[0]?.trim() ?? "";
+  const [draft, setDraft] = useState<PortalRecord>(() => ({
+    id: "",
+    name: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    status: "Active",
+    organizationId: "",
+    role: currentRole,
+    ...user,
+  }));
+  const [roles, setRoles] = useState<Row[]>([]);
+  const [organizations, setOrganizations] = useState<Row[]>([]);
+  const [countries, setCountries] = useState<RegionRow[]>([]);
+  const [provinces, setProvinces] = useState<RegionRow[]>([]);
+  const [cities, setCities] = useState<RegionRow[]>([]);
+  const [districts, setDistricts] = useState<RegionRow[]>([]);
+  const [countryId, setCountryId] = useState("");
+  const [provinceId, setProvinceId] = useState("");
+  const [cityId, setCityId] = useState("");
+  const [districtId, setDistrictId] = useState("");
+  const [photoPreview, setPhotoPreview] = useState("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const backPath = mode === "edit" && user ? BASE_PATH + "/" + user.id : BASE_PATH;
+
+  useEffect(() => {
+    let active = true;
+    collectRows(USER_SERVICES.getRole)
+      .then((rows) => {
+        if (active) setRoles(rows);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    collectRows(ORGANIZATION_SERVICES.list)
+      .then((rows) => {
+        if (active) setOrganizations(rows);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    REGION_SERVICES.countries()
+      .then((rows) => {
+        if (!active) return;
+        setCountries(rows);
+        const match = rows.find(
+          (row) => row.name.toLowerCase() === draft.nation?.trim().toLowerCase(),
+        );
+        if (match) setCountryId(match.uuid);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!countryId) return;
+    let active = true;
+    REGION_SERVICES.provinces(countryId)
+      .then((rows) => {
+        if (!active) return;
+        setProvinces(rows);
+        const match = rows.find(
+          (row) => row.name.toLowerCase() === draft.province?.trim().toLowerCase(),
+        );
+        if (match) setProvinceId(match.uuid);
+      })
+      .catch(() => {
+        if (active) setProvinces([]);
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countryId]);
+
+  useEffect(() => {
+    if (!provinceId) return;
+    let active = true;
+    REGION_SERVICES.cities(provinceId)
+      .then((rows) => {
+        if (!active) return;
+        setCities(rows);
+        const match = rows.find(
+          (row) => row.name.toLowerCase() === draft.city?.trim().toLowerCase(),
+        );
+        if (match) setCityId(match.uuid);
+      })
+      .catch(() => {
+        if (active) setCities([]);
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provinceId]);
+
+  useEffect(() => {
+    if (!cityId) return;
+    let active = true;
+    REGION_SERVICES.districts(cityId)
+      .then((rows) => {
+        if (active) setDistricts(rows);
+      })
+      .catch(() => {
+        if (active) setDistricts([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [cityId]);
 
   if (mode === "edit" && !user)
     return (
@@ -61,6 +198,61 @@ export function UserForm({
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function setCountry(uuid: string) {
+    const row = countries.find((item) => item.uuid === uuid);
+    setDraft((current) => ({
+      ...current,
+      nation: row?.name ?? "",
+      province: "",
+      city: "",
+      postalCode: "",
+    }));
+    setCountryId(uuid);
+    setProvinceId("");
+    setCityId("");
+    setDistrictId("");
+    setProvinces([]);
+    setCities([]);
+    setDistricts([]);
+  }
+
+  function setProvince(uuid: string) {
+    const row = provinces.find((item) => item.uuid === uuid);
+    setDraft((current) => ({
+      ...current,
+      province: row?.name ?? "",
+      city: "",
+      postalCode: "",
+    }));
+    setProvinceId(uuid);
+    setCityId("");
+    setDistrictId("");
+    setCities([]);
+    setDistricts([]);
+  }
+
+  function setCity(uuid: string) {
+    const row = cities.find((item) => item.uuid === uuid);
+    setDraft((current) => ({ ...current, city: row?.name ?? "", postalCode: "" }));
+    setCityId(uuid);
+    setDistrictId("");
+    setDistricts([]);
+  }
+
+  function setDistrict(uuid: string) {
+    const row = districts.find((item) => item.uuid === uuid);
+    setDraft((current) => ({ ...current, postalCode: row?.postal_code ?? "" }));
+    setDistrictId(uuid);
+  }
+
+  function pickPhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(String(reader.result));
+    reader.readAsDataURL(file);
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (pending) return;
@@ -70,6 +262,10 @@ export function UserForm({
     }
     if (draft.email && !isValidEmail(draft.email)) {
       setError("Enter a valid email format.");
+      return;
+    }
+    if (!draft.role) {
+      setError("Role is required.");
       return;
     }
     const username =
@@ -89,6 +285,10 @@ export function UserForm({
         await USER_SERVICES.update(saved.id, body);
         await refresh();
       }
+      if (mode === "edit" && draft.role && draft.role !== currentRole) {
+        await USER_SERVICES.assignRole(saved.id, draft.role);
+        await refresh();
+      }
       toast.success("User saved");
       router.push(mode === "edit" ? BASE_PATH + "/" + saved.id : BASE_PATH);
     } catch (cause) {
@@ -97,12 +297,17 @@ export function UserForm({
     }
   }
 
+  const breadcrumbItems = [
+    { label: "User Management", href: BASE_PATH },
+    ...(mode === "edit" && user
+      ? [{ label: user.name || user.id, href: backPath }]
+      : []),
+    { label: mode === "edit" ? "Edit User" : "Add New User" },
+  ];
+
   return (
     <div className="page-stack">
-      <Link className="back-link" href={backPath}>
-        <ArrowLeft size={16} />
-        Back to {mode === "edit" ? "User Detail" : "User Management"}
-      </Link>
+      <Breadcrumb items={breadcrumbItems} />
       <header>
         <h1>{mode === "edit" ? "Edit User" : "Add New User"}</h1>
         <p className="muted">
@@ -115,6 +320,44 @@ export function UserForm({
         <fieldset disabled={pending} className="form-section">
           <h2>General Information</h2>
           <div className="form-grid">
+            <div className="form-grid-span-2">
+              <Field label="User Photo">
+                <div className="photo-uploader">
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt=""
+                      className="image-preview-circle image-placeholder-lg"
+                    />
+                  ) : (
+                    <span
+                      className="image-placeholder image-preview-circle image-placeholder-lg"
+                      aria-hidden="true"
+                    >
+                      {userInitials(draft.firstName, draft.lastName ?? "")}
+                    </span>
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => photoInputRef.current?.click()}
+                  >
+                    Choose Photo
+                  </Button>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={pickPhoto}
+                  />
+                </div>
+                <p className="muted photo-uploader-note">
+                  Not yet supported by the connected API — shown as a preview
+                  only, not saved.
+                </p>
+              </Field>
+            </div>
             <Field label="User ID">
               <Input value={draft.id} readOnly placeholder="Generated on save" />
             </Field>
@@ -124,10 +367,6 @@ export function UserForm({
                 value={draft.username ?? ""}
                 onChange={(event) => set("username", event.target.value)}
               />
-              <p className="muted">
-                Optional. Enter a username, or leave blank and the portal will
-                generate a unique one.
-              </p>
             </Field>
             <Field label="First Name *">
               <Input
@@ -142,6 +381,23 @@ export function UserForm({
                 onChange={(event) => set("lastName", event.target.value)}
               />
             </Field>
+            <Field label="Date of Birth">
+              <Input
+                type="date"
+                value={draft.dob ?? ""}
+                onChange={(event) => set("dob", event.target.value)}
+              />
+            </Field>
+            <Field label="Gender">
+              <SelectField
+                items={GENDERS}
+                value={draft.gender ?? ""}
+                onChange={(value) => set("gender", value)}
+                getId={(item) => item.code}
+                getLabel={(item) => item.name}
+                placeholder="Search gender"
+              />
+            </Field>
             <Field label="Email">
               <Input
                 type="email"
@@ -149,7 +405,6 @@ export function UserForm({
                 value={draft.email ?? ""}
                 onChange={(event) => set("email", event.target.value)}
               />
-              <p className="muted">Optional. If entered, use a valid email format.</p>
             </Field>
             <Field label="Phone *">
               <Input
@@ -162,35 +417,39 @@ export function UserForm({
                   set("phone", event.target.value.replace(/[^0-9]/g, ""))
                 }
               />
-              <p className="muted">Numbers only, 8-15 digits.</p>
             </Field>
             <Field label="Status">
-              <Select
+              <SelectField
+                items={STATUSES}
                 value={draft.status ?? "Active"}
-                onChange={(event) => set("status", event.target.value)}
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-                <option value="Suspended">Suspended</option>
-              </Select>
-            </Field>
-            <Field label="Date of Birth">
-              <Input
-                type="date"
-                value={draft.dob ?? ""}
-                onChange={(event) => set("dob", event.target.value)}
+                onChange={(value) => set("status", value)}
+                getId={(item) => item.code}
+                getLabel={(item) => item.name}
+                placeholder="Search status"
               />
             </Field>
-            <Field label="Gender">
-              <Select
-                value={draft.gender ?? ""}
-                onChange={(event) => set("gender", event.target.value)}
-              >
-                <option value="">Select gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </Select>
+            <Field label="Role *">
+              <SelectField
+                items={roles}
+                value={draft.role ?? ""}
+                onChange={(value) => set("role", value)}
+                getId={(role) => String(role.code)}
+                getLabel={(role) => String(role.name)}
+                placeholder="Search role"
+              />
             </Field>
+            <div className="form-grid-span-2">
+              <Field label="Organization">
+                <SelectField
+                  items={organizations}
+                  value={draft.organizationId ?? ""}
+                  onChange={(value) => set("organizationId", value)}
+                  getId={(org) => String(org.uuid)}
+                  getLabel={(org) => String(org.name)}
+                  placeholder="Search organization"
+                />
+              </Field>
+            </div>
             <div className="form-grid-span-2">
               <Field label="Address">
                 <Textarea
@@ -200,50 +459,58 @@ export function UserForm({
                 />
               </Field>
             </div>
-            <Field label="City">
-              <Input
-                placeholder="e.g. Tangerang"
-                value={draft.city ?? ""}
-                onChange={(event) => set("city", event.target.value)}
+            <Field label="Country">
+              <SelectField
+                items={countries}
+                value={countryId}
+                onChange={setCountry}
+                getId={(country) => country.uuid}
+                getLabel={(country) => country.name}
+                placeholder="Search country"
               />
             </Field>
             <Field label="State / Province">
-              <Input
-                placeholder="e.g. Banten"
-                value={draft.province ?? ""}
-                onChange={(event) => set("province", event.target.value)}
+              <SelectField
+                items={countryId ? provinces : []}
+                value={provinceId}
+                onChange={setProvince}
+                getId={(province) => province.uuid}
+                getLabel={(province) => province.name}
+                placeholder={countryId ? "Search province" : "Select country first"}
+              />
+            </Field>
+            <Field label="City">
+              <SelectField
+                items={provinceId ? cities : []}
+                value={cityId}
+                onChange={setCity}
+                getId={(city) => city.uuid}
+                getLabel={cityLabel}
+                placeholder={provinceId ? "Search city" : "Select province first"}
+              />
+            </Field>
+            <Field label="District">
+              <SelectField
+                items={cityId ? districts : []}
+                value={districtId}
+                onChange={setDistrict}
+                getId={(district) => district.uuid}
+                getLabel={(district) => district.name}
+                emptyLabel="No districts available for this city"
+                placeholder={cityId ? "Search district" : "Select city first"}
               />
             </Field>
             <Field label="Postal / ZIP Code">
-              <Input disabled placeholder="Not yet supported by the connected API" />
+              <Input
+                readOnly
+                value={draft.postalCode ?? ""}
+                placeholder="Derived from selected district"
+              />
               <p className="muted">
-                Not yet supported by the connected API — not saved.
+                Filled in from the district you pick. Not sent to the server
+                yet.
               </p>
             </Field>
-            <Field label="Country">
-              <Input
-                placeholder="e.g. Indonesia"
-                value={draft.nation ?? ""}
-                onChange={(event) => set("nation", event.target.value)}
-              />
-            </Field>
-            <div className="form-grid-span-2">
-              <Field label="User Photo">
-                <span
-                  className="image-placeholder image-preview-circle"
-                  aria-hidden="true"
-                >
-                  {userInitials(draft.firstName, draft.lastName ?? "")}
-                </span>
-                <Button variant="secondary" disabled>
-                  Choose Photo
-                </Button>
-                <p className="muted">
-                  Not yet supported by the connected API — photos aren&apos;t
-                  saved.
-                </p>
-              </Field>
-            </div>
           </div>
         </fieldset>
         {error && (

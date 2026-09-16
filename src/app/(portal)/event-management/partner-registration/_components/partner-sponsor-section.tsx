@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form-controls";
 import { DataTable, type Column } from "@/components/common/data-table";
 import { CategoryPill } from "@/components/common/category-pill";
-import { MultiSearchSelect } from "@/components/common/search-select";
+import { MultiSelectField } from "@/components/common/select-field";
 import { SPONSOR_CATEGORIES, canModifyAssignment, isDuplicateAssignment } from "@/lib/constants/sponsorship";
 import type { PortalRecord } from "@/types/portal";
 import { initials } from "@/lib/identity";
@@ -153,7 +153,7 @@ export function PartnerSponsorSection({
       </div>
       {adding && (
         <div className="inline-user-form">
-          <MultiSearchSelect
+          <MultiSelectField
             items={availableBrands}
             selectedIds={pickedBrandIds}
             onAdd={(id) => setPickedBrandIds((current) => [...current, id])}

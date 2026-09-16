@@ -46,6 +46,15 @@ export const ENDPOINTS = {
       `/sponsors/${id(uuid)}/pics/${id(userId)}`,
   },
   organizations: { list: "/organizations" },
+  master: {
+    species: "/master/species",
+    petMorphs: "/master/pet-morphs",
+    competitionTypes: "/master/competition-types",
+    countries: "/master/countries",
+    provinces: "/master/provinces",
+    cities: "/master/cities",
+    districts: "/master/districts",
+  },
   entries: {
     detail: (uuid: string) => `/entries/${id(uuid)}`,
     approve: (uuid: string) => `/entries/${id(uuid)}/approve`,

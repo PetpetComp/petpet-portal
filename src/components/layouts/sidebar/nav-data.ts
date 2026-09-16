@@ -9,6 +9,11 @@ import {
 import { ROUTES } from "@/lib/constants/routes";
 export const navigation = [
   {
+    label: "User",
+    icon: Users,
+    items: [{ label: "User Management", href: ROUTES.userManagement }],
+  },
+  {
     label: "Event",
     icon: CalendarDays,
     items: [
@@ -37,14 +42,6 @@ export const navigation = [
     ],
   },
   { label: "Competition", icon: Flag, href: ROUTES.competition },
-  {
-    label: "User",
-    icon: Users,
-    items: [
-      { label: "User Management", href: ROUTES.userManagement },
-      { label: "Add New User", href: ROUTES.users.create },
-    ],
-  },
   {
     label: "Pet",
     icon: PawPrint,

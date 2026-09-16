@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form-controls";
-import { SearchSelect } from "@/components/common/search-select";
+import { SelectField } from "@/components/common/select-field";
 import { DataTable, type Column } from "@/components/common/data-table";
 import type { PortalRecord } from "@/types/portal";
 import { RolePill } from "@/app/(portal)/event-management/_components/role-pill";
@@ -97,7 +97,7 @@ export function CompetitionCommittee({
       <div className="assignment-builder">
         <div className="min-w-65 flex-1">
           <Field label="Add Committee Member">
-            <SearchSelect
+            <SelectField
               items={candidates}
               value={userId}
               onChange={setUserId}

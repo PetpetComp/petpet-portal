@@ -362,6 +362,7 @@ export async function saveRecord(
             username: record.username ?? "",
             email: record.email ?? "",
             first_name: record.firstName ?? "",
+            roles: record.role ? [record.role] : undefined,
           });
       break;
     case "pets":

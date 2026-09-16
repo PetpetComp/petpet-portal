@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/form-controls";
-import { SearchSelect } from "@/components/common/search-select";
+import { SelectField } from "@/components/common/select-field";
 import { usePortalData } from "@/components/providers/portal-data-provider";
 import { COMPETITION_SERVICES } from "@/services/competition";
 import { collectRows } from "@/services/common";
@@ -91,7 +91,7 @@ export function RegisterPetForm({
       </p>
       <div className="form-grid">
         <Field label="Pet *">
-          <SearchSelect
+          <SelectField
             items={data.pets}
             value={petId}
             onChange={setPetId}
