@@ -170,6 +170,150 @@ const routes: Route[] = [
       return null;
     },
   },
+  {
+    method: "GET",
+    pattern: "/organizations",
+    handler: (_params, _body, query) => paginate(store.organizations, query),
+  },
+  {
+    method: "GET",
+    pattern: "/organizations/:uuid",
+    handler: (params) => findOrThrow(store.organizations, params.uuid, "Organization"),
+  },
+  {
+    method: "PATCH",
+    pattern: "/organizations/:uuid",
+    handler: (params, body) => {
+      const org = findOrThrow(store.organizations, params.uuid, "Organization");
+      Object.assign(org, body);
+      return org;
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/events",
+    handler: (_params, _body, query) => {
+      const organizationId = query.get("organization_id");
+      const filtered = organizationId
+        ? store.events.filter((event) => event.organization_uuid === organizationId)
+        : store.events;
+      return paginate(filtered, query);
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/events/:uuid",
+    handler: (params) => findOrThrow(store.events, params.uuid, "Event"),
+  },
+  {
+    method: "POST",
+    pattern: "/events",
+    handler: (_params, body) => {
+      const owner = requireSession();
+      let organizationUuid = body?.organization_id
+        ? String(body.organization_id)
+        : "";
+      const newOrganization = body?.new_organization as
+        | { name?: string; email?: string; phone?: string; address?: string }
+        | undefined;
+      if (!organizationUuid && newOrganization?.name) {
+        organizationUuid = nextUuid();
+        store.organizations.push({
+          uuid: organizationUuid,
+          name: newOrganization.name,
+          email: newOrganization.email,
+          phone: newOrganization.phone,
+          address: newOrganization.address,
+          members: [{ user_uuid: owner.uuid, role: "OWNER" }],
+        });
+      }
+      if (!organizationUuid)
+        throw new ApiError(422, "Choose an organization or enter a new organization name.");
+      const event = {
+        uuid: nextUuid(),
+        organization_uuid: organizationUuid,
+        name: String(body?.name ?? ""),
+        status: "Draft",
+        ...body,
+      };
+      store.events.push(event as (typeof store.events)[number]);
+      return event;
+    },
+  },
+  {
+    method: "PATCH",
+    pattern: "/events/:uuid",
+    handler: (params, body) => {
+      const event = findOrThrow(store.events, params.uuid, "Event");
+      Object.assign(event, body);
+      return event;
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: "/events/:uuid",
+    handler: (params) => {
+      store.events = store.events.filter((item) => item.uuid !== params.uuid);
+      return null;
+    },
+  },
+  {
+    method: "POST",
+    pattern: "/events/:uuid/publish",
+    handler: (params) => {
+      const event = findOrThrow(store.events, params.uuid, "Event");
+      event.status = "Published";
+      return event;
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/events/:uuid/competitions",
+    handler: (params, _body, query) =>
+      paginate(
+        store.competitions.filter((item) => item.event_uuid === params.uuid),
+        query,
+      ),
+  },
+  {
+    method: "POST",
+    pattern: "/events/:uuid/competitions",
+    handler: (params, body) => {
+      const competition = {
+        uuid: nextUuid(),
+        event_uuid: params.uuid,
+        name: String(body?.name ?? ""),
+        registration_closed_at: null,
+        status: "Open",
+        ...body,
+      };
+      store.competitions.push(competition as (typeof store.competitions)[number]);
+      return competition;
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid",
+    handler: (params) => findOrThrow(store.competitions, params.uuid, "Competition"),
+  },
+  {
+    method: "PATCH",
+    pattern: "/competitions/:uuid",
+    handler: (params, body) => {
+      const competition = findOrThrow(store.competitions, params.uuid, "Competition");
+      Object.assign(competition, body);
+      return competition;
+    },
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/close-registration",
+    handler: (params) => {
+      const competition = findOrThrow(store.competitions, params.uuid, "Competition");
+      competition.registration_closed_at = new Date().toISOString();
+      return competition;
+    },
+  },
 ];
 
 export function currentMockUser(): MockUser | null {
