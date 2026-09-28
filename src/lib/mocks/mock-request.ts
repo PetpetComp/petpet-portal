@@ -186,7 +186,7 @@ const routes: Route[] = [
         email: body?.email ? String(body.email) : undefined,
         phone: body?.phone ? String(body.phone) : undefined,
         address: body?.address ? String(body.address) : undefined,
-        members: [{ user_uuid: owner.uuid, role: "OWNER" as const }],
+        pics: [{ uuid: nextUuid(), name: owner.first_name, user_uuid: owner.uuid }],
       };
       store.organizations.push(org);
       return org;
@@ -241,7 +241,7 @@ const routes: Route[] = [
           email: newOrganization.email,
           phone: newOrganization.phone,
           address: newOrganization.address,
-          members: [{ user_uuid: owner.uuid, role: "OWNER" }],
+          pics: [{ uuid: nextUuid(), name: owner.first_name, user_uuid: owner.uuid }],
         });
       }
       if (!organizationUuid)

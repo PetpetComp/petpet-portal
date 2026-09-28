@@ -36,6 +36,7 @@ export const ROUTES = {
       `/competition/${encodeURIComponent(id)}/time-trial`,
   },
   organizationManagement: "/organization-management",
+  myOrganization: "/my-organization",
   userManagement: "/user-management",
   users: {
     create: "/user-management/create",

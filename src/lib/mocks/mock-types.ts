@@ -9,9 +9,10 @@ export interface MockUser {
   status: string;
 }
 
-export interface MockOrganizationMember {
+export interface MockPic {
+  uuid: string;
+  name: string;
   user_uuid: string;
-  role: "OWNER" | "ADMIN" | "STAFF";
 }
 
 export interface MockOrganization {
@@ -20,7 +21,7 @@ export interface MockOrganization {
   email?: string;
   phone?: string;
   address?: string;
-  members: MockOrganizationMember[];
+  pics: MockPic[];
 }
 
 export interface MockEvent {
@@ -68,12 +69,6 @@ export interface MockPet {
   status: string;
 }
 
-export interface MockSponsorPic {
-  uuid: string;
-  name: string;
-  user_uuid: string;
-}
-
 export interface MockSponsor {
   uuid: string;
   brand_name: string;
@@ -81,7 +76,7 @@ export interface MockSponsor {
   email?: string;
   website_url?: string;
   status: string;
-  pics: MockSponsorPic[];
+  pics: MockPic[];
 }
 
 export interface MockEventSponsor {

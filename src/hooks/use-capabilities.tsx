@@ -25,7 +25,7 @@ export function useCapabilities(): Capabilities {
     if (!user) return anonymous;
     const isSuperAdmin = SUPERADMIN_EMAILS.includes(user.email.toLowerCase());
     const organizationIds = store.organizations
-      .filter((org) => org.members.some((member) => member.user_uuid === user.id))
+      .filter((org) => org.pics.some((pic) => pic.user_uuid === user.id))
       .map((org) => org.uuid);
     const sponsor = store.sponsors.find((item) =>
       item.pics.some((pic) => pic.user_uuid === user.id),

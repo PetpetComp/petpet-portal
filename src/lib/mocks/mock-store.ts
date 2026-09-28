@@ -70,7 +70,7 @@ export const store = {
       uuid: ORG_UUID,
       name: "Petpet Community",
       email: "contact@petpetcommunity.dev",
-      members: [{ user_uuid: ORGANIZER_UUID, role: "OWNER" }],
+      pics: [{ uuid: "pic-org-1", name: "Organizer Demo", user_uuid: ORGANIZER_UUID }],
     },
   ] as MockOrganization[],
 
