@@ -92,61 +92,63 @@ export function OrganizationList({
           </Link>
         }
       />
-      <div className="toolbar">
-        <Field label="Search organizations">
-          <Input
-            type="search"
-            placeholder="Search organization, campaign, or PIC"
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-          />
-        </Field>
-        <FilterDrawer
-          activeCount={picFilter ? 1 : 0}
-          onOpen={() => setDraftPicFilter(picFilter)}
-          onApply={() => onPicFilterChange(draftPicFilter)}
-          onReset={() => {
-            setDraftPicFilter("");
-            onPicFilterChange("");
-          }}
-        >
-          <Field label="PIC">
-            <Select
-              aria-label="Filter by PIC"
-              value={draftPicFilter}
-              onChange={(event) => setDraftPicFilter(event.target.value as PicFilter)}
-            >
-              <option value="">Semua organisasi</option>
-              <option value="has">Punya PIC</option>
-              <option value="none">Belum ada PIC</option>
-            </Select>
+      <section className="form-section">
+        <div className="toolbar">
+          <Field label="Search organizations">
+            <Input
+              type="search"
+              placeholder="Search organization, campaign, or PIC"
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+            />
           </Field>
-        </FilterDrawer>
-      </div>
-      {loadError && (
-        <p role="alert" className="form-error">
-          {loadError}
-        </p>
-      )}
-      <DataTable
-        rows={organizations}
-        columns={columns}
-        label="Organizations"
-        server={server}
-        actions={(organization) => (
-          <Link
-            href={
-              "/organization-management/" +
-              encodeURIComponent(organization.id) +
-              "/edit"
-            }
-            aria-label={"Edit " + organization.name}
-            title={"Edit " + organization.name}
+          <FilterDrawer
+            activeCount={picFilter ? 1 : 0}
+            onOpen={() => setDraftPicFilter(picFilter)}
+            onApply={() => onPicFilterChange(draftPicFilter)}
+            onReset={() => {
+              setDraftPicFilter("");
+              onPicFilterChange("");
+            }}
           >
-            <Pencil size={16} />
-          </Link>
+            <Field label="PIC">
+              <Select
+                aria-label="Filter by PIC"
+                value={draftPicFilter}
+                onChange={(event) => setDraftPicFilter(event.target.value as PicFilter)}
+              >
+                <option value="">Semua organisasi</option>
+                <option value="has">Punya PIC</option>
+                <option value="none">Belum ada PIC</option>
+              </Select>
+            </Field>
+          </FilterDrawer>
+        </div>
+        {loadError && (
+          <p role="alert" className="form-error">
+            {loadError}
+          </p>
         )}
-      />
+        <DataTable
+          rows={organizations}
+          columns={columns}
+          label="Organizations"
+          server={server}
+          actions={(organization) => (
+            <Link
+              href={
+                "/organization-management/" +
+                encodeURIComponent(organization.id) +
+                "/edit"
+              }
+              aria-label={"Edit " + organization.name}
+              title={"Edit " + organization.name}
+            >
+              <Pencil size={16} />
+            </Link>
+          )}
+        />
+      </section>
     </section>
   );
 }
