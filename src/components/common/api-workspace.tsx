@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Eye, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import { Eye, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
 import { PageHeading } from "./page-heading";
@@ -781,12 +781,6 @@ export function ApiWorkspace({
     ) : null;
   return (
     <div className="page-stack">
-      {currentMode !== "list" && (
-        <Button variant="ghost" className="back-button" onClick={goBack}>
-          <ArrowLeft size={16} />
-          Back to {info.title}
-        </Button>
-      )}
       {eventId && (
         <Link className="back-link" href={"/event-management/" + eventId}>
           Back to event
