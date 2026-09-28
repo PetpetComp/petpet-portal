@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -480,13 +480,16 @@ export function ApiAction({
 }
 function PendingSponsorApplications({ eventId }: { eventId: string }) {
   const [links, setLinks] = useState<(Row & { id: string })[]>([]);
-  const load = useCallback(async () => {
-    const rows = await collectRows((params) => EVENT_SPONSOR_SERVICES.list(eventId, params));
-    setLinks(rows.map((row) => ({ ...row, id: String(row.uuid) })));
-  }, [eventId]);
+  const [reloadToken, setReloadToken] = useState(0);
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    collectRows((params) => EVENT_SPONSOR_SERVICES.list(eventId, params)).then((rows) => {
+      if (active) setLinks(rows.map((row) => ({ ...row, id: String(row.uuid) })));
+    });
+    return () => {
+      active = false;
+    };
+  }, [eventId, reloadToken]);
   const pending = links.filter((link) => link.status === "pending");
   if (pending.length === 0) return null;
   return (
@@ -503,7 +506,7 @@ function PendingSponsorApplications({ eventId }: { eventId: string }) {
           <ApiAction
             action={async () => {
               await EVENT_SPONSOR_SERVICES.delete(eventId, String(row.uuid));
-              await load();
+              setReloadToken((token) => token + 1);
               return null;
             }}
             label="Tolak"

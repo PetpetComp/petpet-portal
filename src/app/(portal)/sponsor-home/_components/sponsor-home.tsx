@@ -19,29 +19,32 @@ const withId = (row: Row): IdRow => ({ ...row, id: String(row.uuid) });
 export function SponsorHome() {
   const { user } = useAuth();
   const capabilities = useCapabilities();
+  const [localSponsorId, setLocalSponsorId] = useState<string | null>(null);
+  const sponsorId = capabilities.sponsorId ?? localSponsorId;
   const [brandName, setBrandName] = useState("");
   const [pending, setPending] = useState(false);
   const [events, setEvents] = useState<IdRow[]>([]);
   const [applications, setApplications] = useState<Row[]>([]);
+  const [reloadToken, setReloadToken] = useState(0);
 
-  async function loadApplications(sponsorId: string) {
-    const loadedEvents = await collectRows(EVENT_SERVICES.list);
-    const links = (
-      await Promise.all(
+  useEffect(() => {
+    if (!sponsorId) return;
+    let active = true;
+    collectRows(EVENT_SERVICES.list).then((loadedEvents) => {
+      return Promise.all(
         loadedEvents.map((event) =>
           collectRows((params) => EVENT_SPONSOR_SERVICES.list(String(event.uuid), params)),
         ),
-      )
-    )
-      .flat()
-      .filter((link) => link.sponsor_uuid === sponsorId);
-    setEvents(loadedEvents.map(withId));
-    setApplications(links);
-  }
-
-  useEffect(() => {
-    if (capabilities.sponsorId) void loadApplications(capabilities.sponsorId);
-  }, [capabilities.sponsorId]);
+      ).then((linksByEvent) => {
+        if (!active) return;
+        setEvents(loadedEvents.map(withId));
+        setApplications(linksByEvent.flat().filter((link) => link.sponsor_uuid === sponsorId));
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [sponsorId, reloadToken]);
 
   async function createProfile() {
     if (!user || !brandName.trim()) return;
@@ -50,7 +53,7 @@ export function SponsorHome() {
       const created = await SPONSOR_SERVICES.create({ brand_name: brandName.trim() });
       await SPONSOR_SERVICES.addPic(created.data.uuid, user.id);
       toast.success("Sponsor profile created");
-      await loadApplications(created.data.uuid);
+      setLocalSponsorId(created.data.uuid);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Unable to create sponsor profile.");
     } finally {
@@ -59,20 +62,20 @@ export function SponsorHome() {
   }
 
   async function apply(eventId: string) {
-    if (!capabilities.sponsorId) return;
+    if (!sponsorId) return;
     try {
       await EVENT_SPONSOR_SERVICES.create(eventId, {
-        sponsor_id: capabilities.sponsorId,
+        sponsor_id: sponsorId,
         sponsorship_level: "BRONZE",
       });
       toast.success("Application sent — waiting for organizer approval");
-      await loadApplications(capabilities.sponsorId);
+      setReloadToken((token) => token + 1);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Unable to apply.");
     }
   }
 
-  if (!capabilities.sponsorId) {
+  if (!sponsorId) {
     return (
       <div className="page-stack">
         <PageHeading title="Jadi Sponsor" description="Buat profil brand-mu dulu." />
