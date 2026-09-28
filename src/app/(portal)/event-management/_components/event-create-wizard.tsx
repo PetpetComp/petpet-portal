@@ -1,7 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import {
+  Building2,
+  Calendar,
+  Check,
+  ClipboardCheck,
+  Info,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/form-controls";
@@ -14,9 +20,14 @@ import { collectRows } from "@/services/common";
 import { formatDateTime } from "@/lib/format/date";
 import { isDuplicateEventName, isValidDateRange } from "../_lib/event-rules";
 import type { Organization } from "@/types/organization";
+import "./event-create-wizard.css";
 
 const BASE_PATH = "/event-management";
-const STEPS = ["Event", "Organizer", "Review"] as const;
+const STEPS = [
+  { label: "Event", icon: Calendar },
+  { label: "Organizer", icon: Building2 },
+  { label: "Review", icon: ClipboardCheck },
+] as const;
 
 export function EventCreateWizard() {
   const router = useRouter();
@@ -126,17 +137,31 @@ export function EventCreateWizard() {
         <h1>Create New Event</h1>
         <p className="muted">Create the event and confirm its organizer in one guided flow.</p>
       </header>
-      <ol className="wizard-stepper">
-        {STEPS.map((label, index) => (
-          <li key={label} className={step === index + 1 ? "active" : step > index + 1 ? "done" : ""}>
-            <b>{step > index + 1 ? <Check size={13} /> : index + 1}</b>
-            <span>{label}</span>
-          </li>
-        ))}
+      <ol className="ecw-stepper">
+        {STEPS.map((entry, index) => {
+          const stepNumber = index + 1;
+          const status = step === stepNumber ? "active" : step > stepNumber ? "done" : "";
+          return (
+            <li key={entry.label}>
+              <button
+                type="button"
+                className={"ecw-step " + status}
+                disabled={status !== "done"}
+                onClick={() => setStep(stepNumber as 1 | 2 | 3)}
+              >
+                <span className="ecw-step-index">
+                  {step > stepNumber ? <Check size={14} /> : stepNumber}
+                </span>
+                <entry.icon size={15} aria-hidden="true" />
+                {entry.label}
+              </button>
+            </li>
+          );
+        })}
       </ol>
 
       {step === 1 && (
-        <section className="form-section">
+        <section className="form-section ecw-panel">
           <h2>Event Information</h2>
           <p className="muted">Enter the primary event information. Event name must be unique.</p>
           <div className="form-grid">
@@ -201,12 +226,13 @@ export function EventCreateWizard() {
       )}
 
       {step === 2 && (
-        <section className="form-section">
+        <section className="form-section ecw-panel">
           <h2>Organizer</h2>
           {capabilities.isSuperAdmin ? (
             <>
               <p className="muted">
-                Select an existing organization for this event, or name a new one.
+                <Info size={13} aria-hidden="true" /> Select an existing organization for this
+                event, or name a new one.
               </p>
               <Field label="Organization">
                 <SelectField
@@ -272,7 +298,7 @@ export function EventCreateWizard() {
       )}
 
       {step === 3 && (
-        <section className="form-section">
+        <section className="form-section ecw-panel">
           <h2>Review &amp; Confirm</h2>
           <p className="muted">Review the event details before it&apos;s created.</p>
           <dl className="detail-grid">
