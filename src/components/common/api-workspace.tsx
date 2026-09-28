@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
 import { PageHeading } from "./page-heading";
 import { DataTable } from "./data-table";
+import { StatusBadge } from "./status-badge";
 import { usePortalData } from "@/components/providers/portal-data-provider";
 import { useCapabilities } from "@/hooks/use-capabilities";
 import { EVENT_SERVICES } from "@/services/event-management";
@@ -839,6 +840,10 @@ export function ApiWorkspace({
               key,
               label: label(key),
               value: (row: PortalRecord) => display(row, key),
+              render:
+                key === "status"
+                  ? (row: PortalRecord) => <StatusBadge status={display(row, key)} />
+                  : undefined,
             }))}
             actions={(row) => {
               const closed = collection === "events" && row.status === "Closed";
@@ -950,7 +955,13 @@ export function ApiWorkspace({
             ).map((key) => (
               <div key={key}>
                 <dt>{label(key)}</dt>
-                <dd>{display(record, key) || "-"}</dd>
+                <dd>
+                  {key === "status" ? (
+                    <StatusBadge status={display(record, key)} />
+                  ) : (
+                    display(record, key) || "-"
+                  )}
+                </dd>
               </div>
             ))}
           </dl>
