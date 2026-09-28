@@ -475,35 +475,10 @@ tbody tr,
 
 /* Shared presentational primitives (used by more than one feature area:
    role home pages today, available to any future one). Feature-specific
-   layout (grids, card sizing) stays local to that feature's own CSS. */
-.status-badge {
-  display: inline-flex;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  padding: 3px 10px;
-  border-radius: 30px;
-  white-space: nowrap;
-}
-.status-badge-success {
-  color: var(--color-success);
-  background: var(--color-success-soft);
-}
-.status-badge-warning {
-  color: var(--color-warning);
-  background: var(--color-warning-soft);
-}
-.status-badge-danger {
-  color: var(--color-danger);
-  background: var(--color-danger-soft);
-}
-.status-badge-info {
-  color: var(--color-info);
-  background: var(--color-info-soft);
-}
-
-.empty-state {
+   layout (grids, card sizing) stays local to that feature's own CSS.
+   Status badges reuse the existing .status-badge/.status-success/etc.
+   classes defined further down this file - not redefined here. */
+.state-card {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -515,7 +490,7 @@ tbody tr,
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-lg);
 }
-.empty-state-icon {
+.state-card-icon {
   color: var(--color-primary);
 }
 

@@ -15,8 +15,8 @@ export function EmptyState({
   action?: { label: ReactNode; href: string };
 }) {
   return (
-    <div className="empty-state">
-      <Icon size={28} className="empty-state-icon" aria-hidden={true} />
+    <div className="state-card">
+      <Icon size={28} className="state-card-icon" aria-hidden={true} />
       <p>{message}</p>
       {action && (
         <Link href={action.href} className="cta-pill">

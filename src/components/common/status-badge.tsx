@@ -1,23 +1,14 @@
 import type { ReactNode } from "react";
 
-export type StatusTone = "success" | "warning" | "danger" | "info";
+const SUCCESS = ["Open", "Verified", "Paid", "Saved", "Completed", "Published", "Approved", "approved", "Active"];
+const WARNING = ["Running", "Pending", "Countdown", "Draft", "pending"];
+const DANGER = ["Closed", "Stopped", "DSQ", "Rejected", "rejected"];
 
-const TONE_BY_STATUS: Record<string, StatusTone> = {
-  Published: "success",
-  Open: "success",
-  Approved: "success",
-  Paid: "success",
-  Active: "success",
-  Draft: "warning",
-  Pending: "warning",
-  pending: "warning",
-  Rejected: "danger",
-  rejected: "danger",
-  approved: "success",
-};
-
-export function toneForStatus(status: string): StatusTone {
-  return TONE_BY_STATUS[status] ?? "info";
+function toneFor(status: string): "success" | "warning" | "danger" | "neutral" {
+  if (SUCCESS.includes(status)) return "success";
+  if (WARNING.includes(status)) return "warning";
+  if (DANGER.includes(status)) return "danger";
+  return "neutral";
 }
 
 export function StatusBadge({
@@ -28,7 +19,8 @@ export function StatusBadge({
   label?: ReactNode;
 }) {
   return (
-    <span className={`status-badge status-badge-${toneForStatus(status)}`}>
+    <span className={"status-badge status-" + toneFor(status)}>
+      <span className="status-dot" />
       {label ?? status}
     </span>
   );
