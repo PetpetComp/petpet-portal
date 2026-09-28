@@ -525,6 +525,7 @@ export function ApiWorkspace({
   eventId?: string;
 }) {
   const { data, errors, remove, refresh } = usePortalData();
+  const capabilities = useCapabilities();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [inlineMode, setInlineMode] = useState<ViewMode>(mode);
@@ -560,7 +561,12 @@ export function ApiWorkspace({
     users: USER_SERVICES.list,
     pets: PET_SERVICES.list,
     brands: SPONSOR_SERVICES.list,
-    events: EVENT_SERVICES.list,
+    events: (params) =>
+      EVENT_SERVICES.list(
+        capabilities.isSuperAdmin || capabilities.organizationIds.length === 0
+          ? params
+          : { ...params, organization_id: capabilities.organizationIds[0] },
+      ),
   };
   const isPaginated = collection in serviceList;
   const list = usePaginatedList<Row, PortalRecord>(
