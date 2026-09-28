@@ -1,0 +1,131 @@
+.competitor-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 64px 0;
+  color: var(--color-muted-foreground);
+}
+
+.competitor-loading-icon {
+  animation: competitor-bounce 1s ease-in-out infinite;
+  color: var(--color-primary);
+}
+
+.competitor-home {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.competitor-section-title {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.competitor-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--color-muted-foreground);
+}
+
+.competitor-event-grid,
+.competitor-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.competitor-event-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.competitor-event-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.competitor-event-card h3 {
+  margin: 6px 0 2px;
+  font-size: 15.5px;
+  font-weight: 650;
+}
+
+.competitor-entry-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.competitor-entry-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.competitor-entry-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 10px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-radius: 12px;
+}
+
+.competitor-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.competitor-entry-body h3 {
+  margin: 0 0 6px;
+  font-size: 14.5px;
+  font-weight: 650;
+}
+
+.competitor-entry-tags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+@keyframes competitor-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .competitor-loading-icon {
+    animation: none;
+  }
+  .competitor-event-card:hover,
+  .competitor-entry-card:hover {
+    transform: none;
+  }
+}

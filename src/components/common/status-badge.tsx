@@ -1,17 +1,35 @@
-export function StatusBadge({ status }: { status: string }) {
-  const tone = ["Open", "Verified", "Paid", "Saved", "Completed"].includes(
-    status,
-  )
-    ? "success"
-    : ["Running", "Pending", "Countdown"].includes(status)
-      ? "warning"
-      : ["Closed", "Stopped", "DSQ"].includes(status)
-        ? "danger"
-        : "neutral";
+import type { ReactNode } from "react";
+
+export type StatusTone = "success" | "warning" | "danger" | "info";
+
+const TONE_BY_STATUS: Record<string, StatusTone> = {
+  Published: "success",
+  Open: "success",
+  Approved: "success",
+  Paid: "success",
+  Active: "success",
+  Draft: "warning",
+  Pending: "warning",
+  pending: "warning",
+  Rejected: "danger",
+  rejected: "danger",
+  approved: "success",
+};
+
+export function toneForStatus(status: string): StatusTone {
+  return TONE_BY_STATUS[status] ?? "info";
+}
+
+export function StatusBadge({
+  status,
+  label,
+}: {
+  status: string;
+  label?: ReactNode;
+}) {
   return (
-    <span className={"status-badge status-" + tone}>
-      <span className="status-dot" />
-      {status}
+    <span className={`status-badge status-badge-${toneForStatus(status)}`}>
+      {label ?? status}
     </span>
   );
 }

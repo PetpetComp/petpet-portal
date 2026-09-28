@@ -331,6 +331,25 @@ const routes: Route[] = [
       return competition;
     },
   },
+  // Staff/committee assignments aren't modeled in this demo phase; these
+  // three read endpoints return an empty list instead of a generic 404 so
+  // the portal's "some data could not be loaded" banner doesn't fire on
+  // every page for a feature that simply has nothing to show yet.
+  {
+    method: "GET",
+    pattern: "/staff-invitations",
+    handler: (_params, _body, query) => paginate([], query),
+  },
+  {
+    method: "GET",
+    pattern: "/events/:uuid/staff",
+    handler: (_params, _body, query) => paginate([], query),
+  },
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid/staff",
+    handler: (_params, _body, query) => paginate([], query),
+  },
   {
     method: "GET",
     pattern: "/sponsors",
