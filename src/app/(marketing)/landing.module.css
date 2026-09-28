@@ -1,0 +1,213 @@
+.page {
+  min-height: 100svh;
+  background: var(--color-background);
+  overflow-x: hidden;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 56px 24px 128px;
+  color: white;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 20% 0%, #9384ed55, transparent 60%),
+    linear-gradient(145deg, #302568, #6553c6);
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -1px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #ffffff30;
+  border-radius: 30px;
+  padding: 8px 14px;
+  font-size: 12px;
+  background: #ffffff0c;
+  margin: 32px 0 20px;
+  animation: fadeInUp 0.6s ease both;
+}
+
+.hero h1 {
+  margin: 0 0 16px;
+  font-size: clamp(30px, 4.4vw, 48px);
+  line-height: 1.15;
+  letter-spacing: -1.5px;
+  font-weight: 650;
+  animation: fadeInUp 0.6s 0.05s ease both;
+}
+
+.hero h1 span {
+  color: #d2caff;
+}
+
+.heroSubtitle {
+  max-width: 460px;
+  margin: 0 auto;
+  color: #e0daf8;
+  line-height: 1.7;
+  font-size: 15px;
+  animation: fadeInUp 0.6s 0.1s ease both;
+}
+
+.paw {
+  position: absolute;
+  color: #ffffff;
+  opacity: 0.12;
+  animation: float 7s ease-in-out infinite;
+}
+
+.paw1 { top: 18%; left: 8%; width: 34px; height: 34px; animation-delay: 0s; }
+.paw2 { top: 62%; left: 15%; width: 22px; height: 22px; animation-delay: 1.2s; }
+.paw3 { top: 12%; right: 10%; width: 28px; height: 28px; animation-delay: 0.6s; }
+.paw4 { top: 55%; right: 6%; width: 40px; height: 40px; animation-delay: 1.8s; }
+.paw5 { bottom: 6%; left: 42%; width: 20px; height: 20px; animation-delay: 2.4s; }
+
+.cards {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  max-width: 1040px;
+  margin: -84px auto 0;
+  padding: 0 24px 64px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 28px;
+  background: var(--color-card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  text-decoration: none;
+  color: var(--color-foreground);
+  opacity: 0;
+  animation: fadeInUp 0.5s ease both;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.card:nth-child(1) { animation-delay: 0.15s; }
+.card:nth-child(2) { animation-delay: 0.28s; }
+.card:nth-child(3) { animation-delay: 0.41s; }
+
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 44px -12px rgba(28, 24, 78, 0.22);
+  outline: none;
+}
+
+.cardIcon {
+  display: inline-flex;
+  padding: 14px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-radius: 16px;
+  transition: transform 0.25s ease;
+}
+
+.card:hover .cardIcon {
+  transform: rotate(-8deg) scale(1.08);
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+}
+
+.card p {
+  margin: 0;
+  color: var(--color-muted-foreground);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.cardCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--color-primary);
+}
+
+.cardCta svg {
+  transition: transform 0.25s ease;
+}
+
+.card:hover .cardCta svg {
+  transform: translateX(4px);
+}
+
+.footer {
+  padding: 0 24px 40px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(8deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge,
+  .hero h1,
+  .heroSubtitle,
+  .card {
+    animation: none;
+    opacity: 1;
+  }
+  .paw {
+    animation: none;
+  }
+  .card:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 40px 20px 112px;
+  }
+  .cards {
+    margin-top: -72px;
+  }
+}
