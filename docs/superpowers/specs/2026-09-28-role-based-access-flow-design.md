@@ -13,14 +13,48 @@ want to compete, run an event, or sponsor one.
 
 Give the portal a landing experience and a post-login navigation that
 match what the signed-in account actually does, without inventing a
-role system the backend doesn't have. Backend integration for the new
-capability signals (organization membership, sponsor profile,
-sponsor-to-event requests) is deferred; this phase builds the frontend
-flow against dummy fixtures, following the same pattern already used
-for drawing/race-control/contest data in `architecture-v560.md`.
+role system the backend doesn't have.
 
-Out of scope: new backend endpoints, wiring real API calls for
-capability data, and automated tests (the user will handle testing).
+**Revision (2026-09-28):** the whole backend is detached for this
+phase, not just the new capability signals. Login, users, pets, events,
+competitions, organizations, sponsors, and entries all run against an
+in-memory mock data layer. This is a single reversible switch (see
+"Mock backend layer" below) — re-connecting to the real API later means
+flipping one flag, not undoing the frontend work. Automated tests are
+out of scope; the user will handle testing.
+
+## Mock backend layer (full detach)
+
+`src/lib/api-client.ts`'s `request<T>()` function is the one chokepoint
+every service already calls through (`apiClient.get/post/patch/delete`
+→ `request`). A mock switch is added there:
+
+- `NEXT_PUBLIC_USE_MOCK_BACKEND=true` (new env flag, defaults to `true`
+  for this phase) makes `request<T>()` call a new `mockRequest<T>()`
+  instead of `fetch`. No service file, hook, or component changes:
+  they all keep calling `apiClient.get(ENDPOINTS.events.list)` etc.
+  exactly as today.
+- `mockRequest` pattern-matches `method + endpoint` against the routes
+  in `ENDPOINTS` (including dynamic `:uuid` segments) and reads/writes
+  an in-memory store seeded from fixtures. It shapes responses exactly
+  like today's `ApiResponse`/`ListResponse`/paginated envelope, so
+  `collectRows`, `mapRecord`, and `recordPayload` need no changes.
+  State resets on full page reload (same limitation already accepted
+  for other v560 editable dummy workflows).
+- Covered for this phase: `auth` (login/register/me/logout/roles/
+  permissions), `users`, `pets`, `events`, `competitions`,
+  `organizations`, `sponsors` (+ pics), `entries`, and
+  `events/{id}/sponsors`. Endpoints outside that set (staff
+  invitations, master/regions catalogs, registration periods, score
+  criteria, photo presign) return a generic
+  `{ success: false, message: "Not available in demo mode." }` so niche
+  screens fail gracefully instead of crashing, rather than being fully
+  modeled — those are unrelated to the role/landing flow this spec
+  covers.
+- Seed data models four demo personas end-to-end: a Super Admin
+  (allowlisted), an Organizer who owns one organization with one
+  event, a plain Competitor, and a Sponsor with a brand profile — so
+  the full flow below is demoable without any real network call.
 
 ## Backend constraints (why the role model looks like this)
 
@@ -70,21 +104,24 @@ No "choose your account type" step exists at sign-up. The landing
 page's three entry points only pick where the user lands *after*
 auth — they don't write a role.
 
-## Dummy data for this phase
+## Capability data comes from the mock store, not a separate fixture
 
-New fixtures under `src/lib/mocks` (following the existing
-`event-operations.ts` fixture pattern):
+`useCapabilities()` reads straight off the mock store's own records —
+no parallel ad-hoc fixture file:
 
-- Organization membership per user: `{ userId, organizationId, role: "OWNER" | "ADMIN" | "STAFF" }[]`.
-- Sponsor profile per user: `{ userId, sponsorId }` presence check.
-- Sponsor-to-event applications: `{ sponsorId, eventId, status: "pending" | "approved" | "rejected" }[]`,
-  mutated client-side through `PortalDataProvider` session state (not
-  persisted server-side, resets on reload — same limitation already
-  documented for other v560 editable dummy workflows).
-
-Real accounts keep using the existing real `useAuth`/`AUTH_SERVICES`
-login. Only the capability signals above are dummy until the backend
-adds them.
+- Organization membership: each mock organization record carries a
+  `members: { user_uuid, role: "OWNER" | "ADMIN" | "STAFF" }[]` list,
+  mirroring the real member shape. A user is an Organizer if they
+  appear in any organization's `members`.
+- Sponsor profile: a user is a Sponsor if any mock sponsor record's
+  `pics` list contains their `user_uuid` (same shape `SPONSOR_SERVICES`
+  already reads).
+- Sponsor-to-event applications: the mock `events/{id}/sponsors` link
+  gets one mock-only extra field, `status: "pending" | "approved" |
+  "rejected"`, defaulting existing/seeded links to `"approved"` and new
+  self-service applications to `"pending"`. This field doesn't exist on
+  the real API — it's flagged here so reconnecting later means dropping
+  it, not adding it.
 
 ## Landing page (signed out)
 
@@ -109,7 +146,7 @@ a fixed nav list:
 - **Competitor** (always): Cari Event/Kompetisi, Pet Saya, Entry Saya.
 - **Organisasi** (if org member): existing Event Management,
   Competition ops, Sponsor list, Report — filtered to the user's own
-  `organization_id` via the dummy membership fixture.
+  `organization_id` via the mock store's membership list.
 - **Sponsor** (if sponsor profile exists): Profil Sponsor, Event yang
   Diikuti/Diajukan.
 - **Super Admin** (if allowlisted): everything unscoped, i.e. today's
@@ -121,31 +158,36 @@ admin check, org memberships, sponsor profile) and is consumed by both
 `PortalShell` (nav filtering) and `AuthGuard`/route entry points
 (default redirect after login).
 
-## Sponsor → event application (dummy)
+## Sponsor → event application
 
-"Ajukan jadi sponsor" on an event writes a pending application to the
-dummy applications fixture instead of calling
-`POST /events/{id}/sponsors`. The event's organizer view lists pending
-applications for their own events and can mark them
-approved/rejected (dummy state only). This keeps the same shape the
-real flow will need later — swapping the fixture writes for real
-service calls is the only expected change once the backend question
-above is resolved.
+"Ajukan jadi sponsor" on an event calls `POST /events/{id}/sponsors`
+exactly like the real flow will, but against the mock store, which
+records it with `status: "pending"` instead of auto-approving. The
+event's organizer view lists pending applications for their own events
+and can mark them approved/rejected (a small mock-only status update,
+not a real endpoint). This keeps the UI shape identical to what the
+real flow will need later — only the backend question of whether a
+non-staff account may call `POST /events/{id}/sponsors` directly stays
+open for whenever the real API is reconnected.
 
 ## Data scoping for Organizer
 
 List endpoints are not organization-scoped server-side today (the
-current portal already shows everything to anyone). Organizer views
-filter client-side: look up the user's organization ids from the
-membership fixture, then filter fetched/mocked records by
-`organization_id` before rendering. This is a UX narrowing, not real
-authorization — noted as a known gap for when backend scoping exists.
+current portal already shows everything to anyone), and the mock store
+mirrors that on purpose. Organizer views filter client-side: look up
+the user's organization ids from the mock membership list, then filter
+fetched records by `organization_id` before rendering. This is a UX
+narrowing, not real authorization — noted as a known gap for whenever
+backend scoping exists.
 
 ## Ownership (new pieces, following the existing v560 ownership rules)
 
-- `src/lib/mocks/capabilities.ts` — new dummy fixtures described above.
+- `src/lib/mocks/mock-backend.ts` (or a small folder) — the in-memory
+  store, seed data, and `mockRequest<T>()` router described above.
+- `src/lib/api-client.ts` — one added branch in `request<T>()` to call
+  `mockRequest` when the mock flag is on.
 - `src/hooks/use-capabilities.tsx` — derives Super Admin / Organizer /
-  Competitor / Sponsor from auth state + fixtures.
+  Competitor / Sponsor from auth state + the mock store's own records.
 - `src/app/page.tsx` (or a new `(marketing)` route) — the three-entry
   landing page replacing the current redirect-only root.
 - `src/components/layouts/portal-shell.tsx` — nav filtered through
