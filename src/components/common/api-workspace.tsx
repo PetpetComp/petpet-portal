@@ -782,7 +782,7 @@ export function ApiWorkspace({
   return (
     <div className="page-stack">
       {currentMode !== "list" && (
-        <Button variant="ghost" onClick={goBack}>
+        <Button variant="ghost" className="back-button" onClick={goBack}>
           <ArrowLeft size={16} />
           Back to {info.title}
         </Button>
