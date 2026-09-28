@@ -18,15 +18,20 @@ import { OrganizationForm } from "./organization-form";
 import { OrganizationList } from "./organization-list";
 
 function matchesQuery(organization: Organization, query: string): boolean {
-  return [
-    organization.name,
-    organization.campaign,
-    ...organization.pics.map((pic) => pic.name),
-  ]
-    .join(" ")
-    .toLowerCase()
-    .includes(query.toLowerCase());
+  return (
+    !query ||
+    [
+      organization.name,
+      organization.campaign,
+      ...organization.pics.map((pic) => pic.name),
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(query.toLowerCase())
+  );
 }
+
+export type PicFilter = "" | "has" | "none";
 
 function readDrafts(key: string): Organization[] {
   const raw: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
@@ -67,14 +72,21 @@ export function OrganizationWorkspace({
   const [draftError, setDraftError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState("");
+  const [picFilter, setPicFilter] = useState<PicFilter>("");
   const storageKey = user ? "petpet.organization-drafts.v1." + user.id : null;
   const draftId = id?.startsWith("draft:") ? id.slice(6) : undefined;
   const list = usePaginatedList<OrganizationRecord, Organization>(
     ORGANIZATION_SERVICES.list,
     mapOrganization,
     query,
-    matchesQuery,
+    (organization, q) =>
+      matchesQuery(organization, q) &&
+      (!picFilter ||
+        (picFilter === "has"
+          ? organization.pics.length > 0
+          : organization.pics.length === 0)),
     mode === "list",
+    Boolean(picFilter),
   );
   useEffect(() => {
     let active = true;
@@ -188,6 +200,11 @@ export function OrganizationWorkspace({
             query={query}
             onQueryChange={(value) => {
               setQuery(value);
+              list.setPage(0);
+            }}
+            picFilter={picFilter}
+            onPicFilterChange={(value) => {
+              setPicFilter(value);
               list.setPage(0);
             }}
             loadError={list.error}

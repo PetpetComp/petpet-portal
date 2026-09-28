@@ -1,31 +1,39 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Pencil, Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/form-controls";
+import { Field, Input, Select } from "@/components/ui/form-controls";
 import {
   DataTable,
   type Column,
   type ServerPagination,
 } from "@/components/common/data-table";
 import { PageHeading } from "@/components/common/page-heading";
+import { FilterDrawer } from "@/components/common/filter-drawer";
 import { initials } from "@/lib/identity";
 import type { Organization } from "@/types/organization";
+import type { PicFilter } from "./organization-workspace";
 
 export function OrganizationList({
   organizations,
   query,
   onQueryChange,
+  picFilter,
+  onPicFilterChange,
   server,
   loadError,
 }: {
   organizations: Organization[];
   query: string;
   onQueryChange: (query: string) => void;
+  picFilter: PicFilter;
+  onPicFilterChange: (value: PicFilter) => void;
   server: ServerPagination;
   loadError?: string;
 }) {
+  const [draftPicFilter, setDraftPicFilter] = useState<PicFilter>(picFilter);
   const columns: Column<Organization>[] = [
     {
       key: "photo",
@@ -93,6 +101,27 @@ export function OrganizationList({
             onChange={(event) => onQueryChange(event.target.value)}
           />
         </Field>
+        <FilterDrawer
+          activeCount={picFilter ? 1 : 0}
+          onOpen={() => setDraftPicFilter(picFilter)}
+          onApply={() => onPicFilterChange(draftPicFilter)}
+          onReset={() => {
+            setDraftPicFilter("");
+            onPicFilterChange("");
+          }}
+        >
+          <Field label="PIC">
+            <Select
+              aria-label="Filter by PIC"
+              value={draftPicFilter}
+              onChange={(event) => setDraftPicFilter(event.target.value as PicFilter)}
+            >
+              <option value="">Semua organisasi</option>
+              <option value="has">Punya PIC</option>
+              <option value="none">Belum ada PIC</option>
+            </Select>
+          </Field>
+        </FilterDrawer>
       </div>
       {loadError && (
         <p role="alert" className="form-error">
