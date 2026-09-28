@@ -314,6 +314,156 @@ const routes: Route[] = [
       return competition;
     },
   },
+  {
+    method: "GET",
+    pattern: "/sponsors",
+    handler: (_params, _body, query) => paginate(store.sponsors, query),
+  },
+  {
+    method: "GET",
+    pattern: "/sponsors/:uuid",
+    handler: (params) => findOrThrow(store.sponsors, params.uuid, "Sponsor"),
+  },
+  {
+    method: "POST",
+    pattern: "/sponsors",
+    handler: (_params, body) => {
+      const sponsor = {
+        uuid: nextUuid(),
+        brand_name: String(body?.brand_name ?? ""),
+        status: "Active",
+        pics: [] as { uuid: string; name: string; user_uuid: string }[],
+        ...body,
+      };
+      store.sponsors.push(sponsor as (typeof store.sponsors)[number]);
+      return sponsor;
+    },
+  },
+  {
+    method: "PATCH",
+    pattern: "/sponsors/:uuid",
+    handler: (params, body) => {
+      const sponsor = findOrThrow(store.sponsors, params.uuid, "Sponsor");
+      Object.assign(sponsor, body);
+      return sponsor;
+    },
+  },
+  {
+    method: "POST",
+    pattern: "/sponsors/:uuid/pics",
+    handler: (params, body) => {
+      const sponsor = findOrThrow(store.sponsors, params.uuid, "Sponsor");
+      const user = findOrThrow(store.users, String(body?.user_id ?? ""), "User");
+      sponsor.pics.push({ uuid: nextUuid(), name: user.first_name, user_uuid: user.uuid });
+      return sponsor;
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: "/sponsors/:uuid/pics/:userId",
+    handler: (params) => {
+      const sponsor = findOrThrow(store.sponsors, params.uuid, "Sponsor");
+      sponsor.pics = sponsor.pics.filter((pic) => pic.user_uuid !== params.userId);
+      return null;
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/events/:uuid/sponsors",
+    handler: (params, _body, query) =>
+      paginate(
+        store.eventSponsors.filter((item) => item.event_uuid === params.uuid),
+        query,
+      ),
+  },
+  {
+    method: "POST",
+    pattern: "/events/:uuid/sponsors",
+    handler: (params, body) => {
+      const link = {
+        uuid: nextUuid(),
+        event_uuid: params.uuid,
+        sponsor_uuid: String(body?.sponsor_id ?? ""),
+        sponsorship_level: String(body?.sponsorship_level ?? "BRONZE"),
+        campaign_text: body?.campaign_text ? String(body.campaign_text) : undefined,
+        status: "pending" as const,
+      };
+      store.eventSponsors.push(link);
+      return link;
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: "/events/:eventId/sponsors/:linkId",
+    handler: (params) => {
+      store.eventSponsors = store.eventSponsors.filter(
+        (item) => item.uuid !== params.linkId,
+      );
+      return null;
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid/entries",
+    handler: (params, _body, query) =>
+      paginate(
+        store.entries.filter((item) => item.competition_uuid === params.uuid),
+        query,
+      ),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/entries",
+    handler: (params, body) => {
+      const owner = requireSession();
+      const entry = {
+        uuid: nextUuid(),
+        competition_uuid: params.uuid,
+        owner_uuid: owner.uuid,
+        payment_status: "Pending",
+        checkin_status: "Pending",
+        status: "Pending",
+        ...body,
+      };
+      store.entries.push(entry as (typeof store.entries)[number]);
+      return entry;
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: "/entries/:uuid",
+    handler: (params) => {
+      store.entries = store.entries.filter((item) => item.uuid !== params.uuid);
+      return null;
+    },
+  },
+  {
+    method: "POST",
+    pattern: "/entries/:uuid/approve",
+    handler: (params) => {
+      const entry = findOrThrow(store.entries, params.uuid, "Entry");
+      entry.status = "Approved";
+      return entry;
+    },
+  },
+  {
+    method: "POST",
+    pattern: "/entries/:uuid/reject",
+    handler: (params) => {
+      const entry = findOrThrow(store.entries, params.uuid, "Entry");
+      entry.status = "Rejected";
+      return entry;
+    },
+  },
+  {
+    method: "POST",
+    pattern: "/entries/:uuid/checkin",
+    handler: (params) => {
+      const entry = findOrThrow(store.entries, params.uuid, "Entry");
+      entry.checkin_status = "Checked in";
+      return entry;
+    },
+  },
 ];
 
 export function currentMockUser(): MockUser | null {
@@ -323,3 +473,20 @@ export function currentMockUser(): MockUser | null {
 }
 
 export { routes as mockRoutes, matchPath, requireSession };
+
+export async function mockRequest<T>(
+  method: string,
+  endpoint: string,
+  body?: Record<string, unknown>,
+): Promise<T> {
+  const [path, search] = endpoint.split("?");
+  const query = new URLSearchParams(search ?? "");
+  const route = routes.find(
+    (candidate) =>
+      candidate.method === method && matchPath(candidate.pattern, path) !== null,
+  );
+  if (!route) throw new ApiError(404, "Not available in demo mode.");
+  const params = matchPath(route.pattern, path) ?? {};
+  const data = route.handler(params, body, query);
+  return { success: true, message: "OK", data } as T;
+}
