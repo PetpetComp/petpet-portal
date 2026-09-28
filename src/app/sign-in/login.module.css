@@ -30,6 +30,11 @@
 .reveal:focus-visible { outline: 2px solid var(--color-primary); border-radius: 4px; }
 .submit { width: 100%; min-height: 49px; margin-top: 3px; }
 .demo { margin: 0; padding: 12px 14px; background: var(--color-muted); border: 1px solid var(--color-border); border-radius: 8px; font-size: 12px; line-height: 1.7; color: var(--color-muted-foreground); }
+.divider { display: flex; align-items: center; gap: 12px; margin: 21px 0; color: var(--color-muted-foreground); font-size: 12px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--color-border); }
+.sso { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 46px; border: 1px solid var(--color-input); border-radius: 9px; background: var(--color-card); color: var(--color-foreground); font: inherit; font-weight: 600; cursor: pointer; }
+.sso:hover { background: var(--color-muted); }
+.sso:disabled { opacity: 0.6; cursor: not-allowed; }
 .help { margin-top: 27px; text-align: center; font-size: 12px; color: var(--color-muted-foreground); }
 .help a { color: var(--color-primary); font-weight: 600; text-decoration: none; }
 .footer { color: var(--color-muted-foreground); font-size: 11px; padding-top: 28px; }

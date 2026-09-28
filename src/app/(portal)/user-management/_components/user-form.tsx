@@ -10,13 +10,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/form-controls";
 import { SelectField } from "@/components/common/select-field";
 import { Breadcrumb } from "@/components/common/breadcrumb";
 import { usePortalData } from "@/components/providers/portal-data-provider";
+import { useAuth } from "@/hooks/use-auth";
 import { USER_SERVICES } from "@/services/user-management";
 import { ORGANIZATION_SERVICES } from "@/services/organization";
+import { AUTH_SERVICES } from "@/services/auth";
 import { recordPayload, type Row } from "@/services/backend-records";
 import { collectRows } from "@/services/common";
 import { REGION_SERVICES, type RegionRow } from "@/services/regions";
@@ -55,8 +57,10 @@ export function UserForm({
 }) {
   const router = useRouter();
   const { data, save, refresh } = usePortalData();
+  const { user: authUser, refreshSession } = useAuth();
   const user = mode === "edit" ? data.users.find((item) => item.id === id) : undefined;
   const currentRole = user?.roles?.split(",")[0]?.trim() ?? "";
+  const isSelf = mode === "edit" && !!user && user.id === authUser?.id;
   const [draft, setDraft] = useState<PortalRecord>(() => ({
     id: "",
     name: "",
@@ -74,12 +78,11 @@ export function UserForm({
   const [countries, setCountries] = useState<RegionRow[]>([]);
   const [provinces, setProvinces] = useState<RegionRow[]>([]);
   const [cities, setCities] = useState<RegionRow[]>([]);
-  const [districts, setDistricts] = useState<RegionRow[]>([]);
   const [countryId, setCountryId] = useState("");
   const [provinceId, setProvinceId] = useState("");
   const [cityId, setCityId] = useState("");
-  const [districtId, setDistrictId] = useState("");
-  const [photoPreview, setPhotoPreview] = useState("");
+  const [photoPreview, setPhotoPreview] = useState(user?.photoUrl ?? "");
+  const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -169,21 +172,6 @@ export function UserForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provinceId]);
 
-  useEffect(() => {
-    if (!cityId) return;
-    let active = true;
-    REGION_SERVICES.districts(cityId)
-      .then((rows) => {
-        if (active) setDistricts(rows);
-      })
-      .catch(() => {
-        if (active) setDistricts([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, [cityId]);
-
   if (mode === "edit" && !user)
     return (
       <section className="page-stack">
@@ -205,44 +193,26 @@ export function UserForm({
       nation: row?.name ?? "",
       province: "",
       city: "",
-      postalCode: "",
     }));
     setCountryId(uuid);
     setProvinceId("");
     setCityId("");
-    setDistrictId("");
     setProvinces([]);
     setCities([]);
-    setDistricts([]);
   }
 
   function setProvince(uuid: string) {
     const row = provinces.find((item) => item.uuid === uuid);
-    setDraft((current) => ({
-      ...current,
-      province: row?.name ?? "",
-      city: "",
-      postalCode: "",
-    }));
+    setDraft((current) => ({ ...current, province: row?.name ?? "", city: "" }));
     setProvinceId(uuid);
     setCityId("");
-    setDistrictId("");
     setCities([]);
-    setDistricts([]);
   }
 
   function setCity(uuid: string) {
     const row = cities.find((item) => item.uuid === uuid);
-    setDraft((current) => ({ ...current, city: row?.name ?? "", postalCode: "" }));
+    set("city", row?.name ?? "");
     setCityId(uuid);
-    setDistrictId("");
-    setDistricts([]);
-  }
-
-  function setDistrict(uuid: string) {
-    const row = districts.find((item) => item.uuid === uuid);
-    setDraft((current) => ({ ...current, postalCode: row?.postal_code ?? "" }));
-    setDistrictId(uuid);
   }
 
   function pickPhoto(event: ChangeEvent<HTMLInputElement>) {
@@ -251,6 +221,22 @@ export function UserForm({
     const reader = new FileReader();
     reader.onload = () => setPhotoPreview(String(reader.result));
     reader.readAsDataURL(file);
+    if (mode !== "edit" || !id) return;
+    setPhotoUploading(true);
+    const upload = isSelf
+      ? AUTH_SERVICES.uploadMyPhoto(file)
+      : USER_SERVICES.uploadPhoto(id, file);
+    upload
+      .then(async () => {
+        await Promise.all([isSelf ? refreshSession() : Promise.resolve(), refresh()]);
+        toast.success("Profile photo updated");
+      })
+      .catch((cause) => {
+        toast.error(
+          cause instanceof Error ? cause.message : "Unable to upload photo.",
+        );
+      })
+      .finally(() => setPhotoUploading(false));
   }
 
   async function submit(event: FormEvent) {
@@ -340,9 +326,10 @@ export function UserForm({
                   <Button
                     type="button"
                     variant="secondary"
+                    disabled={photoUploading}
                     onClick={() => photoInputRef.current?.click()}
                   >
-                    Choose Photo
+                    {photoUploading ? "Uploading..." : "Choose Photo"}
                   </Button>
                   <input
                     ref={photoInputRef}
@@ -353,21 +340,21 @@ export function UserForm({
                   />
                 </div>
                 <p className="muted photo-uploader-note">
-                  Not yet supported by the connected API — shown as a preview
-                  only, not saved.
+                  {mode === "edit"
+                    ? "Uploaded and saved when you pick a file."
+                    : "Save the user first, then open Edit User to set a photo."}
                 </p>
               </Field>
             </div>
-            <Field label="User ID">
-              <Input value={draft.id} readOnly placeholder="Generated on save" />
-            </Field>
-            <Field label="Username">
-              <Input
-                placeholder="Leave blank to auto-generate"
-                value={draft.username ?? ""}
-                onChange={(event) => set("username", event.target.value)}
-              />
-            </Field>
+            <div className="form-grid-span-2">
+              <Field label="Username">
+                <Input
+                  placeholder="Leave blank to auto-generate"
+                  value={draft.username ?? ""}
+                  onChange={(event) => set("username", event.target.value)}
+                />
+              </Field>
+            </div>
             <Field label="First Name *">
               <Input
                 required
@@ -489,27 +476,13 @@ export function UserForm({
                 placeholder={provinceId ? "Search city" : "Select province first"}
               />
             </Field>
-            <Field label="District">
-              <SelectField
-                items={cityId ? districts : []}
-                value={districtId}
-                onChange={setDistrict}
-                getId={(district) => district.uuid}
-                getLabel={(district) => district.name}
-                emptyLabel="No districts available for this city"
-                placeholder={cityId ? "Search district" : "Select city first"}
-              />
-            </Field>
             <Field label="Postal / ZIP Code">
               <Input
-                readOnly
                 value={draft.postalCode ?? ""}
-                placeholder="Derived from selected district"
+                onChange={(event) => set("postalCode", event.target.value)}
+                placeholder="e.g. 12345"
               />
-              <p className="muted">
-                Filled in from the district you pick. Not sent to the server
-                yet.
-              </p>
+              <p className="muted">Not yet supported by the connected API — not saved.</p>
             </Field>
           </div>
         </fieldset>
@@ -519,7 +492,7 @@ export function UserForm({
           </p>
         )}
         <div className="form-actions">
-          <Link className="link-button secondary" href={backPath}>
+          <Link className={buttonVariants({ variant: "secondary" })} href={backPath}>
             Cancel
           </Link>
           <Button type="submit" disabled={pending}>

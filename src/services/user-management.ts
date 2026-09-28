@@ -1,4 +1,4 @@
-﻿import { apiClient } from "@/lib/api-client";
+﻿import { apiClient, uploadToPresignedUrl } from "@/lib/api-client";
 import { ENDPOINTS } from "@/lib/constants/endpoints";
 import { buildUrl } from "./common";
 import type {
@@ -9,6 +9,7 @@ import type {
   UserPayload,
   UserUpdatePayload,
   UserRecord,
+  PhotoPresignResponse,
 } from "@/types/api";
 export const USER_SERVICES = {
   list: (
@@ -38,4 +39,16 @@ export const USER_SERVICES = {
     apiClient.delete<RecordResponse<UserRecord>>(
       ENDPOINTS.users.role(id, role),
     ),
+  uploadPhoto: async (id: string, file: File) => {
+    const presigned = await apiClient.post<PhotoPresignResponse>(
+      ENDPOINTS.users.photoPresign(id),
+      { filename: file.name, content_type: file.type },
+    );
+    await uploadToPresignedUrl(
+      presigned.data.upload_url,
+      presigned.data.headers,
+      file,
+    );
+    return presigned.data.photo_url;
+  },
 };

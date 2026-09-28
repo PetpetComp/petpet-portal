@@ -18,7 +18,7 @@ export const navigation = [
     icon: CalendarDays,
     items: [
       { label: "Event Management", href: ROUTES.eventManagement.root },
-      { label: "Create Event", href: ROUTES.eventManagement.create },
+      { label: "Organization Management", href: ROUTES.organizationManagement },
       {
         label: "Event Registration",
         href: ROUTES.eventManagement.eventRegistration,

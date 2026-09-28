@@ -13,8 +13,14 @@ import { EVENT_SERVICES } from "@/services/event-management";
 import { COMPETITION_SERVICES } from "@/services/competition";
 import { ENTRY_SERVICES } from "@/services/event-operations";
 import { ORGANIZATION_SERVICES } from "@/services/organization";
+import { USER_SERVICES } from "@/services/user-management";
+import { PET_SERVICES } from "@/services/pet-management";
+import { SPONSOR_SERVICES } from "@/services/sponsorship-brand";
 import { collectRows } from "@/services/common";
+import { usePaginatedList } from "@/hooks/use-paginated-list";
+import { mapRecord } from "@/services/backend-records";
 import type { Row } from "@/services/backend-records";
+import type { ListParams, ListResponse } from "@/types/api";
 import { formatDate } from "@/lib/format/date";
 import { RecordRelations, OrganizationSelect } from "./record-relations";
 import { CompetitionSettings } from "./competition-settings";
@@ -508,9 +514,32 @@ export function ApiWorkspace({
     collection === "competitions"
       ? "/event-management/" + eventId + "/competitions"
       : info.path;
-  const records = data[collection].filter(
-    (row) => !eventId || row.eventId === eventId,
+  // These collections have a flat, top-level backend list endpoint, so their
+  // list view can page/search on the server. The rest (competitions,
+  // registrations, partners, committee) only exist behind per-event or
+  // per-competition endpoints and stay on the fully preloaded provider data.
+  const serviceList: Partial<
+    Record<Supported, (params: ListParams) => Promise<ListResponse>>
+  > = {
+    users: USER_SERVICES.list,
+    pets: PET_SERVICES.list,
+    brands: SPONSOR_SERVICES.list,
+    events: EVENT_SERVICES.list,
+  };
+  const isPaginated = collection in serviceList;
+  const list = usePaginatedList<Row, PortalRecord>(
+    serviceList[collection] ??
+      (async () => ({ success: true, message: "OK", data: [] })),
+    (row) => mapRecord(collection, row),
+    query,
+    (row, q) =>
+      Object.values(row).join(" ").toLowerCase().includes(q.toLowerCase()),
+    isPaginated && currentMode === "list",
   );
+  const records =
+    isPaginated && currentMode === "list"
+      ? list.rows
+      : data[collection].filter((row) => !eventId || row.eventId === eventId);
   const [periodsByCompetition, setPeriodsByCompetition] = useState<
     Record<string, Row[]>
   >({});
@@ -709,16 +738,40 @@ export function ApiWorkspace({
               aria-label={"Search " + info.title}
               placeholder="Search records..."
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                if (isPaginated) list.setPage(0);
+              }}
             />
           </div>
+          {isPaginated && list.error && (
+            <p role="alert" className="form-error">
+              {list.error}
+            </p>
+          )}
           <DataTable
-            rows={records.filter((row) =>
-              Object.values(row)
-                .join(" ")
-                .toLowerCase()
-                .includes(query.toLowerCase()),
-            )}
+            rows={
+              isPaginated
+                ? records
+                : records.filter((row) =>
+                    Object.values(row)
+                      .join(" ")
+                      .toLowerCase()
+                      .includes(query.toLowerCase()),
+                  )
+            }
+            server={
+              isPaginated
+                ? {
+                    page: list.page,
+                    pageSize: list.pageSize,
+                    total: list.total,
+                    onPageChange: list.setPage,
+                    onPageSizeChange: list.setPageSize,
+                    loading: list.loading,
+                  }
+                : undefined
+            }
             label={info.title}
             columns={info.columns.map((key) => ({
               key,
@@ -790,6 +843,7 @@ export function ApiWorkspace({
                         setDeleteError("");
                         try {
                           await remove(collection, row.id);
+                          if (isPaginated) list.reload();
                           toast.success(info.singular + " deleted");
                         } catch (cause) {
                           setDeleteError(

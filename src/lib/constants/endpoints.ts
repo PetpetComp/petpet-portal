@@ -1,10 +1,12 @@
-﻿const id = (value: string) => encodeURIComponent(value);
+const id = (value: string) => encodeURIComponent(value);
 export const ENDPOINTS = {
   auth: {
     login: "/auth/login",
     register: "/auth/register",
     logout: "/auth/logout",
     me: "/auth/me",
+    mePhotoPresign: "/auth/me/photo/presign",
+    sso: "/auth/sso",
     roles: "/auth/roles",
     permissions: "/auth/permissions",
   },
@@ -14,6 +16,7 @@ export const ENDPOINTS = {
     roles: (uuid: string) => `/users/${id(uuid)}/roles`,
     role: (uuid: string, code: string) =>
       `/users/${id(uuid)}/roles/${id(code)}`,
+    photoPresign: (uuid: string) => `/users/${id(uuid)}/photo/presign`,
   },
   pets: { list: "/pets", detail: (uuid: string) => `/pets/${id(uuid)}` },
   events: {
@@ -45,7 +48,10 @@ export const ENDPOINTS = {
     pic: (uuid: string, userId: string) =>
       `/sponsors/${id(uuid)}/pics/${id(userId)}`,
   },
-  organizations: { list: "/organizations" },
+  organizations: {
+    list: "/organizations",
+    detail: (uuid: string) => `/organizations/${id(uuid)}`,
+  },
   master: {
     species: "/master/species",
     petMorphs: "/master/pet-morphs",

@@ -60,6 +60,7 @@ async function readSession(): Promise<AuthState> {
 }
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
+  loginWithSso: (ssoToken: string) => Promise<void>;
   register: (payload: SignUpPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
@@ -111,6 +112,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw cause;
     }
   }
+  async function loginWithSso(ssoToken: string) {
+    setState((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const response = await AUTH_SERVICES.ssoExchange(ssoToken);
+      setAuthToken(response.data.access_token, response.data.expires_in);
+      const profile = await AUTH_SERVICES.me();
+      setState(authenticated(profile.data, response.data.access_token));
+      router.replace("/competition");
+      router.refresh();
+    } catch (cause) {
+      removeAuthToken();
+      setState({
+        ...anonymous,
+        error: cause instanceof Error ? cause.message : "SSO sign-in failed.",
+      });
+      throw cause;
+    }
+  }
   async function register(payload: SignUpPayload) {
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
@@ -144,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         ...state,
         login,
+        loginWithSso,
         register,
         logout,
         refreshSession,

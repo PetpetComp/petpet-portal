@@ -97,6 +97,26 @@ async function request<T>(
     throw new ApiError(502, "The server returned an invalid response.");
   return data as T;
 }
+export async function uploadToPresignedUrl(
+  uploadUrl: string,
+  headers: Record<string, string>,
+  file: File,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(uploadUrl, {
+      method: "PUT",
+      headers,
+      body: file,
+      signal: AbortSignal.timeout(60000),
+    });
+  } catch {
+    throw new ApiError(0, "Network error while uploading the photo.");
+  }
+  if (!response.ok) {
+    throw new ApiError(response.status, "Unable to upload the photo file.");
+  }
+}
 export const apiClient = {
   get: <T>(endpoint: string, options?: Omit<RequestOptions, "body">) =>
     request<T>(endpoint, { ...options, method: "GET" }),
