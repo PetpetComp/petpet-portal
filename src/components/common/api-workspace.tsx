@@ -9,6 +9,7 @@ import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
 import { PageHeading } from "./page-heading";
 import { DataTable } from "./data-table";
 import { StatusBadge } from "./status-badge";
+import { FilterDrawer } from "./filter-drawer";
 import { usePortalData } from "@/components/providers/portal-data-provider";
 import { useCapabilities } from "@/hooks/use-capabilities";
 import { EVENT_SERVICES } from "@/services/event-management";
@@ -549,6 +550,8 @@ export function ApiWorkspace({
   const capabilities = useCapabilities();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [draftStatus, setDraftStatus] = useState("");
   const [inlineMode, setInlineMode] = useState<ViewMode>(mode);
   const [selectedId, setSelectedId] = useState(id);
   const [pendingDelete, setPendingDelete] = useState("");
@@ -590,14 +593,19 @@ export function ApiWorkspace({
       ),
   };
   const isPaginated = collection in serviceList;
+  const statusOptions = Array.from(
+    new Set(data[collection].map((row) => row.status).filter(Boolean)),
+  );
   const list = usePaginatedList<Row, PortalRecord>(
     serviceList[collection] ??
       (async () => ({ success: true, message: "OK", data: [] })),
     (row) => mapRecord(collection, row),
     query,
     (row, q) =>
-      Object.values(row).join(" ").toLowerCase().includes(q.toLowerCase()),
+      (!q || Object.values(row).join(" ").toLowerCase().includes(q.toLowerCase())) &&
+      (!statusFilter || row.status === statusFilter),
     isPaginated && currentMode === "list",
+    Boolean(statusFilter),
   );
   const records =
     isPaginated && currentMode === "list"
@@ -806,6 +814,36 @@ export function ApiWorkspace({
                 if (isPaginated) list.setPage(0);
               }}
             />
+            {statusOptions.length > 0 && (
+              <FilterDrawer
+                activeCount={statusFilter ? 1 : 0}
+                onOpen={() => setDraftStatus(statusFilter)}
+                onApply={() => {
+                  setStatusFilter(draftStatus);
+                  if (isPaginated) list.setPage(0);
+                }}
+                onReset={() => {
+                  setDraftStatus("");
+                  setStatusFilter("");
+                  if (isPaginated) list.setPage(0);
+                }}
+              >
+                <Field label="Status">
+                  <Select
+                    aria-label="Filter by status"
+                    value={draftStatus}
+                    onChange={(event) => setDraftStatus(event.target.value)}
+                  >
+                    <option value="">Semua status</option>
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </FilterDrawer>
+            )}
           </div>
           {isPaginated && list.error && (
             <p role="alert" className="form-error">
@@ -816,11 +854,13 @@ export function ApiWorkspace({
             rows={
               isPaginated
                 ? records
-                : records.filter((row) =>
-                    Object.values(row)
-                      .join(" ")
-                      .toLowerCase()
-                      .includes(query.toLowerCase()),
+                : records.filter(
+                    (row) =>
+                      Object.values(row)
+                        .join(" ")
+                        .toLowerCase()
+                        .includes(query.toLowerCase()) &&
+                      (!statusFilter || row.status === statusFilter),
                   )
             }
             server={

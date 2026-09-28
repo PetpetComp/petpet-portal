@@ -21,6 +21,7 @@ export function usePaginatedList<Raw extends Record<string, unknown>, Row>(
   query: string,
   matches: (row: Row, query: string) => boolean,
   enabled = true,
+  forceFullFetch = false,
 ) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -33,7 +34,7 @@ export function usePaginatedList<Raw extends Record<string, unknown>, Row>(
 
   const fetchCurrentPage = useCallback(async () => {
     const trimmed = query.trim();
-    if (trimmed) {
+    if (trimmed || forceFullFetch) {
       if (!allCache.current) {
         const raw = await collectRows(fetchPage);
         allCache.current = raw.map(mapRow);
@@ -52,7 +53,7 @@ export function usePaginatedList<Raw extends Record<string, unknown>, Row>(
     return { items: items.map(mapRow), total: serverTotal };
     // fetchPage/mapRow/matches are supplied by the caller as stable references.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, query]);
+  }, [page, pageSize, query, forceFullFetch]);
 
   useEffect(() => {
     if (!enabled) return;
