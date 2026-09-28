@@ -61,7 +61,11 @@ async function readSession(): Promise<AuthState> {
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string, intent?: string) => Promise<void>;
   loginWithSso: (ssoToken: string) => Promise<void>;
-  register: (payload: SignUpPayload, intent?: string) => Promise<void>;
+  register: (
+    payload: SignUpPayload,
+    intent?: string,
+    onAuthenticated?: (userId: string) => Promise<void>,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
   hasRole: (role: string | string[]) => boolean;
@@ -135,13 +139,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw cause;
     }
   }
-  async function register(payload: SignUpPayload, intent?: string) {
+  async function register(
+    payload: SignUpPayload,
+    intent?: string,
+    onAuthenticated?: (userId: string) => Promise<void>,
+  ) {
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
       const response = await AUTH_SERVICES.register(payload);
       setAuthToken(response.data.access_token, response.data.expires_in);
       const profile = await AUTH_SERVICES.me();
       setState(authenticated(profile.data, response.data.access_token));
+      if (onAuthenticated) {
+        try {
+          await onAuthenticated(profile.data.uuid);
+        } catch {
+          // The account was already created; a failed follow-up step (e.g.
+          // creating an organization or sponsor profile) shouldn't roll back
+          // a successful registration or sign the new account back out.
+        }
+      }
       router.replace(destinationFor(intent));
       router.refresh();
     } catch (cause) {

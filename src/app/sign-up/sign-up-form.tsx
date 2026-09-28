@@ -4,8 +4,10 @@ import { useState, type FormEvent } from "react";
 import {
   ArrowRight,
   AtSign,
+  Building2,
   Eye,
   EyeOff,
+  Handshake,
   LoaderCircle,
   LockKeyhole,
   Mail,
@@ -13,14 +15,31 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { ORGANIZATION_SERVICES } from "@/services/organization";
+import { SPONSOR_SERVICES } from "@/services/sponsorship-brand";
 
 import styles from "./sign-up.module.css";
+
+const intentCopy = {
+  organizer: {
+    label: "Nama organisasi",
+    placeholder: "Petpet Community",
+    icon: Building2,
+  },
+  sponsor: {
+    label: "Nama brand",
+    placeholder: "Whiskas Indonesia",
+    icon: Handshake,
+  },
+} as const;
 
 export function SignUpForm({ intent }: { intent?: string }) {
   const { register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const extra =
+    intent === "organizer" || intent === "sponsor" ? intentCopy[intent] : null;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,12 +51,17 @@ export function SignUpForm({ intent }: { intent?: string }) {
     const email = String(data.get("email") ?? "").trim();
     const password = String(data.get("password") ?? "");
     const confirmPassword = String(data.get("confirm_password") ?? "");
+    const groupName = String(data.get("group_name") ?? "").trim();
     if (!firstName || !username || !email || !password) {
       setError("Please fill in all required fields.");
       return;
     }
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
+      return;
+    }
+    if (extra && !groupName) {
+      setError(`Please enter your ${extra.label.toLowerCase()}.`);
       return;
     }
     setError("");
@@ -52,6 +76,23 @@ export function SignUpForm({ intent }: { intent?: string }) {
           password,
         },
         intent,
+        intent === "organizer"
+          ? async () => {
+              await ORGANIZATION_SERVICES.create({
+                name: groupName,
+                photo: "",
+                campaign: "",
+                picIds: [],
+              });
+            }
+          : intent === "sponsor"
+            ? async (userId) => {
+                const created = await SPONSOR_SERVICES.create({
+                  brand_name: groupName,
+                });
+                await SPONSOR_SERVICES.addPic(created.data.uuid, userId);
+              }
+            : undefined,
       );
     } catch (cause) {
       setError(
@@ -129,6 +170,23 @@ export function SignUpForm({ intent }: { intent?: string }) {
           />
         </div>
       </div>
+      {extra && (
+        <div className={styles.field}>
+          <label htmlFor="group_name">{extra.label}</label>
+          <div className={styles.inputWrap}>
+            <extra.icon size={18} aria-hidden="true" />
+            <input
+              id="group_name"
+              name="group_name"
+              type="text"
+              placeholder={extra.placeholder}
+              required
+              disabled={pending}
+              aria-describedby={error ? "sign-up-error" : undefined}
+            />
+          </div>
+        </div>
+      )}
       <div className={styles.field}>
         <label htmlFor="password">Password</label>
         <div className={styles.inputWrap}>
