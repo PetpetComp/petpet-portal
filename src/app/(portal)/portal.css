@@ -567,6 +567,10 @@ tbody tr,
   flex: 1;
   min-width: 190px;
 }
+.toolbar > input {
+  flex: 1;
+  min-width: 190px;
+}
 .toolbar .form-field {
   min-width: 160px;
 }
@@ -841,6 +845,8 @@ tbody tr:hover {
 }
 .filter-trigger {
   position: relative;
+  min-height: 42px !important;
+  border-radius: var(--radius-sm) !important;
 }
 .filter-count-badge {
   display: inline-flex;
