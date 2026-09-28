@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -9,9 +9,10 @@ import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
 import { PageHeading } from "./page-heading";
 import { DataTable } from "./data-table";
 import { usePortalData } from "@/components/providers/portal-data-provider";
+import { useCapabilities } from "@/hooks/use-capabilities";
 import { EVENT_SERVICES } from "@/services/event-management";
 import { COMPETITION_SERVICES } from "@/services/competition";
-import { ENTRY_SERVICES } from "@/services/event-operations";
+import { ENTRY_SERVICES, EVENT_SPONSOR_SERVICES } from "@/services/event-operations";
 import { ORGANIZATION_SERVICES } from "@/services/organization";
 import { USER_SERVICES } from "@/services/user-management";
 import { PET_SERVICES } from "@/services/pet-management";
@@ -477,6 +478,41 @@ export function ApiAction({
     </div>
   );
 }
+function PendingSponsorApplications({ eventId }: { eventId: string }) {
+  const [links, setLinks] = useState<(Row & { id: string })[]>([]);
+  const load = useCallback(async () => {
+    const rows = await collectRows((params) => EVENT_SPONSOR_SERVICES.list(eventId, params));
+    setLinks(rows.map((row) => ({ ...row, id: String(row.uuid) })));
+  }, [eventId]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const pending = links.filter((link) => link.status === "pending");
+  if (pending.length === 0) return null;
+  return (
+    <section className="form-section page-stack">
+      <h2>Pengajuan sponsor</h2>
+      <DataTable
+        label="Sponsor applications"
+        rows={pending}
+        columns={[
+          { key: "sponsor_uuid", label: "Sponsor", value: (row) => String(row.sponsor_uuid ?? "") },
+          { key: "sponsorship_level", label: "Level", value: (row) => String(row.sponsorship_level ?? "") },
+        ]}
+        actions={(row) => (
+          <ApiAction
+            action={async () => {
+              await EVENT_SPONSOR_SERVICES.delete(eventId, String(row.uuid));
+              await load();
+              return null;
+            }}
+            label="Tolak"
+          />
+        )}
+      />
+    </section>
+  );
+}
 export function ApiWorkspace({
   collection,
   mode = "list",
@@ -913,6 +949,7 @@ export function ApiWorkspace({
               />
             </div>
           )}
+          {collection === "events" && <PendingSponsorApplications eventId={record.id} />}
           {collection === "competitions" && (
             <>
               <ApiAction
