@@ -6,6 +6,9 @@ export const ROUTES = {
     resetPassword: "/reset-password",
   },
   dashboard: "/dashboard",
+  landing: "/",
+  competitorHome: "/my-competitions",
+  sponsorHome: "/sponsor-home",
   eventManagement: {
     root: "/event-management",
     create: "/event-management/create",

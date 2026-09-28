@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 import styles from "./login.module.css";
 
-export function LoginForm() {
+export function LoginForm({ intent }: { intent?: string }) {
   const { login } = useAuth();
   const { signIn } = useSignIn();
   const [showPassword, setShowPassword] = useState(false);
@@ -58,7 +58,7 @@ export function LoginForm() {
     setError("");
     setPending(true);
     try {
-      await login(email, password);
+      await login(email, password, intent);
     } catch (cause) {
       setError(
         cause instanceof Error

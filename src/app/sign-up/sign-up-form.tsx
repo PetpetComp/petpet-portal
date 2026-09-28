@@ -16,7 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 import styles from "./sign-up.module.css";
 
-export function SignUpForm() {
+export function SignUpForm({ intent }: { intent?: string }) {
   const { register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
@@ -43,13 +43,16 @@ export function SignUpForm() {
     setError("");
     setPending(true);
     try {
-      await register({
-        first_name: firstName,
-        last_name: lastName || undefined,
-        username,
-        email,
-        password,
-      });
+      await register(
+        {
+          first_name: firstName,
+          last_name: lastName || undefined,
+          username,
+          email,
+          password,
+        },
+        intent,
+      );
     } catch (cause) {
       setError(
         cause instanceof Error
