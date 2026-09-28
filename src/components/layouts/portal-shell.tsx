@@ -19,12 +19,21 @@ import { useSidebarContext } from "./sidebar/sidebar-context";
 
 import { usePortalData } from "@/components/providers/portal-data-provider";
 import { useAuth } from "@/hooks/use-auth";
+import { useCapabilities } from "@/hooks/use-capabilities";
 import { toast } from "sonner";
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const capabilities = useCapabilities();
+  const visible = navigation.filter((group) => {
+    if (capabilities.isSuperAdmin) return true;
+    if (group.capability === "organizer") return capabilities.isOrganizer;
+    if (group.capability === "sponsor") return capabilities.isSponsor;
+    if (group.capability === "superAdmin") return false;
+    return true;
+  });
   return (
     <nav className="sidebar-nav" aria-label="Main navigation">
-      {navigation.map((group) => {
+      {visible.map((group) => {
         const Icon = group.icon;
         if (group.href)
           return (
