@@ -14,8 +14,13 @@ import {
   Mail,
   Phone,
   MapPin,
+  UserPlus,
+  LogIn,
+  Rocket,
 } from "lucide-react";
 import { UpcomingEvents } from "./_components/upcoming-events";
+import { Reveal } from "./_components/reveal";
+import { NavBar } from "./_components/nav-bar";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = { title: "Petpet Competition Portal" };
@@ -77,9 +82,28 @@ const features = [
   },
 ];
 
+const steps = [
+  {
+    icon: UserPlus,
+    title: "1. Pilih peran & daftar",
+    description: "Pilih mau ikut lomba, kelola event, atau jadi sponsor.",
+  },
+  {
+    icon: LogIn,
+    title: "2. Masuk ke akunmu",
+    description: "Satu akun buat semua aktivitas — masuk kapan aja.",
+  },
+  {
+    icon: Rocket,
+    title: "3. Mulai jalan",
+    description: "Daftarin pet, buka event, atau ajukan sponsorship.",
+  },
+];
+
 export default function LandingPage() {
   return (
     <main className={styles.page}>
+      <NavBar />
       <section className={styles.hero} aria-label="Petpet Competition Portal">
         <PawPrint className={`${styles.paw} ${styles.paw1}`} aria-hidden="true" />
         <PawPrint className={`${styles.paw} ${styles.paw2}`} aria-hidden="true" />
@@ -118,34 +142,59 @@ export default function LandingPage() {
         ))}
       </section>
 
-      <section className={styles.section} aria-label="Tentang Petpet">
-        <h2 className={styles.sectionTitle}>Apa itu Petpet?</h2>
-        <p className={styles.sectionSubtitle}>
-          Petpet Competition Portal adalah platform buat komunitas pecinta hewan:
-          penyelenggara bisa bikin dan kelola event/kompetisi dari awal sampai
-          selesai, peserta bisa daftarin hewan peliharaannya ke lomba yang
-          dibuka, dan sponsor bisa nemuin event yang cocok buat brand mereka.
-        </p>
-      </section>
+      <Reveal>
+        <section className={styles.section} aria-label="Tentang Petpet">
+          <h2 className={styles.sectionTitle}>Apa itu Petpet?</h2>
+          <p className={styles.sectionSubtitle}>
+            Petpet Competition Portal adalah platform buat komunitas pecinta hewan:
+            penyelenggara bisa bikin dan kelola event/kompetisi dari awal sampai
+            selesai, peserta bisa daftarin hewan peliharaannya ke lomba yang
+            dibuka, dan sponsor bisa nemuin event yang cocok buat brand mereka.
+          </p>
+        </section>
+      </Reveal>
 
-      <section className={styles.section} aria-label="Fitur Petpet">
-        <h2 className={styles.sectionTitle}>Fitur yang tersedia</h2>
-        <div className={styles.featureGrid}>
-          {features.map((feature) => (
-            <div key={feature.title} className={styles.featureCard}>
-              <span className={styles.featureIcon}>
-                <feature.icon size={20} aria-hidden="true" />
-              </span>
-              <div>
-                <h3>{feature.title}</h3>
-                <p>{feature.description}</p>
+      <Reveal>
+        <section id="cara-kerja" className={styles.section} aria-label="Cara kerja">
+          <h2 className={styles.sectionTitle}>Cara kerja</h2>
+          <div className={styles.stepGrid}>
+            {steps.map((step) => (
+              <div key={step.title} className={styles.stepCard}>
+                <span className={styles.stepIcon}>
+                  <step.icon size={20} aria-hidden="true" />
+                </span>
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      </Reveal>
 
-      <UpcomingEvents />
+      <Reveal>
+        <section id="fitur" className={styles.section} aria-label="Fitur Petpet">
+          <h2 className={styles.sectionTitle}>Fitur yang tersedia</h2>
+          <div className={styles.featureGrid}>
+            {features.map((feature) => (
+              <div key={feature.title} className={styles.featureCard}>
+                <span className={styles.featureIcon}>
+                  <feature.icon size={20} aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </Reveal>
+
+      <Reveal>
+        <div id="event">
+          <UpcomingEvents />
+        </div>
+      </Reveal>
 
       <footer className={styles.siteFooter}>
         <div className={styles.footerGrid}>
