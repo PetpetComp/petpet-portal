@@ -11,7 +11,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/form-controls";
-import { SelectField } from "@/components/common/select-field";
+import { SelectField, MultiSelectField } from "@/components/common/select-field";
 import { usePortalData } from "@/components/providers/portal-data-provider";
 import { useCapabilities } from "@/hooks/use-capabilities";
 import { EVENT_SERVICES } from "@/services/event-management";
@@ -53,6 +53,7 @@ export function EventCreateWizard() {
     !capabilities.isSuperAdmin ? (capabilities.organizationIds[0] ?? "") : "",
   );
   const [newOrganizationName, setNewOrganizationName] = useState("");
+  const [picIds, setPicIds] = useState<string[]>([]);
 
   const myOrganization = capabilities.organizationIds[0]
     ? organizations.find((org) => org.id === capabilities.organizationIds[0])
@@ -116,6 +117,17 @@ export function EventCreateWizard() {
           ? { organization_id: organizationId }
           : { new_organization: { name: newOrganizationName.trim() } }),
       });
+      if (!organizationId && picIds.length > 0) {
+        const createdOrganizationId = String(response.data.organization_uuid ?? "");
+        if (createdOrganizationId) {
+          await ORGANIZATION_SERVICES.update(createdOrganizationId, {
+            name: newOrganizationName.trim(),
+            photo: "",
+            campaign: "",
+            picIds,
+          });
+        }
+      }
       await refresh();
       toast.success("Event created");
       router.push(BASE_PATH + "/" + response.data.uuid);
@@ -249,13 +261,28 @@ export function EventCreateWizard() {
                 />
               </Field>
               {!organizationId && (
-                <Field label="Or create organization named">
-                  <Input
-                    value={newOrganizationName}
-                    onChange={(event) => setNewOrganizationName(event.target.value)}
-                    placeholder="New organization name"
-                  />
-                </Field>
+                <>
+                  <Field label="Or create organization named">
+                    <Input
+                      value={newOrganizationName}
+                      onChange={(event) => setNewOrganizationName(event.target.value)}
+                      placeholder="New organization name"
+                    />
+                  </Field>
+                  <Field label="PIC (optional)">
+                    <MultiSelectField
+                      items={data.users}
+                      selectedIds={picIds}
+                      onAdd={(id) => setPicIds((current) => [...new Set([...current, id])])}
+                      onRemove={(id) => setPicIds((current) => current.filter((item) => item !== id))}
+                      getId={(user) => user.id}
+                      getLabel={(user) => user.name}
+                      getDescription={(user) => [user.email, user.phone].filter(Boolean).join(" · ")}
+                      placeholder="Search PIC by name, email, or phone"
+                      emptyLabel="No matching users found."
+                    />
+                  </Field>
+                </>
               )}
             </>
           ) : myOrganization ? (
@@ -279,6 +306,19 @@ export function EventCreateWizard() {
                   value={newOrganizationName}
                   onChange={(event) => setNewOrganizationName(event.target.value)}
                   placeholder="Your organization's name"
+                />
+              </Field>
+              <Field label="PIC (optional)">
+                <MultiSelectField
+                  items={data.users}
+                  selectedIds={picIds}
+                  onAdd={(id) => setPicIds((current) => [...new Set([...current, id])])}
+                  onRemove={(id) => setPicIds((current) => current.filter((item) => item !== id))}
+                  getId={(user) => user.id}
+                  getLabel={(user) => user.name}
+                  getDescription={(user) => [user.email, user.phone].filter(Boolean).join(" · ")}
+                  placeholder="Search PIC by name, email, or phone"
+                  emptyLabel="No matching users found."
                 />
               </Field>
             </>
@@ -330,6 +370,17 @@ export function EventCreateWizard() {
               <dt>Organizer</dt>
               <dd>{selectedOrganizationName || myOrganization?.name}</dd>
             </div>
+            {!organizationId && picIds.length > 0 && (
+              <div>
+                <dt>PIC</dt>
+                <dd>
+                  {picIds
+                    .map((id) => data.users.find((user) => user.id === id)?.name)
+                    .filter(Boolean)
+                    .join(", ")}
+                </dd>
+              </div>
+            )}
           </dl>
           {error && (
             <p role="alert" className="form-error">

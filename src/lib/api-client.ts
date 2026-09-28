@@ -6,6 +6,20 @@ const BASE_URL = (
   process.env.NEXT_PUBLIC_BACKEND_BASE_URL ||
   "https://petpet-service.onrender.com/api"
 ).replace(/\/$/, "");
+function formDataToBody(form: FormData): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const [key, value] of form.entries()) {
+    if (key.endsWith("[]")) {
+      const cleanKey = key.slice(0, -2);
+      const list = (body[cleanKey] as unknown[] | undefined) ?? [];
+      list.push(value);
+      body[cleanKey] = list;
+    } else {
+      body[key] = value;
+    }
+  }
+  return body;
+}
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: Record<string, unknown> | FormData;
 };
@@ -39,7 +53,7 @@ async function request<T>(
   if (process.env.NEXT_PUBLIC_USE_MOCK_BACKEND === "true") {
     const body =
       options.body instanceof FormData
-        ? Object.fromEntries(options.body.entries())
+        ? formDataToBody(options.body)
         : options.body;
     return mockRequest<T>(options.method ?? "GET", endpoint, body);
   }

@@ -202,7 +202,16 @@ const routes: Route[] = [
     pattern: "/organizations/:uuid",
     handler: (params, body) => {
       const org = findOrThrow(store.organizations, params.uuid, "Organization");
-      Object.assign(org, body);
+      const { pic_ids, ...rest } = body ?? {};
+      Object.assign(org, rest);
+      if (Array.isArray(pic_ids)) {
+        org.pics = pic_ids.map((userId) => {
+          const existing = org.pics.find((pic) => pic.user_uuid === userId);
+          if (existing) return existing;
+          const user = store.users.find((item) => item.uuid === userId);
+          return { uuid: nextUuid(), name: user?.first_name ?? "PIC", user_uuid: String(userId) };
+        });
+      }
       return org;
     },
   },
