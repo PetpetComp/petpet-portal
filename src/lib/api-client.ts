@@ -1,5 +1,6 @@
 import { getAuthToken, removeAuthToken } from "@/lib/auth-cookie";
 import { ENDPOINTS } from "@/lib/constants/endpoints";
+import { mockRequest } from "@/lib/mocks/mock-request";
 
 const BASE_URL = (
   process.env.NEXT_PUBLIC_BACKEND_BASE_URL ||
@@ -35,6 +36,13 @@ async function request<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
+  if (process.env.NEXT_PUBLIC_USE_MOCK_BACKEND === "true") {
+    return mockRequest<T>(
+      options.method ?? "GET",
+      endpoint,
+      options.body instanceof FormData ? undefined : options.body,
+    );
+  }
   const token = getAuthToken();
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
