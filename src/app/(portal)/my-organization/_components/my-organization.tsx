@@ -1,21 +1,26 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Building2, Mail, Phone, Users } from "lucide-react";
+import { Building2, Mail, Pencil, Phone, Users } from "lucide-react";
 import { PageHero } from "@/components/common/page-hero";
 import { EmptyState } from "@/components/common/empty-state";
+import { Button } from "@/components/ui/button";
 import { usePortalData } from "@/components/providers/portal-data-provider";
 import { useCapabilities } from "@/hooks/use-capabilities";
 import { ORGANIZATION_SERVICES, mapOrganization } from "@/services/organization";
-import type { Organization } from "@/types/organization";
+import { ROUTES } from "@/lib/constants/routes";
+import { OrganizationForm } from "@/app/(portal)/organization-management/_components/organization-form";
+import type { Organization, OrganizationDraft } from "@/types/organization";
+import type { PortalRecord } from "@/types/portal";
 import "./my-organization.css";
 
 export function MyOrganization() {
   const capabilities = useCapabilities();
-  const { data } = usePortalData();
+  const { data, save } = usePortalData();
   const organizationId = capabilities.organizationIds[0] ?? null;
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(Boolean(organizationId));
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -36,6 +41,13 @@ export function MyOrganization() {
     };
   }, [organizationId]);
 
+  async function handleSave(draft: OrganizationDraft) {
+    if (!organizationId) return;
+    const response = await ORGANIZATION_SERVICES.update(organizationId, draft);
+    setOrganization(mapOrganization(response.data));
+    setEditing(false);
+  }
+
   if (loading) return <p role="status">Memuat organisasi...</p>;
   if (error) return <p role="alert">{error}</p>;
   if (!organizationId || !organization)
@@ -46,6 +58,19 @@ export function MyOrganization() {
       />
     );
 
+  if (editing)
+    return (
+      <OrganizationForm
+        organization={organization}
+        users={data.users}
+        userError={undefined}
+        onSave={handleSave}
+        onCreateUser={(record: PortalRecord) => save("users", record)}
+        backHref={ROUTES.myOrganization}
+        backLabel="My Organization"
+      />
+    );
+
   return (
     <div className="my-organization">
       <PageHero
@@ -53,6 +78,12 @@ export function MyOrganization() {
         title={organization.name}
         description="Anggota (PIC) yang terdaftar di organisasi ini."
       />
+      <div className="my-organization-actions">
+        <Button onClick={() => setEditing(true)}>
+          <Pencil size={16} aria-hidden="true" />
+          Kelola PIC
+        </Button>
+      </div>
       {organization.pics.length === 0 ? (
         <EmptyState icon={Users} message="Belum ada PIC yang terdaftar di organisasi ini." />
       ) : (

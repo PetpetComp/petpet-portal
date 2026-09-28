@@ -18,12 +18,16 @@ export function OrganizationForm({
   userError,
   onSave,
   onCreateUser,
+  backHref = "/organization-management",
+  backLabel = "Organization Management",
 }: {
   organization?: Organization;
   users: PortalRecord[];
   userError?: string;
   onSave: (draft: OrganizationDraft) => Promise<void>;
   onCreateUser: (user: PortalRecord) => Promise<PortalRecord>;
+  backHref?: string;
+  backLabel?: string;
 }) {
   const [draft, setDraft] = useState<OrganizationDraft>({
     name: organization?.name ?? "",
@@ -129,8 +133,8 @@ export function OrganizationForm({
       <Breadcrumb
         items={[
           {
-            label: "Organization Management",
-            href: "/organization-management",
+            label: backLabel,
+            href: backHref,
           },
           { label: title },
         ]}
@@ -314,7 +318,7 @@ export function OrganizationForm({
         <div className="form-actions">
           <Link
             className={buttonVariants({ variant: "secondary" })}
-            href="/organization-management"
+            href={backHref}
           >
             Cancel
           </Link>
