@@ -481,16 +481,33 @@ export function ApiAction({
 function PendingSponsorApplications({ eventId }: { eventId: string }) {
   const [links, setLinks] = useState<(Row & { id: string })[]>([]);
   const [reloadToken, setReloadToken] = useState(0);
+  const [loadError, setLoadError] = useState("");
   useEffect(() => {
     let active = true;
-    collectRows((params) => EVENT_SPONSOR_SERVICES.list(eventId, params)).then((rows) => {
-      if (active) setLinks(rows.map((row) => ({ ...row, id: String(row.uuid) })));
-    });
+    collectRows((params) => EVENT_SPONSOR_SERVICES.list(eventId, params))
+      .then((rows) => {
+        if (active) {
+          setLoadError("");
+          setLinks(rows.map((row) => ({ ...row, id: String(row.uuid) })));
+        }
+      })
+      .catch((cause) => {
+        if (active)
+          setLoadError(
+            cause instanceof Error ? cause.message : "Unable to load sponsor applications.",
+          );
+      });
     return () => {
       active = false;
     };
   }, [eventId, reloadToken]);
   const pending = links.filter((link) => link.status === "pending");
+  if (loadError)
+    return (
+      <section className="form-section page-stack">
+        <p role="alert">{loadError}</p>
+      </section>
+    );
   if (pending.length === 0) return null;
   return (
     <section className="form-section page-stack">

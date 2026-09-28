@@ -26,21 +26,28 @@ export function SponsorHome() {
   const [events, setEvents] = useState<IdRow[]>([]);
   const [applications, setApplications] = useState<Row[]>([]);
   const [reloadToken, setReloadToken] = useState(0);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     if (!sponsorId) return;
     let active = true;
-    collectRows(EVENT_SERVICES.list).then((loadedEvents) => {
-      return Promise.all(
-        loadedEvents.map((event) =>
-          collectRows((params) => EVENT_SPONSOR_SERVICES.list(String(event.uuid), params)),
-        ),
-      ).then((linksByEvent) => {
-        if (!active) return;
-        setEvents(loadedEvents.map(withId));
-        setApplications(linksByEvent.flat().filter((link) => link.sponsor_uuid === sponsorId));
+    collectRows(EVENT_SERVICES.list)
+      .then((loadedEvents) =>
+        Promise.all(
+          loadedEvents.map((event) =>
+            collectRows((params) => EVENT_SPONSOR_SERVICES.list(String(event.uuid), params)),
+          ),
+        ).then((linksByEvent) => {
+          if (!active) return;
+          setLoadError("");
+          setEvents(loadedEvents.map(withId));
+          setApplications(linksByEvent.flat().filter((link) => link.sponsor_uuid === sponsorId));
+        }),
+      )
+      .catch((cause) => {
+        if (active)
+          setLoadError(cause instanceof Error ? cause.message : "Unable to load events.");
       });
-    });
     return () => {
       active = false;
     };
@@ -92,6 +99,7 @@ export function SponsorHome() {
   return (
     <div className="page-stack">
       <PageHeading title="Event yang Dibuka untuk Sponsor" />
+      {loadError && <p role="alert">{loadError}</p>}
       <DataTable
         label="Events"
         rows={events}

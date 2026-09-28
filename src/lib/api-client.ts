@@ -37,11 +37,11 @@ async function request<T>(
   options: RequestOptions = {},
 ): Promise<T> {
   if (process.env.NEXT_PUBLIC_USE_MOCK_BACKEND === "true") {
-    return mockRequest<T>(
-      options.method ?? "GET",
-      endpoint,
-      options.body instanceof FormData ? undefined : options.body,
-    );
+    const body =
+      options.body instanceof FormData
+        ? Object.fromEntries(options.body.entries())
+        : options.body;
+    return mockRequest<T>(options.method ?? "GET", endpoint, body);
   }
   const token = getAuthToken();
   const headers = new Headers(options.headers);

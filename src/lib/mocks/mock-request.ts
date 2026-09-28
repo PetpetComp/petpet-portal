@@ -176,6 +176,23 @@ const routes: Route[] = [
     handler: (_params, _body, query) => paginate(store.organizations, query),
   },
   {
+    method: "POST",
+    pattern: "/organizations",
+    handler: (_params, body) => {
+      const owner = requireSession();
+      const org = {
+        uuid: nextUuid(),
+        name: String(body?.name ?? ""),
+        email: body?.email ? String(body.email) : undefined,
+        phone: body?.phone ? String(body.phone) : undefined,
+        address: body?.address ? String(body.address) : undefined,
+        members: [{ user_uuid: owner.uuid, role: "OWNER" as const }],
+      };
+      store.organizations.push(org);
+      return org;
+    },
+  },
+  {
     method: "GET",
     pattern: "/organizations/:uuid",
     handler: (params) => findOrThrow(store.organizations, params.uuid, "Organization"),

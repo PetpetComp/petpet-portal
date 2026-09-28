@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useClerk, useSignIn, useSignUp } from "@clerk/nextjs";
+import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -24,7 +25,10 @@ export default function SsoCallbackPage() {
           const token = await clerk.session?.getToken();
           if (!token) throw new Error("Missing Clerk session token.");
           await loginWithSso(token);
-        } catch {
+        } catch (cause) {
+          toast.error(
+            cause instanceof Error ? cause.message : "Unable to sign in with SSO.",
+          );
           router.replace("/sign-in");
         }
       };
