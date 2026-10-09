@@ -28,3 +28,9 @@ export function fromApi(row: ApiEvent): Event {
     status: text(row.status),
   };
 }
+
+/** Backend statuses are upper case; the mock uses title case. Compare via this. */
+export const isPublished = (event: Event) =>
+  event.status.toUpperCase() === "PUBLISHED";
+
+export const EVENT_STATUSES = ["DRAFT", "PUBLISHED", "CANCELLED"] as const;

@@ -14,13 +14,11 @@ import {
   useEvents,
   useOrganizerNames,
 } from "@/domains/events/queries";
-import type { Event } from "@/domains/events/types";
+import { EVENT_STATUSES, type Event } from "@/domains/events/types";
 import { PERMISSION } from "@/lib/auth/permissions";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatDateTime } from "@/lib/format/date";
 import { eventInitials } from "../_lib/event-rules";
-
-const STATUSES = ["DRAFT", "PUBLISHED", "CANCELLED", "COMPLETED"];
 
 export function EventsPage() {
   const [page, setPage] = useState(0); // 0-based, as DataTable's `server` expects
@@ -72,7 +70,7 @@ export function EventsPage() {
     {
       key: "status",
       label: "Status",
-      filter: { type: "select", options: STATUSES },
+      filter: { type: "select", options: [...EVENT_STATUSES] },
       render: (row) => <StatusBadge status={row.status} />,
     },
   ];

@@ -1,4 +1,8 @@
 import { EVENT_SERVICES } from "@/services/event-management";
+import {
+  EVENT_SPONSOR_SERVICES,
+  STAFF_SERVICES,
+} from "@/services/event-operations";
 import { ORGANIZATION_SERVICES } from "@/services/organization";
 import { collectRows, fetchPageRows } from "@/services/common";
 import { fromApi, type ApiEvent, type Event } from "./types";
@@ -21,3 +25,21 @@ export async function organizationNames(): Promise<Record<string, string>> {
   const rows = await collectRows((p) => ORGANIZATION_SERVICES.list(p) as never);
   return Object.fromEntries(rows.map((o) => [String(o.uuid), String(o.name)]));
 }
+
+export async function getEvent(id: string): Promise<Event> {
+  const response = await EVENT_SERVICES.detail(id);
+  return fromApi(response.data as ApiEvent);
+}
+
+/** Only the total is needed, so ask for the smallest page. */
+async function countOf(
+  fetchPage: Parameters<typeof fetchPageRows>[0],
+): Promise<number> {
+  return (await fetchPageRows(fetchPage, { page: 1, per_page: 1 })).total;
+}
+
+export const countEventStaff = (eventId: string) =>
+  countOf((p) => STAFF_SERVICES.forEvent(eventId, p) as never);
+
+export const countEventSponsors = (eventId: string) =>
+  countOf((p) => EVENT_SPONSOR_SERVICES.list(eventId, p) as never);
