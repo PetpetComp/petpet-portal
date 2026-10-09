@@ -3,18 +3,27 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Eye, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import { Eye, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/form-controls";
 import { PageHeading } from "./page-heading";
 import { DataTable } from "./data-table";
+import { StatusBadge } from "./status-badge";
+import { FilterDrawer } from "./filter-drawer";
 import { usePortalData } from "@/components/providers/portal-data-provider";
+import { useCapabilities } from "@/hooks/use-capabilities";
 import { EVENT_SERVICES } from "@/services/event-management";
 import { COMPETITION_SERVICES } from "@/services/competition";
-import { ENTRY_SERVICES } from "@/services/event-operations";
+import { ENTRY_SERVICES, EVENT_SPONSOR_SERVICES } from "@/services/event-operations";
 import { ORGANIZATION_SERVICES } from "@/services/organization";
+import { USER_SERVICES } from "@/services/user-management";
+import { PET_SERVICES } from "@/services/pet-management";
+import { SPONSOR_SERVICES } from "@/services/sponsorship-brand";
 import { collectRows } from "@/services/common";
+import { usePaginatedList } from "@/hooks/use-paginated-list";
+import { mapRecord } from "@/services/backend-records";
 import type { Row } from "@/services/backend-records";
+import type { ListParams, ListResponse } from "@/types/api";
 import { formatDate } from "@/lib/format/date";
 import { RecordRelations, OrganizationSelect } from "./record-relations";
 import { CompetitionSettings } from "./competition-settings";
@@ -471,6 +480,61 @@ export function ApiAction({
     </div>
   );
 }
+function PendingSponsorApplications({ eventId }: { eventId: string }) {
+  const [links, setLinks] = useState<(Row & { id: string })[]>([]);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [loadError, setLoadError] = useState("");
+  useEffect(() => {
+    let active = true;
+    collectRows((params) => EVENT_SPONSOR_SERVICES.list(eventId, params))
+      .then((rows) => {
+        if (active) {
+          setLoadError("");
+          setLinks(rows.map((row) => ({ ...row, id: String(row.uuid) })));
+        }
+      })
+      .catch((cause) => {
+        if (active)
+          setLoadError(
+            cause instanceof Error ? cause.message : "Unable to load sponsor applications.",
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, [eventId, reloadToken]);
+  const pending = links.filter((link) => link.status === "pending");
+  if (loadError)
+    return (
+      <section className="form-section page-stack">
+        <p role="alert">{loadError}</p>
+      </section>
+    );
+  if (pending.length === 0) return null;
+  return (
+    <section className="form-section page-stack">
+      <h2>Pengajuan sponsor</h2>
+      <DataTable
+        label="Sponsor applications"
+        rows={pending}
+        columns={[
+          { key: "sponsor_uuid", label: "Sponsor", value: (row) => String(row.sponsor_uuid ?? "") },
+          { key: "sponsorship_level", label: "Level", value: (row) => String(row.sponsorship_level ?? "") },
+        ]}
+        actions={(row) => (
+          <ApiAction
+            action={async () => {
+              await EVENT_SPONSOR_SERVICES.delete(eventId, String(row.uuid));
+              setReloadToken((token) => token + 1);
+              return null;
+            }}
+            label="Tolak"
+          />
+        )}
+      />
+    </section>
+  );
+}
 export function ApiWorkspace({
   collection,
   mode = "list",
@@ -483,8 +547,11 @@ export function ApiWorkspace({
   eventId?: string;
 }) {
   const { data, errors, remove, refresh } = usePortalData();
+  const capabilities = useCapabilities();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [draftStatus, setDraftStatus] = useState("");
   const [inlineMode, setInlineMode] = useState<ViewMode>(mode);
   const [selectedId, setSelectedId] = useState(id);
   const [pendingDelete, setPendingDelete] = useState("");
@@ -508,9 +575,42 @@ export function ApiWorkspace({
     collection === "competitions"
       ? "/event-management/" + eventId + "/competitions"
       : info.path;
-  const records = data[collection].filter(
-    (row) => !eventId || row.eventId === eventId,
+  // These collections have a flat, top-level backend list endpoint, so their
+  // list view can page/search on the server. The rest (competitions,
+  // registrations, partners, committee) only exist behind per-event or
+  // per-competition endpoints and stay on the fully preloaded provider data.
+  const serviceList: Partial<
+    Record<Supported, (params: ListParams) => Promise<ListResponse>>
+  > = {
+    users: USER_SERVICES.list,
+    pets: PET_SERVICES.list,
+    brands: SPONSOR_SERVICES.list,
+    events: (params) =>
+      EVENT_SERVICES.list(
+        capabilities.isSuperAdmin || capabilities.organizationIds.length === 0
+          ? params
+          : { ...params, organization_id: capabilities.organizationIds[0] },
+      ),
+  };
+  const isPaginated = collection in serviceList;
+  const statusOptions = Array.from(
+    new Set(data[collection].map((row) => row.status).filter(Boolean)),
   );
+  const list = usePaginatedList<Row, PortalRecord>(
+    serviceList[collection] ??
+      (async () => ({ success: true, message: "OK", data: [] })),
+    (row) => mapRecord(collection, row),
+    query,
+    (row, q) =>
+      (!q || Object.values(row).join(" ").toLowerCase().includes(q.toLowerCase())) &&
+      (!statusFilter || row.status === statusFilter),
+    isPaginated && currentMode === "list",
+    Boolean(statusFilter),
+  );
+  const records =
+    isPaginated && currentMode === "list"
+      ? list.rows
+      : data[collection].filter((row) => !eventId || row.eventId === eventId);
   const [periodsByCompetition, setPeriodsByCompetition] = useState<
     Record<string, Row[]>
   >({});
@@ -681,12 +781,6 @@ export function ApiWorkspace({
     ) : null;
   return (
     <div className="page-stack">
-      {currentMode !== "list" && (
-        <Button variant="ghost" onClick={goBack}>
-          <ArrowLeft size={16} />
-          Back to {info.title}
-        </Button>
-      )}
       {eventId && (
         <Link className="back-link" href={"/event-management/" + eventId}>
           Back to event
@@ -709,21 +803,81 @@ export function ApiWorkspace({
               aria-label={"Search " + info.title}
               placeholder="Search records..."
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                if (isPaginated) list.setPage(0);
+              }}
             />
-          </div>
-          <DataTable
-            rows={records.filter((row) =>
-              Object.values(row)
-                .join(" ")
-                .toLowerCase()
-                .includes(query.toLowerCase()),
+            {statusOptions.length > 0 && (
+              <FilterDrawer
+                activeCount={statusFilter ? 1 : 0}
+                onOpen={() => setDraftStatus(statusFilter)}
+                onApply={() => {
+                  setStatusFilter(draftStatus);
+                  if (isPaginated) list.setPage(0);
+                }}
+                onReset={() => {
+                  setDraftStatus("");
+                  setStatusFilter("");
+                  if (isPaginated) list.setPage(0);
+                }}
+              >
+                <Field label="Status">
+                  <Select
+                    aria-label="Filter by status"
+                    value={draftStatus}
+                    onChange={(event) => setDraftStatus(event.target.value)}
+                  >
+                    <option value="">Semua status</option>
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </FilterDrawer>
             )}
+          </div>
+          {isPaginated && list.error && (
+            <p role="alert" className="form-error">
+              {list.error}
+            </p>
+          )}
+          <DataTable
+            rows={
+              isPaginated
+                ? records
+                : records.filter(
+                    (row) =>
+                      Object.values(row)
+                        .join(" ")
+                        .toLowerCase()
+                        .includes(query.toLowerCase()) &&
+                      (!statusFilter || row.status === statusFilter),
+                  )
+            }
+            server={
+              isPaginated
+                ? {
+                    page: list.page,
+                    pageSize: list.pageSize,
+                    total: list.total,
+                    onPageChange: list.setPage,
+                    onPageSizeChange: list.setPageSize,
+                    loading: list.loading,
+                  }
+                : undefined
+            }
             label={info.title}
             columns={info.columns.map((key) => ({
               key,
               label: label(key),
               value: (row: PortalRecord) => display(row, key),
+              render:
+                key === "status"
+                  ? (row: PortalRecord) => <StatusBadge status={display(row, key)} />
+                  : undefined,
             }))}
             actions={(row) => {
               const closed = collection === "events" && row.status === "Closed";
@@ -790,6 +944,7 @@ export function ApiWorkspace({
                         setDeleteError("");
                         try {
                           await remove(collection, row.id);
+                          if (isPaginated) list.reload();
                           toast.success(info.singular + " deleted");
                         } catch (cause) {
                           setDeleteError(
@@ -834,7 +989,13 @@ export function ApiWorkspace({
             ).map((key) => (
               <div key={key}>
                 <dt>{label(key)}</dt>
-                <dd>{display(record, key) || "-"}</dd>
+                <dd>
+                  {key === "status" ? (
+                    <StatusBadge status={display(record, key)} />
+                  ) : (
+                    display(record, key) || "-"
+                  )}
+                </dd>
               </div>
             ))}
           </dl>
@@ -859,6 +1020,7 @@ export function ApiWorkspace({
               />
             </div>
           )}
+          {collection === "events" && <PendingSponsorApplications eventId={record.id} />}
           {collection === "competitions" && (
             <>
               <ApiAction

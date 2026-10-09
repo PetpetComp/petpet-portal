@@ -78,7 +78,7 @@ export function DataTable<T extends { id: string }>({
     : sorted.slice((page - 1) * perPage, page * perPage);
   const hasFilters = columns.some((col) => col.filter);
   return (
-    <div className="data-table">
+    <div className="data-table" aria-busy={server?.loading || undefined}>
       <div
         className="table-scroll"
         tabIndex={0}
@@ -99,7 +99,7 @@ export function DataTable<T extends { id: string }>({
                       : undefined
                   }
                 >
-                  {col.value ? (
+                  {col.value && !server ? (
                     <button
                       className="sort-button"
                       disabled={sortLocked}
@@ -162,7 +162,7 @@ export function DataTable<T extends { id: string }>({
             ))}
           </tbody>
         </table>
-        {!rows.length && (
+        {!pageRows.length && (
           <div className="empty-state">
             <SearchX size={28} />
             <strong>No records found</strong>

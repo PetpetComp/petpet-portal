@@ -6,7 +6,19 @@ import styles from "./sign-up.module.css";
 
 export const metadata: Metadata = { title: "Sign up | Petpet" };
 
-export default function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ intent?: string }>;
+}) {
+  const { intent } = await searchParams;
+  const signInHref = intent ? `/sign-in?intent=${encodeURIComponent(intent)}` : "/sign-in";
+  const subtitle =
+    intent === "organizer"
+      ? "Set up your account and your organization to start managing events."
+      : intent === "sponsor"
+        ? "Set up your account and your brand profile to sponsor events."
+        : "Set up your account to start joining competitions.";
   return (
     <main className={styles.page}>
       <section className={styles.story} aria-label="About Petpet">
@@ -28,9 +40,9 @@ export default function SignUpPage() {
           <div className={styles.formIcon}><PawPrint size={28} aria-hidden="true" /></div>
           <p className={styles.eyebrow}>JOIN PETPET</p>
           <h2 id="sign-up-heading">Create your account</h2>
-          <p className={styles.subtitle}>Set up your account to start managing events.</p>
-          <SignUpForm />
-          <p className={styles.help}>Already have an account? <Link href="/sign-in">Sign in</Link></p>
+          <p className={styles.subtitle}>{subtitle}</p>
+          <SignUpForm intent={intent} />
+          <p className={styles.help}>Already have an account? <Link href={signInHref}>Sign in</Link></p>
         </div>
         <footer className={styles.footer}>Petpet Competition Portal</footer>
       </section>

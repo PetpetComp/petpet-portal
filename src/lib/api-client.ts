@@ -1,10 +1,25 @@
 import { getAuthToken, removeAuthToken } from "@/lib/auth-cookie";
 import { ENDPOINTS } from "@/lib/constants/endpoints";
+import { mockRequest } from "@/lib/mocks/mock-request";
 
 const BASE_URL = (
   process.env.NEXT_PUBLIC_BACKEND_BASE_URL ||
   "https://petpet-service.onrender.com/api"
 ).replace(/\/$/, "");
+function formDataToBody(form: FormData): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const [key, value] of form.entries()) {
+    if (key.endsWith("[]")) {
+      const cleanKey = key.slice(0, -2);
+      const list = (body[cleanKey] as unknown[] | undefined) ?? [];
+      list.push(value);
+      body[cleanKey] = list;
+    } else {
+      body[key] = value;
+    }
+  }
+  return body;
+}
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: Record<string, unknown> | FormData;
 };
@@ -35,6 +50,13 @@ async function request<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
+  if (process.env.NEXT_PUBLIC_USE_MOCK_BACKEND === "true") {
+    const body =
+      options.body instanceof FormData
+        ? formDataToBody(options.body)
+        : options.body;
+    return mockRequest<T>(options.method ?? "GET", endpoint, body);
+  }
   const token = getAuthToken();
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
@@ -96,6 +118,26 @@ async function request<T>(
   if (data === null)
     throw new ApiError(502, "The server returned an invalid response.");
   return data as T;
+}
+export async function uploadToPresignedUrl(
+  uploadUrl: string,
+  headers: Record<string, string>,
+  file: File,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(uploadUrl, {
+      method: "PUT",
+      headers,
+      body: file,
+      signal: AbortSignal.timeout(60000),
+    });
+  } catch {
+    throw new ApiError(0, "Network error while uploading the photo.");
+  }
+  if (!response.ok) {
+    throw new ApiError(response.status, "Unable to upload the photo file.");
+  }
 }
 export const apiClient = {
   get: <T>(endpoint: string, options?: Omit<RequestOptions, "body">) =>

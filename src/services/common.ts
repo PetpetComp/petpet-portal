@@ -26,6 +26,22 @@ export function buildUrl(base: string, params?: object): string {
   }
   return query.size ? base + "?" + query.toString() : base;
 }
+export async function fetchPageRows<T extends Record<string, unknown>>(
+  fetchPage: (
+    params: import("@/types/api").ListParams,
+  ) => Promise<import("@/types/api").ListResponse<T>>,
+  params: import("@/types/api").ListParams,
+): Promise<{ items: T[]; total: number }> {
+  const response = await fetchPage(params);
+  if (Array.isArray(response.data))
+    return { items: response.data, total: response.data.length };
+  if (!Array.isArray(response.data?.items))
+    throw new Error("The API returned an invalid list.");
+  return {
+    items: response.data.items,
+    total: response.data.meta?.total ?? response.data.items.length,
+  };
+}
 export async function collectRows<T extends Record<string, unknown>>(
   fetchPage: (
     params: import("@/types/api").ListParams,

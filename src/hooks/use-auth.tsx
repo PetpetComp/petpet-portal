@@ -59,8 +59,13 @@ async function readSession(): Promise<AuthState> {
   }
 }
 interface AuthContextValue extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
-  register: (payload: SignUpPayload) => Promise<void>;
+  login: (email: string, password: string, intent?: string) => Promise<void>;
+  loginWithSso: (ssoToken: string) => Promise<void>;
+  register: (
+    payload: SignUpPayload,
+    intent?: string,
+    onAuthenticated?: (userId: string) => Promise<void>,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
   hasRole: (role: string | string[]) => boolean;
@@ -93,14 +98,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((current) => ({ ...current, loading: true, error: null }));
     setState(await readSession());
   }, []);
-  async function login(email: string, password: string) {
+  function destinationFor(intent?: string): string {
+    if (intent === "organizer") return "/event-management/create";
+    if (intent === "sponsor") return "/sponsor-home";
+    return "/my-competitions";
+  }
+  async function login(email: string, password: string, intent?: string) {
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
       const response = await AUTH_SERVICES.login(email, password);
       setAuthToken(response.data.access_token, response.data.expires_in);
       const profile = await AUTH_SERVICES.me();
       setState(authenticated(profile.data, response.data.access_token));
-      router.replace("/competition");
+      router.replace(destinationFor(intent));
       router.refresh();
     } catch (cause) {
       removeAuthToken();
@@ -111,14 +121,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw cause;
     }
   }
-  async function register(payload: SignUpPayload) {
+  async function loginWithSso(ssoToken: string) {
+    setState((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const response = await AUTH_SERVICES.ssoExchange(ssoToken);
+      setAuthToken(response.data.access_token, response.data.expires_in);
+      const profile = await AUTH_SERVICES.me();
+      setState(authenticated(profile.data, response.data.access_token));
+      router.replace("/competition");
+      router.refresh();
+    } catch (cause) {
+      removeAuthToken();
+      setState({
+        ...anonymous,
+        error: cause instanceof Error ? cause.message : "SSO sign-in failed.",
+      });
+      throw cause;
+    }
+  }
+  async function register(
+    payload: SignUpPayload,
+    intent?: string,
+    onAuthenticated?: (userId: string) => Promise<void>,
+  ) {
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
       const response = await AUTH_SERVICES.register(payload);
       setAuthToken(response.data.access_token, response.data.expires_in);
       const profile = await AUTH_SERVICES.me();
       setState(authenticated(profile.data, response.data.access_token));
-      router.replace("/competition");
+      if (onAuthenticated) {
+        try {
+          await onAuthenticated(profile.data.uuid);
+        } catch {
+          // The account was already created; a failed follow-up step (e.g.
+          // creating an organization or sponsor profile) shouldn't roll back
+          // a successful registration or sign the new account back out.
+        }
+      }
+      router.replace(destinationFor(intent));
       router.refresh();
     } catch (cause) {
       removeAuthToken();
@@ -144,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         ...state,
         login,
+        loginWithSso,
         register,
         logout,
         refreshSession,

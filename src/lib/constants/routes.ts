@@ -6,6 +6,9 @@ export const ROUTES = {
     resetPassword: "/reset-password",
   },
   dashboard: "/dashboard",
+  landing: "/",
+  competitorHome: "/my-competitions",
+  sponsorHome: "/sponsor-home",
   eventManagement: {
     root: "/event-management",
     create: "/event-management/create",
@@ -32,6 +35,8 @@ export const ROUTES = {
     timeTrial: (id: string) =>
       `/competition/${encodeURIComponent(id)}/time-trial`,
   },
+  organizationManagement: "/organization-management",
+  myOrganization: "/my-organization",
   userManagement: "/user-management",
   users: {
     create: "/user-management/create",

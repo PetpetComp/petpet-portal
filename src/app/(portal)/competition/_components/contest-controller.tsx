@@ -221,7 +221,7 @@ export function ContestController({ competition }: { competition: PortalRecord }
           />
         </section>
       )}
-      <section>
+      <section className="form-section">
         <div className="section-head">
           <h2>Participants</h2>
           <p className="muted">Use Participant ID as the primary identifier.</p>

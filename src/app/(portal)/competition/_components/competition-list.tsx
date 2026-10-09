@@ -85,7 +85,7 @@ export function CompetitionList() {
         </div>
       </div>
       <section
-        className="competition-directory"
+        className="competition-directory form-section"
         aria-labelledby="competition-directory-title"
       >
         <div className="section-head">

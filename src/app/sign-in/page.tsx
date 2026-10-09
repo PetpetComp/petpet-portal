@@ -6,7 +6,13 @@ import styles from "./login.module.css";
 
 export const metadata: Metadata = { title: "Sign in | Petpet" };
 
-export default function SignInPage() {
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ intent?: string }>;
+}) {
+  const { intent } = await searchParams;
+  const signUpHref = intent ? `/sign-up?intent=${encodeURIComponent(intent)}` : "/sign-up";
   return (
     <main className={styles.page}>
       <section className={styles.story} aria-label="About Petpet">
@@ -29,8 +35,8 @@ export default function SignInPage() {
           <p className={styles.eyebrow}>WELCOME TO PETPET</p>
           <h2 id="login-heading">Welcome back</h2>
           <p className={styles.subtitle}>Sign in to manage your next great event.</p>
-          <LoginForm />
-          <p className={styles.help}>Need an account? <Link href="/sign-up">Sign up</Link></p>
+          <LoginForm intent={intent} />
+          <p className={styles.help}>Need an account? <Link href={signUpHref}>Sign up</Link></p>
         </div>
         <footer className={styles.footer}>Petpet Competition Portal</footer>
       </section>

@@ -21,6 +21,11 @@ export type ListResponse<T extends Record<string, unknown> = ApiRecord> =
   >;
 export type RecordResponse<T extends ApiRecord = ApiRecord> = ApiResponse<T>;
 export type MutationResponse = ApiResponse<null>;
+export type PhotoPresignResponse = ApiResponse<{
+  upload_url: string;
+  headers: Record<string, string>;
+  photo_url: string | null;
+}>;
 
 export interface UserRecord extends ApiRecord {
   username: string;
@@ -29,6 +34,7 @@ export interface UserRecord extends ApiRecord {
   last_name?: string | null;
   phone?: string | null;
   status: string;
+  photo_url?: string | null;
   profile?: Record<string, string | null>;
   roles?: { uuid?: string; code: string; name: string }[];
   permissions?: string[];
