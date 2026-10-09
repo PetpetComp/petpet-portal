@@ -2018,3 +2018,15 @@ summary:focus-visible,
     flex-wrap: wrap;
   }
 }
+
+.nav-section {
+  margin: 14px 12px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+.sidebar-collapsed .nav-section {
+  display: none;
+}

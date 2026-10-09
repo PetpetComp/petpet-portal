@@ -20,9 +20,9 @@ const rows = Array.from({ length: 20 }, (_, i) => ({
 describe("DataTable", () => {
   it("pages client-side by default", async () => {
     render(<DataTable rows={rows} columns={columns} />);
-    expect(screen.getAllByRole("row")).toHaveLength(1 + 1 + 8); // header + filter + 8
+    expect(screen.getAllByRole("row")).toHaveLength(1 + 1 + 10); // header + filter + 10
     await userEvent.click(screen.getByLabelText("Next page"));
-    expect(screen.getByText("Pet 8")).toBeInTheDocument();
+    expect(screen.getByText("Pet 10")).toBeInTheDocument();
   });
 
   it("shows filters disabled until the API supports them", () => {
@@ -49,7 +49,13 @@ describe("DataTable", () => {
       <DataTable
         rows={rows.slice(0, 3)}
         columns={columns}
-        pagination={{ page: 2, perPage: 3, total: 20, onPageChange }}
+        server={{
+          page: 1,
+          pageSize: 3,
+          total: 20,
+          onPageChange,
+          onPageSizeChange: vi.fn(),
+        }}
       />,
     );
     expect(screen.getAllByRole("row")).toHaveLength(1 + 1 + 3);
@@ -77,7 +83,13 @@ describe("DataTable sorting", () => {
       <DataTable
         rows={unsorted}
         columns={sortable}
-        pagination={{ page: 1, perPage: 2, total: 9, onPageChange: vi.fn() }}
+        server={{
+          page: 0,
+          pageSize: 2,
+          total: 9,
+          onPageChange: vi.fn(),
+          onPageSizeChange: vi.fn(),
+        }}
         sort={{ key: "name", direction: 1 }}
       />,
     );
@@ -91,7 +103,13 @@ describe("DataTable sorting", () => {
       <DataTable
         rows={unsorted}
         columns={sortable}
-        pagination={{ page: 1, perPage: 2, total: 9, onPageChange: vi.fn() }}
+        server={{
+          page: 0,
+          pageSize: 2,
+          total: 9,
+          onPageChange: vi.fn(),
+          onPageSizeChange: vi.fn(),
+        }}
         onSortChange={onSortChange}
       />,
     );

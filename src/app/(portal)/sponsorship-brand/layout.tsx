@@ -1,10 +1,9 @@
 import { RequirePermission } from "@/components/common/can";
 import { PERMISSION } from "@/lib/auth/permissions";
-import "./competition.css";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <RequirePermission permission={PERMISSION.COMPETITION_UPDATE}>
+    <RequirePermission permission={PERMISSION.MASTER_MANAGE}>
       {children}
     </RequirePermission>
   );

@@ -1,6 +1,7 @@
 import { ApiError } from "@/lib/api-client";
 import { store, paginate, findOrThrow, nextUuid, DEMO_PASSWORD } from "./mock-store";
 import type { MockUser } from "./mock-types";
+import { mockAccess } from "./mock-access";
 
 function matchPath(
   pattern: string,
@@ -30,7 +31,7 @@ function userRecord(user: MockUser) {
     last_name: user.last_name ?? null,
     phone: user.phone ?? null,
     status: user.status,
-    roles: [] as { code: string; name: string }[],
+    ...mockAccess(user),
   };
 }
 

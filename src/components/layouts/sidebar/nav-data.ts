@@ -1,100 +1,148 @@
 import {
   Building2,
   CalendarDays,
-  Flag,
-  Users,
-  PawPrint,
-  Handshake,
   ChartNoAxesCombined,
+  Handshake,
+  PawPrint,
+  Tag,
+  Users,
+  Wrench,
 } from "lucide-react";
+import { PERMISSION as P, type Permission } from "@/lib/auth/permissions";
 import { ROUTES } from "@/lib/constants/routes";
 
-export type NavCapability =
-  "superAdmin" | "organizer" | "competitor" | "sponsor";
+export interface NavItem {
+  label: string;
+  href: string;
+  permission?: Permission;
+}
+export interface NavGroup {
+  label: string;
+  icon: typeof Users;
+  href?: string;
+  items?: NavItem[];
+  /** Hidden unless the user holds this permission. No permission = every signed-in user. */
+  permission?: Permission;
+  /** Sponsors are not an RBAC role in the backend (they are `sponsor_pics`). */
+  sponsorOnly?: boolean;
+  /** Heading shown above the first group of a section. */
+  section?: "Main" | "Data" | "Insight" | "Transitional";
+}
 
-export const navigation = [
+/**
+ * Order and sections follow the Event Workspace design (docs/08).
+ * "Event tools" holds the old per-feature pages; each one disappears when its
+ * replacement ships inside the event workspace (F1 to F3).
+ */
+export const navigation: NavGroup[] = [
   {
-    label: "User",
-    icon: Users,
-    capability: "superAdmin" as NavCapability,
-    items: [{ label: "User Management", href: ROUTES.userManagement }],
-  },
-  {
-    label: "Organizations",
-    icon: Building2,
-    href: ROUTES.organizationManagement,
-    capability: "superAdmin" as NavCapability,
-  },
-  {
-    label: "Event",
+    label: "Events",
     icon: CalendarDays,
-    capability: "organizer" as NavCapability,
-    items: [
-      { label: "Event Management", href: ROUTES.eventManagement.root },
-      {
-        label: "Event Registration",
-        href: ROUTES.eventManagement.eventRegistration,
-      },
-      {
-        label: "Partner Registration",
-        href: ROUTES.eventManagement.partnerRegistration,
-      },
-      {
-        label: "Doorprize Drawing",
-        href: ROUTES.eventManagement.doorprizeDrawing,
-      },
-      {
-        label: "Event Participant",
-        href: ROUTES.eventManagement.eventParticipant,
-      },
-    ],
-  },
-  {
-    label: "My Organization",
-    icon: Building2,
-    href: ROUTES.myOrganization,
-    capability: "organizer" as NavCapability,
-  },
-  {
-    label: "Competition",
-    icon: Flag,
-    href: ROUTES.competition,
-    capability: "organizer" as NavCapability,
+    href: ROUTES.eventManagement.root,
+    permission: P.EVENT_UPDATE,
+    section: "Main",
   },
   {
     label: "My Competitions",
     icon: PawPrint,
     href: ROUTES.competitorHome,
-    capability: "competitor" as NavCapability,
-  },
-  {
-    label: "Pet",
-    icon: PawPrint,
-    capability: "competitor" as NavCapability,
-    items: [
-      { label: "Pet Management", href: ROUTES.petManagement },
-      { label: "Add New Pet", href: ROUTES.pets.create },
-    ],
+    section: "Main",
   },
   {
     label: "Sponsor",
     icon: Handshake,
     href: ROUTES.sponsorHome,
-    capability: "sponsor" as NavCapability,
+    sponsorOnly: true,
+    section: "Main",
+  },
+  {
+    label: "Users",
+    icon: Users,
+    href: ROUTES.userManagement,
+    permission: P.USER_VIEW,
+    section: "Data",
+  },
+  {
+    label: "Pets",
+    icon: PawPrint,
+    href: ROUTES.petManagement,
+    section: "Data",
   },
   {
     label: "Brands",
-    icon: Handshake,
-    capability: "superAdmin" as NavCapability,
-    items: [
-      { label: "Brand Management", href: ROUTES.sponsorshipBrand },
-      { label: "Add New Brand", href: ROUTES.brands.create },
-    ],
+    icon: Tag,
+    href: ROUTES.sponsorshipBrand,
+    permission: P.MASTER_MANAGE,
+    section: "Data",
   },
   {
-    label: "Report",
+    label: "Organizations",
+    icon: Building2,
+    href: ROUTES.organizationManagement,
+    permission: P.ORGANIZATION_VERIFY,
+    section: "Data",
+  },
+  {
+    label: "My Organization",
+    icon: Building2,
+    href: ROUTES.myOrganization,
+    permission: P.ORGANIZATION_VIEW,
+    section: "Data",
+  },
+  {
+    label: "Reports",
     icon: ChartNoAxesCombined,
     href: ROUTES.report,
-    capability: "organizer" as NavCapability,
+    permission: P.EVENT_UPDATE,
+    section: "Insight",
+  },
+  {
+    label: "Event tools",
+    icon: Wrench,
+    section: "Transitional",
+    items: [
+      {
+        label: "Event Registration",
+        href: ROUTES.eventManagement.eventRegistration,
+        permission: P.EVENT_UPDATE,
+      },
+      {
+        label: "Event Participant",
+        href: ROUTES.eventManagement.eventParticipant,
+        permission: P.EVENT_UPDATE,
+      },
+      {
+        label: "Partner Registration",
+        href: ROUTES.eventManagement.partnerRegistration,
+        permission: P.EVENT_UPDATE,
+      },
+      {
+        label: "Doorprize Drawing",
+        href: ROUTES.eventManagement.doorprizeDrawing,
+        permission: P.EVENT_UPDATE,
+      },
+      {
+        label: "Competition",
+        href: ROUTES.competition,
+        permission: P.COMPETITION_UPDATE,
+      },
+    ],
   },
 ];
+
+/** Drops what the user may not open; a group with no visible item disappears. */
+export function visibleNavigation(
+  groups: NavGroup[],
+  access: {
+    can: (permission: Permission) => boolean;
+    isSponsor: boolean;
+  },
+): NavGroup[] {
+  const ok = (p?: Permission) => !p || access.can(p);
+  return groups
+    .filter((g) => ok(g.permission) && (!g.sponsorOnly || access.isSponsor))
+    .map((g) =>
+      g.items ? { ...g, items: g.items.filter((i) => ok(i.permission)) } : g,
+    )
+    .filter((g) => g.href || g.items?.length);
+}

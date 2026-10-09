@@ -38,6 +38,17 @@ export interface UserRecord extends ApiRecord {
   profile?: Record<string, string | null>;
   roles?: { uuid?: string; code: string; name: string }[];
   permissions?: string[];
+  organization_memberships?: {
+    member_role: string;
+    status?: string;
+    organization?: { uuid: string };
+  }[];
+  staff_assignments?: {
+    assignment_role: string;
+    status?: string;
+    event?: { uuid: string };
+    competition?: { uuid: string } | null;
+  }[];
 }
 export type UserPayload = {
   username: string;

@@ -1,7 +1,7 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, SearchX } from "lucide-react";
-import { Pagination, type PaginationProps } from "@/components/ui/pagination";
+import { Pagination } from "@/components/ui/pagination";
 export interface Sort {
   key: string;
   direction: 1 | -1;
@@ -15,17 +15,25 @@ export interface Column<T> {
   filter?: { type: "text" } | { type: "select"; options: string[] };
 }
 
-/** Pass when `rows` is already one page from the API (server mode). */
-export type ServerPagination = Pick<
-  PaginationProps,
-  "page" | "perPage" | "total" | "onPageChange" | "onPerPageChange"
->;
+/**
+ * Pass when `rows` is already one page from the API (server mode).
+ * `page` is 0-based here (matches `usePaginatedList`); the footer converts it.
+ */
+export interface ServerPagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+  loading?: boolean;
+}
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 export function DataTable<T extends { id: string }>({
   rows,
   columns,
   actions,
   label = "Records",
-  pagination,
+  server: serverPagination,
   filters = {},
   onFilterChange,
   sort: controlledSort,
@@ -35,7 +43,7 @@ export function DataTable<T extends { id: string }>({
   columns: Column<T>[];
   actions?: (row: T) => ReactNode;
   label?: string;
-  pagination?: ServerPagination;
+  server?: ServerPagination;
   filters?: Record<string, string>;
   /** Leave undefined while the API has no such filter: inputs show disabled. */
   onFilterChange?: (key: string, value: string) => void;
@@ -47,7 +55,7 @@ export function DataTable<T extends { id: string }>({
   onSortChange?: (sort: Sort) => void;
 }) {
   const [page, setPage] = useState(1);
-  const server = !!pagination;
+  const server = !!serverPagination;
   const [localSort, setLocalSort] = useState<Sort>({ key: "", direction: 1 });
   const sort = server ? (controlledSort ?? localSort) : localSort;
   const sortLocked = server && !onSortChange;
@@ -72,13 +80,16 @@ export function DataTable<T extends { id: string }>({
     if (server) onSortChange?.(next);
     else setLocalSort(next);
   }
-  const perPage = 8;
+  const perPage = PAGE_SIZE_OPTIONS[0];
   const visible = server
     ? sorted
     : sorted.slice((page - 1) * perPage, page * perPage);
   const hasFilters = columns.some((col) => col.filter);
   return (
-    <div className="data-table" aria-busy={server?.loading || undefined}>
+    <div
+      className="data-table"
+      aria-busy={serverPagination?.loading || undefined}
+    >
       <div
         className="table-scroll"
         tabIndex={0}
@@ -99,7 +110,7 @@ export function DataTable<T extends { id: string }>({
                       : undefined
                   }
                 >
-                  {col.value && !server ? (
+                  {col.value ? (
                     <button
                       className="sort-button"
                       disabled={sortLocked}
@@ -162,7 +173,7 @@ export function DataTable<T extends { id: string }>({
             ))}
           </tbody>
         </table>
-        {!pageRows.length && (
+        {!rows.length && (
           <div className="empty-state">
             <SearchX size={28} />
             <strong>No records found</strong>
@@ -170,14 +181,23 @@ export function DataTable<T extends { id: string }>({
           </div>
         )}
       </div>
-      <Pagination
-        {...(pagination ?? {
-          page,
-          perPage,
-          total: rows.length,
-          onPageChange: setPage,
-        })}
-      />
+      {serverPagination ? (
+        <Pagination
+          page={serverPagination.page + 1}
+          perPage={serverPagination.pageSize}
+          total={serverPagination.total}
+          onPageChange={(p) => serverPagination.onPageChange(p - 1)}
+          onPerPageChange={serverPagination.onPageSizeChange}
+          perPageOptions={PAGE_SIZE_OPTIONS}
+        />
+      ) : (
+        <Pagination
+          page={page}
+          perPage={perPage}
+          total={rows.length}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

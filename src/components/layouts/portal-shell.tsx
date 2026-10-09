@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Dialog, DropdownMenu } from "radix-ui";
@@ -14,7 +14,7 @@ import {
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { navigation } from "./sidebar/nav-data";
+import { navigation, visibleNavigation } from "./sidebar/nav-data";
 import { useSidebarContext } from "./sidebar/sidebar-context";
 
 import { usePortalData } from "@/components/providers/portal-data-provider";
@@ -23,69 +23,70 @@ import { useCapabilities } from "@/hooks/use-capabilities";
 import { toast } from "sonner";
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const capabilities = useCapabilities();
-  const visible = navigation.filter((group) => {
-    if (capabilities.isSuperAdmin) return true;
-    if (group.capability === "organizer") return capabilities.isOrganizer;
-    if (group.capability === "sponsor") return capabilities.isSponsor;
-    if (group.capability === "superAdmin") return false;
-    return true;
-  });
+  const { can } = useAuth();
+  const { isSponsor } = useCapabilities();
+  const visible = visibleNavigation(navigation, { can, isSponsor });
   return (
     <nav className="sidebar-nav" aria-label="Main navigation">
-      {visible.map((group) => {
-        const Icon = group.icon;
-        if (group.href)
-          return (
-            <Link
-              key={group.label}
-              href={group.href}
-              aria-label={group.label}
-              title={group.label}
-              onClick={onNavigate}
-              className={
-                "nav-link " + (pathname.startsWith(group.href) ? "active" : "")
-              }
-              aria-current={
-                pathname.startsWith(group.href) ? "page" : undefined
-              }
-            >
-              <Icon size={19} />
-              <span>{group.label}</span>
-            </Link>
-          );
-        return (
-          <details
-            className="nav-group"
-            key={group.label}
-            open={
-              group.items?.some((item) => pathname.startsWith(item.href)) ||
-              undefined
-            }
-          >
-            <summary aria-label={group.label} title={group.label}>
-              <Icon size={19} />
-              <span>{group.label}</span>
-              <ChevronDown size={15} />
-            </summary>
-            <div className="nav-children">
-              {group.items?.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
-                  className={pathname === item.href ? "active" : ""}
-                  aria-current={pathname === item.href ? "page" : undefined}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          </details>
-        );
-      })}
+      {visible.map((group, index) => (
+        <Fragment key={group.label}>
+          {group.section && group.section !== visible[index - 1]?.section && (
+            <p className="nav-section">{group.section}</p>
+          )}
+          {renderGroup(group)}
+        </Fragment>
+      ))}
     </nav>
   );
+  function renderGroup(group: (typeof visible)[number]) {
+    const Icon = group.icon;
+    if (group.href)
+      return (
+        <Link
+          key={group.label}
+          href={group.href}
+          aria-label={group.label}
+          title={group.label}
+          onClick={onNavigate}
+          className={
+            "nav-link " + (pathname.startsWith(group.href) ? "active" : "")
+          }
+          aria-current={pathname.startsWith(group.href) ? "page" : undefined}
+        >
+          <Icon size={19} />
+          <span>{group.label}</span>
+        </Link>
+      );
+    return (
+      <details
+        className="nav-group"
+        key={group.label}
+        open={
+          group.items?.some((item) => pathname.startsWith(item.href)) ||
+          undefined
+        }
+      >
+        <summary aria-label={group.label} title={group.label}>
+          <Icon size={19} />
+          <span>{group.label}</span>
+          <ChevronDown size={15} />
+        </summary>
+        <div className="nav-children">
+          {group.items?.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={pathname === item.href ? "active" : ""}
+              aria-current={pathname === item.href ? "page" : undefined}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </details>
+    );
+  }
 }
 
 export function PortalShell({ children }: { children: ReactNode }) {

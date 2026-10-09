@@ -1,5 +1,6 @@
 ﻿import type { ApiResponse } from "./common";
 import type { UserRecord } from "./api";
+import type { AccessProfile } from "@/lib/auth/access";
 export interface AuthUser {
   id: string;
   username: string;
@@ -33,6 +34,8 @@ export interface AuthState {
   error: string | null;
   roles: string[];
   permissions: string[];
+  memberships: AccessProfile["memberships"];
+  assignments: AccessProfile["assignments"];
 }
 export interface Session {
   user: AuthUser;

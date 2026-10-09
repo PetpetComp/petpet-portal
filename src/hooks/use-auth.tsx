@@ -11,6 +11,8 @@ import { useRouter } from "next/navigation";
 import { AUTH_SERVICES } from "@/services/auth";
 import { ApiError } from "@/lib/api-client";
 import { getAuthToken, removeAuthToken, setAuthToken } from "@/lib/auth-cookie";
+import { can, canOnEvent } from "@/lib/auth/access";
+import { PERMISSION, type Permission } from "@/lib/auth/permissions";
 import type { AuthState, SignUpPayload } from "@/types/auth";
 import type { UserRecord } from "@/types/api";
 const anonymous: AuthState = {
@@ -21,6 +23,8 @@ const anonymous: AuthState = {
   error: null,
   roles: [],
   permissions: [],
+  memberships: [],
+  assignments: [],
 };
 function authenticated(profile: UserRecord, token: string): AuthState {
   return {
@@ -38,6 +42,19 @@ function authenticated(profile: UserRecord, token: string): AuthState {
     },
     roles: profile.roles?.map((role) => role.code) ?? [],
     permissions: profile.permissions ?? [],
+    memberships: (profile.organization_memberships ?? [])
+      .filter((m) => m.organization && (m.status ?? "ACTIVE") === "ACTIVE")
+      .map((m) => ({
+        organizationId: m.organization!.uuid,
+        role: m.member_role,
+      })),
+    assignments: (profile.staff_assignments ?? [])
+      .filter((a) => a.event && (a.status ?? "ACTIVE") === "ACTIVE")
+      .map((a) => ({
+        eventId: a.event!.uuid,
+        competitionId: a.competition?.uuid ?? null,
+        role: a.assignment_role,
+      })),
   };
 }
 async function readSession(): Promise<AuthState> {
@@ -69,6 +86,11 @@ interface AuthContextValue extends AuthState {
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
   hasRole: (role: string | string[]) => boolean;
+  can: (permission: Permission) => boolean;
+  canOnEvent: (
+    event: { id: string; organizationId: string },
+    permission: Permission,
+  ) => boolean;
 }
 const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -127,8 +149,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await AUTH_SERVICES.ssoExchange(ssoToken);
       setAuthToken(response.data.access_token, response.data.expires_in);
       const profile = await AUTH_SERVICES.me();
-      setState(authenticated(profile.data, response.data.access_token));
-      router.replace("/competition");
+      const next = authenticated(profile.data, response.data.access_token);
+      setState(next);
+      router.replace(
+        can(next, PERMISSION.COMPETITION_UPDATE)
+          ? "/competition"
+          : "/my-competitions",
+      );
       router.refresh();
     } catch (cause) {
       removeAuthToken();
@@ -189,6 +216,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         refreshSession,
+        can: (permission) => can(state, permission),
+        canOnEvent: (event, permission) => canOnEvent(state, event, permission),
         hasRole: (role) =>
           (Array.isArray(role) ? role : [role]).some((code) =>
             state.roles.includes(code),
