@@ -1,4 +1,5 @@
-import { EventWorkspace } from "@/app/(portal)/event-management/_components/event-workspace";
+import { EventsPage } from "./_components/events-page";
+
 export default function Page() {
-  return <EventWorkspace />;
+  return <EventsPage />;
 }
