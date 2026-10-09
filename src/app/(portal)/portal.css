@@ -2030,3 +2030,175 @@ summary:focus-visible,
 .sidebar-collapsed .nav-section {
   display: none;
 }
+
+/* ---------------------------------------------------------------
+ * Shell & base styles, Event Workspace design (docs/08 §8, PR 0.4).
+ * Desktop: no top bar; logo on top of the sidebar, account at the bottom.
+ * Phones: a slim top bar opens the sidebar as a drawer.
+ * New rules go here; older `.portal ...` rules above are being retired.
+ * --------------------------------------------------------------- */
+.portal .desktop-sidebar {
+  width: 232px;
+  padding: 20px 14px 12px;
+}
+.portal .content-shell {
+  margin-left: 232px;
+}
+.shell-brand {
+  display: inline-flex;
+  align-items: center;
+}
+.shell-brand img {
+  height: 44px;
+  width: auto;
+}
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px 16px 6px;
+}
+.sidebar-toggle {
+  color: var(--color-muted-foreground);
+}
+.sidebar-collapsed .sidebar-head {
+  flex-direction: column;
+  padding: 0 0 12px;
+}
+.sidebar-collapsed .shell-brand img {
+  height: 36px;
+}
+.sidebar-account {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+.shell-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  text-align: left;
+  color: var(--color-foreground);
+}
+.shell-account:hover {
+  background: var(--color-muted);
+}
+.shell-account .avatar {
+  flex: 0 0 36px;
+}
+.shell-account-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+.shell-account-copy strong,
+.shell-account-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shell-account-copy small {
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+}
+.portal .desktop-sidebar .nav-link,
+.portal .desktop-sidebar .nav-group summary {
+  color: var(--color-primary-dark);
+  font-weight: 600;
+  border-radius: 10px;
+}
+.portal .desktop-sidebar .nav-link > svg,
+.portal .desktop-sidebar .nav-group summary > svg {
+  color: currentColor;
+}
+.portal .desktop-sidebar .nav-link:hover,
+.portal .desktop-sidebar .nav-group summary:hover,
+.portal .desktop-sidebar .nav-children a:hover {
+  background: var(--color-muted);
+  color: var(--color-primary-dark);
+}
+.portal .desktop-sidebar .nav-link.active,
+.portal .desktop-sidebar .nav-children a.active {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-weight: 700;
+}
+.portal .desktop-sidebar .nav-link.active > svg,
+.portal .desktop-sidebar .nav-group:has(.active) summary,
+.portal .desktop-sidebar .nav-group:has(.active) summary > svg {
+  color: var(--color-primary-dark);
+}
+@media (min-width: 768px) {
+  .portal .topbar {
+    display: none;
+  }
+  .portal .desktop-sidebar {
+    top: 0;
+  }
+  .portal .content-shell {
+    padding-top: 0;
+  }
+}
+@media (max-width: 767px) {
+  .portal .topbar {
+    height: 64px;
+    padding: 0 12px;
+  }
+  .portal .topbar .shell-brand img {
+    height: 36px;
+  }
+  .portal .content-shell {
+    margin-left: 0;
+  }
+  .portal .topbar .shell-account {
+    width: auto;
+    margin-left: auto;
+  }
+  .mobile-drawer .shell-brand {
+    margin-bottom: 16px;
+  }
+}
+.portal .page-content {
+  padding: 28px 40px 40px;
+}
+@media (max-width: 1100px) {
+  .portal .page-content {
+    padding: 24px;
+  }
+}
+@media (max-width: 767px) {
+  .portal .page-content {
+    padding: 20px 16px 32px;
+  }
+}
+.portal .page-content h1 {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--color-foreground);
+}
+.portal .page-content h2 {
+  color: var(--color-foreground);
+}
+/* Tables: denser rows, quiet header (design: 12px uppercase, 12px row padding). */
+.portal th {
+  background: #fff;
+  color: var(--color-muted-foreground);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  padding-block: 12px;
+}
+.portal td {
+  padding-block: 12px;
+  color: var(--color-foreground);
+  border-color: #f3edf9;
+}
+.portal tbody tr:hover {
+  background: #faf8fd;
+}

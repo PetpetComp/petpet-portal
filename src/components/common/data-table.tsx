@@ -218,7 +218,7 @@ function FilterControl<T>({
     disabled: inactive,
     title: inactive ? "Filter not supported by the API yet" : undefined,
     className:
-      "border-input min-h-9 w-full rounded-lg border bg-white px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50",
+      "border-input min-h-9 w-full rounded-[10px] border bg-white px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50",
     value,
     onChange: (e: { target: { value: string } }) =>
       onChange?.(column.key, e.target.value),

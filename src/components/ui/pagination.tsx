@@ -55,7 +55,7 @@ export function Pagination({
             aria-label="Rows per page"
             value={perPage}
             onChange={(e) => onPerPageChange(Number(e.target.value))}
-            className="border-input min-h-9 rounded-lg border bg-white px-2 text-sm"
+            className="border-input min-h-9 rounded-[10px] border bg-white px-2 text-sm"
           >
             {perPageOptions.map((n) => (
               <option key={n} value={n}>

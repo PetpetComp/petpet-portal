@@ -3,15 +3,15 @@ import { Fragment, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Dialog, DropdownMenu } from "radix-ui";
+import Image from "next/image";
 import {
+  ChevronDown,
+  ChevronsUpDown,
+  LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  ChevronDown,
-  PawPrint,
   X,
-  UserRound,
-  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { navigation, visibleNavigation } from "./sidebar/nav-data";
@@ -31,7 +31,9 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
       {visible.map((group, index) => (
         <Fragment key={group.label}>
           {group.section && group.section !== visible[index - 1]?.section && (
-            <p className="nav-section">{group.section}</p>
+            <p className="nav-section">
+              {group.section === "Transitional" ? "Other" : group.section}
+            </p>
           )}
           {renderGroup(group)}
         </Fragment>
@@ -89,10 +91,33 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   }
 }
 
-export function PortalShell({ children }: { children: ReactNode }) {
-  const { errors, refresh } = usePortalData();
-  const { user, logout } = useAuth();
+function Brand({ compact = false }: { compact?: boolean }) {
+  return (
+    <Link href="/" aria-label="Petpet home" className="shell-brand">
+      {compact ? (
+        <Image
+          src="/brand/petpet-icon.png"
+          alt=""
+          width={36}
+          height={36}
+          priority
+        />
+      ) : (
+        <Image
+          src="/brand/petpet-logo-horizontal.png"
+          alt="petpet"
+          width={117}
+          height={44}
+          priority
+        />
+      )}
+    </Link>
+  );
+}
 
+/** Avatar + name; opens a menu with the role and Sign out. */
+function AccountMenu({ compact = false }: { compact?: boolean }) {
+  const { user, logout } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
   const initials =
     user?.name
@@ -100,6 +125,64 @@ export function PortalShell({ children }: { children: ReactNode }) {
       .slice(0, 2)
       .map((word) => word[0])
       .join("") || "P";
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button className="shell-account" aria-label="Open account menu">
+          <span className="avatar">{initials}</span>
+          {!compact && (
+            <>
+              <span className="shell-account-copy">
+                <strong>{user?.name}</strong>
+                <small>{user?.role}</small>
+              </span>
+              <ChevronsUpDown size={15} aria-hidden />
+            </>
+          )}
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          className="dropdown-content"
+          side={compact ? "bottom" : "top"}
+          align={compact ? "end" : "start"}
+          sideOffset={8}
+        >
+          <DropdownMenu.Label className="dropdown-label">
+            {user?.name}
+            <small>{user?.email}</small>
+            <small>{user?.role}</small>
+          </DropdownMenu.Label>
+          <DropdownMenu.Separator className="dropdown-separator" />
+          <DropdownMenu.Item
+            className="dropdown-item"
+            disabled={signingOut}
+            onSelect={async (event) => {
+              event.preventDefault();
+              setSigningOut(true);
+              try {
+                await logout();
+              } catch (cause) {
+                toast.error(
+                  cause instanceof Error
+                    ? cause.message
+                    : "Unable to sign out.",
+                );
+                setSigningOut(false);
+              }
+            }}
+          >
+            <LogOut size={16} aria-hidden />
+            {signingOut ? "Signing out..." : "Sign out"}
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
+export function PortalShell({ children }: { children: ReactNode }) {
+  const { errors, refresh } = usePortalData();
   const { isOpen, toggleSidebar } = useSidebarContext();
   const collapsed = !isOpen;
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -108,114 +191,51 @@ export function PortalShell({ children }: { children: ReactNode }) {
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
+      {/* Phones only: the sidebar becomes a drawer behind this bar. */}
       <header className="topbar">
-        <div className="brand-area">
-          <Dialog.Root open={mobileOpen} onOpenChange={setMobileOpen}>
-            <Dialog.Trigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="mobile-menu"
-                aria-label="Open navigation"
-              >
-                <Menu size={21} />
-              </Button>
-            </Dialog.Trigger>
-            <Dialog.Portal>
-              <Dialog.Overlay className="dialog-overlay" />
-              <Dialog.Content
-                className="mobile-drawer"
-                aria-describedby={undefined}
-              >
-                <Dialog.Title className="brand">
-                  <PawPrint size={25} />
-                  Petpet
-                </Dialog.Title>
-                <Dialog.Close asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="dialog-close"
-                    aria-label="Close navigation"
-                  >
-                    <X size={20} />
-                  </Button>
-                </Dialog.Close>
-                <Navigation onNavigate={() => setMobileOpen(false)} />
-              </Dialog.Content>
-            </Dialog.Portal>
-          </Dialog.Root>
-          <Link href="/competition" className="brand">
-            <span className="brand-symbol">
-              <PawPrint size={23} />
-            </span>
-            Petpet
-          </Link>
-        </div>
-        <div className="topbar-right">
-          <span className="workspace-label">
-            <span className="status-dot" />
-            Competition Operations
-          </span>
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <button className="account-button" aria-label="Open account menu">
-                <span className="avatar">{initials}</span>
-                <span className="account-copy">
-                  <strong>{user?.name}</strong>
-                  <small>{user?.role}</small>
-                </span>
-                <ChevronDown size={14} />
-              </button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content
-                className="dropdown-content"
-                align="end"
-                sideOffset={12}
-              >
-                <DropdownMenu.Label className="dropdown-label">
-                  {user?.name}
-                  <small>{user?.email}</small>
-                </DropdownMenu.Label>
-                <DropdownMenu.Separator className="dropdown-separator" />
-                <DropdownMenu.Item className="dropdown-item">
-                  <UserRound size={16} />
-                  {user?.role}
-                  <Check size={15} />
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator className="dropdown-separator" />
-                <DropdownMenu.Item
-                  className="dropdown-item"
-                  disabled={signingOut}
-                  onSelect={async (event) => {
-                    event.preventDefault();
-                    setSigningOut(true);
-                    try {
-                      await logout();
-                    } catch (cause) {
-                      toast.error(
-                        cause instanceof Error
-                          ? cause.message
-                          : "Unable to sign out.",
-                      );
-                      setSigningOut(false);
-                    }
-                  }}
+        <Dialog.Root open={mobileOpen} onOpenChange={setMobileOpen}>
+          <Dialog.Trigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="mobile-menu"
+              aria-label="Open navigation"
+            >
+              <Menu size={21} />
+            </Button>
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Overlay className="dialog-overlay" />
+            <Dialog.Content
+              className="mobile-drawer"
+              aria-describedby={undefined}
+            >
+              <Dialog.Title className="sr-only">Navigation</Dialog.Title>
+              <Brand />
+              <Dialog.Close asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="dialog-close"
+                  aria-label="Close navigation"
                 >
-                  {signingOut ? "Signing out..." : "Sign out"}
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
-        </div>
+                  <X size={20} />
+                </Button>
+              </Dialog.Close>
+              <Navigation onNavigate={() => setMobileOpen(false)} />
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+        <Brand />
+        <AccountMenu compact />
       </header>
       <aside className="desktop-sidebar">
-        <div className="sidebar-caption">
-          WORKSPACE
+        <div className="sidebar-head">
+          <Brand compact={collapsed} />
           <Button
             variant="ghost"
             size="icon"
+            className="sidebar-toggle"
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={toggleSidebar}
@@ -228,9 +248,8 @@ export function PortalShell({ children }: { children: ReactNode }) {
           </Button>
         </div>
         <Navigation />
-        <div className="sidebar-bottom">
-          <span className="status-dot" />
-          Connected to Petpet API<small>Petpet Portal / 2026</small>
+        <div className="sidebar-account">
+          <AccountMenu compact={collapsed} />
         </div>
       </aside>
       <div className="content-shell">
@@ -252,12 +271,6 @@ export function PortalShell({ children }: { children: ReactNode }) {
           )}
           {children}
         </main>
-        <footer className="portal-footer">
-          <span>
-            <strong>Petpet</strong> Competition Operations
-          </span>
-          <span>2026 Petpet</span>
-        </footer>
       </div>
     </div>
   );
