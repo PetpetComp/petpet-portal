@@ -2,7 +2,11 @@
 import Link from "next/link";
 import { Check, Circle } from "lucide-react";
 import { useEventCompetitions } from "@/domains/competitions/queries";
-import { useEvent, useEventCounts } from "@/domains/events/queries";
+import {
+  useEvent,
+  useEventSponsorCount,
+  useEventStaffCount,
+} from "@/domains/events/queries";
 import { isPublished } from "@/domains/events/types";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatDateTime } from "@/lib/format/date";
@@ -10,7 +14,8 @@ import { formatDateTime } from "@/lib/format/date";
 export function EventOverview({ eventId }: { eventId: string }) {
   const event = useEvent(eventId);
   const competitions = useEventCompetitions(eventId);
-  const counts = useEventCounts(eventId);
+  const staff = useEventStaffCount(eventId);
+  const sponsors = useEventSponsorCount(eventId);
   const base = ROUTES.eventManagement.detail(eventId);
 
   const list = competitions.data ?? [];
@@ -19,8 +24,8 @@ export function EventOverview({ eventId }: { eventId: string }) {
   const steps = [
     { label: "Event details", done: !!event.data },
     { label: "Competitions added", done: list.length > 0 },
-    { label: "Committee invited", done: (counts.data?.staff ?? 0) > 0 },
-    { label: "Sponsors linked", done: (counts.data?.sponsors ?? 0) > 0 },
+    { label: "Committee invited", done: (staff.data ?? 0) > 0 },
+    { label: "Sponsors linked", done: (sponsors.data ?? 0) > 0 },
     { label: "Event published", done: !!event.data && isPublished(event.data) },
   ];
 
@@ -35,13 +40,21 @@ export function EventOverview({ eventId }: { eventId: string }) {
         />
         <Stat
           label="Committee"
-          value={counts.data?.staff}
-          note="people assigned to this event"
+          value={staff.isError ? null : staff.data}
+          note={
+            staff.isError
+              ? "Not available for your account"
+              : "people assigned to this event"
+          }
         />
         <Stat
           label="Sponsors"
-          value={counts.data?.sponsors}
-          note="brands linked to this event"
+          value={sponsors.isError ? null : sponsors.data}
+          note={
+            sponsors.isError
+              ? "Not available for your account"
+              : "brands linked to this event"
+          }
         />
       </div>
 
@@ -112,7 +125,8 @@ function Stat({
   href,
 }: {
   label: string;
-  value: number | undefined;
+  /** undefined while loading, null when it could not be loaded */
+  value: number | null | undefined;
   note: string;
   href?: string;
 }) {
@@ -122,7 +136,7 @@ function Stat({
         {label}
       </span>
       <b className="font-mono text-3xl font-semibold">
-        {value === undefined ? "…" : value}
+        {value === undefined ? "…" : (value ?? "–")}
       </b>
       <span className="text-muted-foreground text-sm">{note}</span>
     </>

@@ -2,7 +2,6 @@ import {
   Building2,
   CalendarDays,
   ChartNoAxesCombined,
-  Handshake,
   PawPrint,
   Tag,
   Users,
@@ -23,8 +22,6 @@ export interface NavGroup {
   items?: NavItem[];
   /** Hidden unless the user holds this permission. No permission = every signed-in user. */
   permission?: Permission;
-  /** Sponsors are not an RBAC role in the backend (they are `sponsor_pics`). */
-  sponsorOnly?: boolean;
   /** Heading shown above the first group of a section. */
   section?: "Main" | "Data" | "Insight" | "Transitional";
 }
@@ -40,19 +37,6 @@ export const navigation: NavGroup[] = [
     icon: CalendarDays,
     href: ROUTES.eventManagement.root,
     permission: P.EVENT_UPDATE,
-    section: "Main",
-  },
-  {
-    label: "My Competitions",
-    icon: PawPrint,
-    href: ROUTES.competitorHome,
-    section: "Main",
-  },
-  {
-    label: "Sponsor",
-    icon: Handshake,
-    href: ROUTES.sponsorHome,
-    sponsorOnly: true,
     section: "Main",
   },
   {
@@ -80,13 +64,6 @@ export const navigation: NavGroup[] = [
     icon: Building2,
     href: ROUTES.organizationManagement,
     permission: P.ORGANIZATION_VERIFY,
-    section: "Data",
-  },
-  {
-    label: "My Organization",
-    icon: Building2,
-    href: ROUTES.myOrganization,
-    permission: P.ORGANIZATION_VIEW,
     section: "Data",
   },
   {
@@ -133,14 +110,11 @@ export const navigation: NavGroup[] = [
 /** Drops what the user may not open; a group with no visible item disappears. */
 export function visibleNavigation(
   groups: NavGroup[],
-  access: {
-    can: (permission: Permission) => boolean;
-    isSponsor: boolean;
-  },
+  can: (permission: Permission) => boolean,
 ): NavGroup[] {
-  const ok = (p?: Permission) => !p || access.can(p);
+  const ok = (p?: Permission) => !p || can(p);
   return groups
-    .filter((g) => ok(g.permission) && (!g.sponsorOnly || access.isSponsor))
+    .filter((g) => ok(g.permission))
     .map((g) =>
       g.items ? { ...g, items: g.items.filter((i) => ok(i.permission)) } : g,
     )

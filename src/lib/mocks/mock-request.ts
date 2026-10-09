@@ -391,12 +391,13 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/master/competition-types",
-    handler: (_params, _body, query) => paginate(store.competitionTypes, query),
+    // The real API returns master data as a plain array, not a page.
+    handler: () => store.competitionTypes,
   },
   {
     method: "GET",
     pattern: "/master/species",
-    handler: (_params, _body, query) => paginate(store.species, query),
+    handler: () => store.species,
   },
   {
     method: "GET",

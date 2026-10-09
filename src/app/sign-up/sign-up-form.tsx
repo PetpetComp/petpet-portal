@@ -75,7 +75,6 @@ export function SignUpForm({ intent }: { intent?: string }) {
           email,
           password,
         },
-        intent,
         intent === "organizer"
           ? async () => {
               await ORGANIZATION_SERVICES.create({

@@ -1,6 +1,13 @@
-import { COMPETITION_SERVICES } from "@/services/competition";
-import { MASTER_SERVICES } from "@/services/master";
-import { collectRows } from "@/services/common";
+import { apiClient } from "@/lib/api-client";
+import { ENDPOINTS } from "@/lib/constants/endpoints";
+import { buildUrl, collectRows } from "@/services/common";
+import type { ApiResponse } from "@/types/common";
+import type {
+  CompetitionPayload,
+  CriterionPayload,
+  ListResponse,
+  PeriodPayload,
+} from "@/types/api";
 import type { NewCompetition } from "./schema";
 import { criterionCode, usesCriteria } from "./schema";
 import {
@@ -8,6 +15,8 @@ import {
   speciesFromApi,
   typeFromApi,
   type ApiCompetition,
+  type ApiCompetitionType,
+  type ApiSpecies,
   type Competition,
   type CompetitionType,
   type ResultMode,
@@ -18,22 +27,28 @@ import {
 export async function listEventCompetitions(
   eventId: string,
 ): Promise<Competition[]> {
-  const rows = await collectRows<ApiCompetition>(
-    (p) => COMPETITION_SERVICES.list(eventId, p) as never,
+  const rows = await collectRows((p) =>
+    apiClient.get<ListResponse<ApiCompetition>>(
+      buildUrl(ENDPOINTS.events.competitions(eventId), p),
+    ),
   );
   return rows.map(fromApi);
 }
 
 export async function listCompetitionTypes(): Promise<CompetitionType[]> {
-  const rows = await collectRows<ApiCompetition>(
-    (p) => MASTER_SERVICES.competitionTypes(p) as never,
+  const rows = await collectRows((p) =>
+    apiClient.get<ListResponse<ApiCompetitionType>>(
+      buildUrl(ENDPOINTS.master.competitionTypes, p),
+    ),
   );
   return rows.map(typeFromApi);
 }
 
 export async function listSpecies(): Promise<Species[]> {
-  const rows = await collectRows<ApiCompetition>(
-    (p) => MASTER_SERVICES.species(p) as never,
+  const rows = await collectRows((p) =>
+    apiClient.get<ListResponse<ApiSpecies>>(
+      buildUrl(ENDPOINTS.master.species, p),
+    ),
   );
   return rows.map(speciesFromApi);
 }
@@ -57,7 +72,7 @@ export async function createCompetition(
   eventId: string,
   v: NewCompetition,
 ): Promise<Competition> {
-  const created = await COMPETITION_SERVICES.create(eventId, {
+  const payload: CompetitionPayload = {
     competition_type_id: v.typeId,
     species_id: v.speciesId || undefined,
     name: v.name,
@@ -65,8 +80,12 @@ export async function createCompetition(
     capacity: v.capacity ?? null,
     scheduled_start_at: v.startAt,
     scheduled_end_at: v.endAt,
-  });
-  const competition = fromApi(created.data as ApiCompetition);
+  };
+  const created = await apiClient.post<ApiResponse<ApiCompetition>>(
+    ENDPOINTS.events.competitions(eventId),
+    payload,
+  );
+  const competition = fromApi(created.data);
   const step = async (what: string, run: () => Promise<unknown>) => {
     try {
       await run();
@@ -80,18 +99,18 @@ export async function createCompetition(
   };
   await step("registration channels", async () => {
     for (const p of v.periods.filter((p) => p.enabled))
-      await COMPETITION_SERVICES.createPeriod(competition.id, {
+      await apiClient.post(ENDPOINTS.competitions.periods(competition.id), {
         period_type: p.type,
         price: p.price,
         quota: p.quota,
         registration_start_at: p.startAt,
         registration_end_at: p.endAt,
-      });
+      } satisfies PeriodPayload);
   });
   if (usesCriteria(v.resultMode as ResultMode))
     await step("scoring criteria", async () => {
       for (const [i, c] of v.criteria.entries())
-        await COMPETITION_SERVICES.createCriterion(competition.id, {
+        await apiClient.post(ENDPOINTS.competitions.criteria(competition.id), {
           code: criterionCode(c.name, i),
           name: c.name,
           weight: c.weight,
@@ -99,7 +118,7 @@ export async function createCompetition(
           max_score: c.max,
           note_required: c.noteRequired,
           display_order: i,
-        });
+        } satisfies CriterionPayload);
     });
   return competition;
 }

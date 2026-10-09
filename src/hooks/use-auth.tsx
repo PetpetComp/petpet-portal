@@ -15,7 +15,7 @@ import { can, canOnEvent } from "@/lib/auth/access";
 import type { Permission } from "@/lib/auth/permissions";
 import type { AuthState, SignUpPayload } from "@/types/auth";
 import type { UserRecord } from "@/types/api";
-/** Where people land after signing in, until the Home page exists (docs/08). */
+/** Everyone lands here after signing in; the page adapts to their access (docs/08). */
 const HOME = "/event-management";
 const anonymous: AuthState = {
   user: null,
@@ -78,11 +78,10 @@ async function readSession(): Promise<AuthState> {
   }
 }
 interface AuthContextValue extends AuthState {
-  login: (email: string, password: string, intent?: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   loginWithSso: (ssoToken: string) => Promise<void>;
   register: (
     payload: SignUpPayload,
-    intent?: string,
     onAuthenticated?: (userId: string) => Promise<void>,
   ) => Promise<void>;
   logout: () => Promise<void>;
@@ -122,19 +121,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((current) => ({ ...current, loading: true, error: null }));
     setState(await readSession());
   }, []);
-  function destinationFor(intent?: string): string {
-    if (intent === "organizer") return "/event-management/create";
-    if (intent === "sponsor") return "/sponsor-home";
-    return HOME;
-  }
-  async function login(email: string, password: string, intent?: string) {
+  async function login(email: string, password: string) {
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
       const response = await AUTH_SERVICES.login(email, password);
       setAuthToken(response.data.access_token, response.data.expires_in);
       const profile = await AUTH_SERVICES.me();
       setState(authenticated(profile.data, response.data.access_token));
-      router.replace(destinationFor(intent));
+      router.replace(HOME);
       router.refresh();
     } catch (cause) {
       removeAuthToken();
@@ -166,7 +160,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   async function register(
     payload: SignUpPayload,
-    intent?: string,
     onAuthenticated?: (userId: string) => Promise<void>,
   ) {
     setState((current) => ({ ...current, loading: true, error: null }));
@@ -184,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // a successful registration or sign the new account back out.
         }
       }
-      router.replace(destinationFor(intent));
+      router.replace(HOME);
       router.refresh();
     } catch (cause) {
       removeAuthToken();

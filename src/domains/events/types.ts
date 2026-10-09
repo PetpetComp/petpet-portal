@@ -1,5 +1,26 @@
-/** An event as the portal uses it. Built from the API row by `fromApi`. */
-export interface Event {
+/** Backend values of `events.status`. The mock still uses title case ("Published"). */
+export const EVENT_STATUSES = ["DRAFT", "PUBLISHED", "CANCELLED"] as const;
+export type EventStatus = (typeof EVENT_STATUSES)[number];
+
+/** One event exactly as the API sends it (petpet-service `EventData::toArray`). */
+export type ApiEvent = {
+  uuid: string;
+  organization_uuid: string;
+  name: string;
+  slug: string;
+  tagline: string | null;
+  description: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  map_location: string | null;
+  timezone: string;
+  start_at: string;
+  end_at: string;
+  status: EventStatus;
+};
+
+/** An event as the screens use it. Built from `ApiEvent` by `fromApi` only. */
+export type Event = {
   id: string;
   organizationId: string;
   name: string;
@@ -9,28 +30,21 @@ export interface Event {
   startAt: string;
   endAt: string;
   status: string;
-}
-
-export type ApiEvent = Record<string, unknown> & { uuid: string };
-
-const text = (value: unknown) => (value == null ? "" : String(value));
+};
 
 export function fromApi(row: ApiEvent): Event {
   return {
     id: row.uuid,
-    organizationId: text(row.organization_uuid),
-    name: text(row.name),
-    tagline: text(row.tagline),
-    venueName: text(row.venue_name),
-    venueAddress: text(row.venue_address),
-    startAt: text(row.start_at),
-    endAt: text(row.end_at),
-    status: text(row.status),
+    organizationId: row.organization_uuid,
+    name: row.name,
+    tagline: row.tagline ?? "",
+    venueName: row.venue_name ?? "",
+    venueAddress: row.venue_address ?? "",
+    startAt: row.start_at,
+    endAt: row.end_at,
+    status: row.status,
   };
 }
 
-/** Backend statuses are upper case; the mock uses title case. Compare via this. */
 export const isPublished = (event: Event) =>
   event.status.toUpperCase() === "PUBLISHED";
-
-export const EVENT_STATUSES = ["DRAFT", "PUBLISHED", "CANCELLED"] as const;

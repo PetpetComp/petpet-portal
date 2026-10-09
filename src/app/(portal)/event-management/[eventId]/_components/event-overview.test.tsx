@@ -16,7 +16,10 @@ vi.mock("@/domains/events/api", () => ({
     status: "Draft",
   }),
   countEventStaff: vi.fn().mockResolvedValue(3),
-  countEventSponsors: vi.fn().mockResolvedValue(0),
+  // Not an org member: this endpoint answers 403.
+  countEventSponsors: vi
+    .fn()
+    .mockRejectedValue(new Error("You are not a member")),
 }));
 vi.mock("@/domains/competitions/api", () => ({
   listEventCompetitions: vi.fn().mockResolvedValue([
@@ -70,6 +73,12 @@ describe("EventOverview", () => {
     ).toBeInTheDocument();
     expect(
       within(step("Event published")).getByLabelText("Not yet"),
+    ).toBeInTheDocument(); // A refused count shows "not available" without hiding the other one.
+    expect(
+      await screen.findByText("Not available for your account"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("people assigned to this event"),
     ).toBeInTheDocument();
   });
 });

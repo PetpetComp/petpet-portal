@@ -19,13 +19,12 @@ import { useSidebarContext } from "./sidebar/sidebar-context";
 
 import { usePortalData } from "@/components/providers/portal-data-provider";
 import { useAuth } from "@/hooks/use-auth";
-import { useCapabilities } from "@/hooks/use-capabilities";
+import { needsLegacyData } from "@/lib/legacy/legacy-data-routes";
 import { toast } from "sonner";
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { can } = useAuth();
-  const { isSponsor } = useCapabilities();
-  const visible = visibleNavigation(navigation, { can, isSponsor });
+  const visible = visibleNavigation(navigation, can);
   return (
     <nav className="sidebar-nav" aria-label="Main navigation">
       {visible.map((group, index) => (
@@ -187,6 +186,9 @@ function AccountMenu({ compact = false }: { compact?: boolean }) {
 
 export function PortalShell({ children }: { children: ReactNode }) {
   const { errors, refresh } = usePortalData();
+  // Load errors belong to the legacy data store; migrated pages never use it.
+  const showLegacyErrors =
+    needsLegacyData(usePathname()) && Object.keys(errors).length > 0;
   const { isOpen, toggleSidebar } = useSidebarContext();
   const collapsed = !isOpen;
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -258,7 +260,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
       </aside>
       <div className="content-shell">
         <main id="main-content" className="page-content">
-          {Object.keys(errors).length > 0 && (
+          {showLegacyErrors && (
             <section className="form-section mb-4" role="alert">
               <h2>Some data could not be loaded</h2>
               <ul>

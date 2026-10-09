@@ -29,21 +29,25 @@ export function useEvent(id: string) {
   });
 }
 
-/** Committee and sponsor totals for the overview. */
-export function useEventCounts(id: string) {
+/**
+ * Committee and sponsor totals for the overview. Two queries on purpose:
+ * each endpoint has its own access rule, so one may fail while the other works.
+ */
+export function useEventStaffCount(id: string) {
   return useQuery({
-    queryKey: eventKeys.counts(id),
-    queryFn: async () => {
-      const [staff, sponsors] = await Promise.all([
-        countEventStaff(id),
-        countEventSponsors(id),
-      ]);
-      return { staff, sponsors };
-    },
+    queryKey: [...eventKeys.counts(id), "staff"],
+    queryFn: () => countEventStaff(id),
   });
 }
 
-/** `page` is 1-based, like the API. */
+export function useEventSponsorCount(id: string) {
+  return useQuery({
+    queryKey: [...eventKeys.counts(id), "sponsors"],
+    queryFn: () => countEventSponsors(id),
+  });
+}
+
+/** `page` is 1-based, like the API. Keeps the previous page on screen while the next one loads. */
 export function useEvents(page: number, perPage: number) {
   return useQuery({
     queryKey: eventKeys.list(page, perPage),
