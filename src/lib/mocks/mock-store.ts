@@ -154,21 +154,31 @@ export const store = {
       name: "Petpet Community",
       email: "contact@petpetcommunity.dev",
       phone: "0215500001",
-      pics: [{ uuid: "pic-org-1", name: "Organizer Demo", user_uuid: ORGANIZER_UUID }],
+      pics: [
+        {
+          uuid: "pic-org-1",
+          name: "Organizer Demo",
+          user_uuid: ORGANIZER_UUID,
+        },
+      ],
     },
     {
       uuid: "org-jakarta-cat-lovers",
       name: "Jakarta Cat Lovers Club",
       email: "hello@jakartacatlovers.dev",
       phone: "0215500002",
-      pics: [{ uuid: "pic-org-2", name: "Dian Kusuma", user_uuid: "u-organizer-2" }],
+      pics: [
+        { uuid: "pic-org-2", name: "Dian Kusuma", user_uuid: "u-organizer-2" },
+      ],
     },
     {
       uuid: "org-surabaya-pet-sports",
       name: "Surabaya Pet Sports Association",
       email: "info@surabayapetsports.dev",
       phone: "0315500003",
-      pics: [{ uuid: "pic-org-3", name: "Bima Saputra", user_uuid: "u-organizer-3" }],
+      pics: [
+        { uuid: "pic-org-3", name: "Bima Saputra", user_uuid: "u-organizer-3" },
+      ],
     },
   ] as MockOrganization[],
 
@@ -472,7 +482,9 @@ export const store = {
       brand_name: "Whiskas Indonesia",
       email: "partnership@whiskas.example",
       status: "Active",
-      pics: [{ uuid: "pic-1", name: "Sponsor Demo", user_uuid: SPONSOR_USER_UUID }],
+      pics: [
+        { uuid: "pic-1", name: "Sponsor Demo", user_uuid: SPONSOR_USER_UUID },
+      ],
     },
     {
       uuid: "spo-royal-canin",
@@ -480,7 +492,9 @@ export const store = {
       email: "partnership@royalcanin.petpet.dev",
       website_url: "https://royalcanin.example",
       status: "Active",
-      pics: [{ uuid: "pic-2", name: "Wulan Anggraini", user_uuid: "u-sponsor-2" }],
+      pics: [
+        { uuid: "pic-2", name: "Wulan Anggraini", user_uuid: "u-sponsor-2" },
+      ],
     },
     {
       uuid: "spo-pet-plus-store",
@@ -488,7 +502,9 @@ export const store = {
       email: "sponsorship@petplus.petpet.dev",
       website_url: "https://petplusstore.example",
       status: "Active",
-      pics: [{ uuid: "pic-3", name: "Agus Prasetyo", user_uuid: "u-sponsor-3" }],
+      pics: [
+        { uuid: "pic-3", name: "Agus Prasetyo", user_uuid: "u-sponsor-3" },
+      ],
     },
   ] as MockSponsor[],
 
@@ -618,6 +634,51 @@ export const store = {
       status: "Approved",
     },
   ] as MockEntry[],
+  // Master data, mirrors petpet-service competition_types.json / species.json.
+  competitionTypes: [
+    {
+      uuid: "ct-race",
+      code: "RACE",
+      name: "Race",
+      result_mode: "POSITION",
+      is_active: true,
+    },
+    {
+      uuid: "ct-time-trial",
+      code: "TIME_TRIAL",
+      name: "Time Trial",
+      result_mode: "TIME",
+      is_active: true,
+    },
+    {
+      uuid: "ct-checkpoint",
+      code: "CHECKPOINT",
+      name: "Checkpoint",
+      result_mode: "CHECKPOINT",
+      is_active: true,
+    },
+    {
+      uuid: "ct-beauty",
+      code: "BEAUTY",
+      name: "Beauty / Conformation",
+      result_mode: "JUDGED_SCORE",
+      is_active: true,
+    },
+    {
+      uuid: "ct-best-in-show",
+      code: "BEST_IN_SHOW",
+      name: "Best in Show",
+      result_mode: "COMBINED",
+      is_active: true,
+    },
+  ],
+  species: [
+    { uuid: "sp-dog", code: "DOG", name: "Dog" },
+    { uuid: "sp-cat", code: "CAT", name: "Cat" },
+    { uuid: "sp-sugar-glider", code: "SUGAR_GLIDER", name: "Sugar Glider" },
+  ],
+  registrationPeriods: [] as Record<string, unknown>[],
+  scoreCriteria: [] as Record<string, unknown>[],
 };
 
 export const SUPERADMIN_EMAILS = (
@@ -632,7 +693,12 @@ export function paginate<T>(
   query: URLSearchParams,
 ): {
   items: T[];
-  meta: { current_page: number; per_page: number; total: number; last_page: number };
+  meta: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+  };
 } {
   const page = Math.max(1, Number(query.get("page") ?? 1) || 1);
   const perPage = Math.max(1, Number(query.get("per_page") ?? 20) || 20);

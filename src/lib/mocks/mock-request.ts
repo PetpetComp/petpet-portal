@@ -1,5 +1,11 @@
 import { ApiError } from "@/lib/api-client";
-import { store, paginate, findOrThrow, nextUuid, DEMO_PASSWORD } from "./mock-store";
+import {
+  store,
+  paginate,
+  findOrThrow,
+  nextUuid,
+  DEMO_PASSWORD,
+} from "./mock-store";
 import type { MockUser } from "./mock-types";
 import { mockAccess } from "./mock-access";
 
@@ -62,7 +68,9 @@ const routes: Route[] = [
         .trim()
         .toLowerCase();
       const password = String(body?.password ?? "");
-      const user = store.users.find((item) => item.email.toLowerCase() === email);
+      const user = store.users.find(
+        (item) => item.email.toLowerCase() === email,
+      );
       if (!user || user.password !== password)
         throw new ApiError(401, "Invalid email or password.");
       currentSessionUserUuid = user.uuid;
@@ -120,12 +128,14 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/users",
-    handler: (_params, _body, query) => paginate(store.users.map(userRecord), query),
+    handler: (_params, _body, query) =>
+      paginate(store.users.map(userRecord), query),
   },
   {
     method: "GET",
     pattern: "/users/:uuid",
-    handler: (params) => userRecord(findOrThrow(store.users, params.uuid, "User")),
+    handler: (params) =>
+      userRecord(findOrThrow(store.users, params.uuid, "User")),
   },
   {
     method: "GET",
@@ -187,7 +197,9 @@ const routes: Route[] = [
         email: body?.email ? String(body.email) : undefined,
         phone: body?.phone ? String(body.phone) : undefined,
         address: body?.address ? String(body.address) : undefined,
-        pics: [{ uuid: nextUuid(), name: owner.first_name, user_uuid: owner.uuid }],
+        pics: [
+          { uuid: nextUuid(), name: owner.first_name, user_uuid: owner.uuid },
+        ],
       };
       store.organizations.push(org);
       return org;
@@ -196,7 +208,8 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/organizations/:uuid",
-    handler: (params) => findOrThrow(store.organizations, params.uuid, "Organization"),
+    handler: (params) =>
+      findOrThrow(store.organizations, params.uuid, "Organization"),
   },
   {
     method: "PATCH",
@@ -210,7 +223,11 @@ const routes: Route[] = [
           const existing = org.pics.find((pic) => pic.user_uuid === userId);
           if (existing) return existing;
           const user = store.users.find((item) => item.uuid === userId);
-          return { uuid: nextUuid(), name: user?.first_name ?? "PIC", user_uuid: String(userId) };
+          return {
+            uuid: nextUuid(),
+            name: user?.first_name ?? "PIC",
+            user_uuid: String(userId),
+          };
         });
       }
       return org;
@@ -222,7 +239,9 @@ const routes: Route[] = [
     handler: (_params, _body, query) => {
       const organizationId = query.get("organization_id");
       const filtered = organizationId
-        ? store.events.filter((event) => event.organization_uuid === organizationId)
+        ? store.events.filter(
+            (event) => event.organization_uuid === organizationId,
+          )
         : store.events;
       return paginate(filtered, query);
     },
@@ -251,11 +270,16 @@ const routes: Route[] = [
           email: newOrganization.email,
           phone: newOrganization.phone,
           address: newOrganization.address,
-          pics: [{ uuid: nextUuid(), name: owner.first_name, user_uuid: owner.uuid }],
+          pics: [
+            { uuid: nextUuid(), name: owner.first_name, user_uuid: owner.uuid },
+          ],
         });
       }
       if (!organizationUuid)
-        throw new ApiError(422, "Choose an organization or enter a new organization name.");
+        throw new ApiError(
+          422,
+          "Choose an organization or enter a new organization name.",
+        );
       const event = {
         uuid: nextUuid(),
         organization_uuid: organizationUuid,
@@ -313,21 +337,31 @@ const routes: Route[] = [
         registration_closed_at: null,
         status: "Open",
         ...body,
+        // The real API answers with *_uuid keys for what it receives as *_id.
+        competition_type_uuid: body?.competition_type_id as string | undefined,
+        species_uuid: body?.species_id as string | undefined,
       };
-      store.competitions.push(competition as (typeof store.competitions)[number]);
+      store.competitions.push(
+        competition as (typeof store.competitions)[number],
+      );
       return competition;
     },
   },
   {
     method: "GET",
     pattern: "/competitions/:uuid",
-    handler: (params) => findOrThrow(store.competitions, params.uuid, "Competition"),
+    handler: (params) =>
+      findOrThrow(store.competitions, params.uuid, "Competition"),
   },
   {
     method: "PATCH",
     pattern: "/competitions/:uuid",
     handler: (params, body) => {
-      const competition = findOrThrow(store.competitions, params.uuid, "Competition");
+      const competition = findOrThrow(
+        store.competitions,
+        params.uuid,
+        "Competition",
+      );
       Object.assign(competition, body);
       return competition;
     },
@@ -336,7 +370,11 @@ const routes: Route[] = [
     method: "POST",
     pattern: "/competitions/:uuid/close-registration",
     handler: (params) => {
-      const competition = findOrThrow(store.competitions, params.uuid, "Competition");
+      const competition = findOrThrow(
+        store.competitions,
+        params.uuid,
+        "Competition",
+      );
       competition.registration_closed_at = new Date().toISOString();
       return competition;
     },
@@ -349,6 +387,62 @@ const routes: Route[] = [
     method: "GET",
     pattern: "/staff-invitations",
     handler: (_params, _body, query) => paginate([], query),
+  },
+  {
+    method: "GET",
+    pattern: "/master/competition-types",
+    handler: (_params, _body, query) => paginate(store.competitionTypes, query),
+  },
+  {
+    method: "GET",
+    pattern: "/master/species",
+    handler: (_params, _body, query) => paginate(store.species, query),
+  },
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid/registration-periods",
+    handler: (params, _body, query) =>
+      paginate(
+        store.registrationPeriods.filter(
+          (p) => p.competition_uuid === params.uuid,
+        ),
+        query,
+      ),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/registration-periods",
+    handler: (params, body) => {
+      const period = {
+        uuid: nextUuid(),
+        competition_uuid: params.uuid,
+        ...body,
+      };
+      store.registrationPeriods.push(period);
+      return period;
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid/score-criteria",
+    handler: (params, _body, query) =>
+      paginate(
+        store.scoreCriteria.filter((c) => c.competition_uuid === params.uuid),
+        query,
+      ),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/score-criteria",
+    handler: (params, body) => {
+      const criterion = {
+        uuid: nextUuid(),
+        competition_uuid: params.uuid,
+        ...body,
+      };
+      store.scoreCriteria.push(criterion);
+      return criterion;
+    },
   },
   {
     method: "GET",
@@ -399,8 +493,16 @@ const routes: Route[] = [
     pattern: "/sponsors/:uuid/pics",
     handler: (params, body) => {
       const sponsor = findOrThrow(store.sponsors, params.uuid, "Sponsor");
-      const user = findOrThrow(store.users, String(body?.user_id ?? ""), "User");
-      sponsor.pics.push({ uuid: nextUuid(), name: user.first_name, user_uuid: user.uuid });
+      const user = findOrThrow(
+        store.users,
+        String(body?.user_id ?? ""),
+        "User",
+      );
+      sponsor.pics.push({
+        uuid: nextUuid(),
+        name: user.first_name,
+        user_uuid: user.uuid,
+      });
       return sponsor;
     },
   },
@@ -409,7 +511,9 @@ const routes: Route[] = [
     pattern: "/sponsors/:uuid/pics/:userId",
     handler: (params) => {
       const sponsor = findOrThrow(store.sponsors, params.uuid, "Sponsor");
-      sponsor.pics = sponsor.pics.filter((pic) => pic.user_uuid !== params.userId);
+      sponsor.pics = sponsor.pics.filter(
+        (pic) => pic.user_uuid !== params.userId,
+      );
       return null;
     },
   },
@@ -431,7 +535,9 @@ const routes: Route[] = [
         event_uuid: params.uuid,
         sponsor_uuid: String(body?.sponsor_id ?? ""),
         sponsorship_level: String(body?.sponsorship_level ?? "BRONZE"),
-        campaign_text: body?.campaign_text ? String(body.campaign_text) : undefined,
+        campaign_text: body?.campaign_text
+          ? String(body.campaign_text)
+          : undefined,
         status: "pending" as const,
       };
       store.eventSponsors.push(link);
@@ -529,7 +635,8 @@ export async function mockRequest<T>(
   const query = new URLSearchParams(search ?? "");
   const route = routes.find(
     (candidate) =>
-      candidate.method === method && matchPath(candidate.pattern, path) !== null,
+      candidate.method === method &&
+      matchPath(candidate.pattern, path) !== null,
   );
   if (!route) throw new ApiError(404, "Not available in demo mode.");
   const params = matchPath(route.pattern, path) ?? {};

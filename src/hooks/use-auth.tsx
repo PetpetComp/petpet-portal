@@ -12,9 +12,11 @@ import { AUTH_SERVICES } from "@/services/auth";
 import { ApiError } from "@/lib/api-client";
 import { getAuthToken, removeAuthToken, setAuthToken } from "@/lib/auth-cookie";
 import { can, canOnEvent } from "@/lib/auth/access";
-import { PERMISSION, type Permission } from "@/lib/auth/permissions";
+import type { Permission } from "@/lib/auth/permissions";
 import type { AuthState, SignUpPayload } from "@/types/auth";
 import type { UserRecord } from "@/types/api";
+/** Where people land after signing in, until the Home page exists (docs/08). */
+const HOME = "/event-management";
 const anonymous: AuthState = {
   user: null,
   token: null,
@@ -123,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function destinationFor(intent?: string): string {
     if (intent === "organizer") return "/event-management/create";
     if (intent === "sponsor") return "/sponsor-home";
-    return "/my-competitions";
+    return HOME;
   }
   async function login(email: string, password: string, intent?: string) {
     setState((current) => ({ ...current, loading: true, error: null }));
@@ -151,11 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const profile = await AUTH_SERVICES.me();
       const next = authenticated(profile.data, response.data.access_token);
       setState(next);
-      router.replace(
-        can(next, PERMISSION.COMPETITION_UPDATE)
-          ? "/competition"
-          : "/my-competitions",
-      );
+      router.replace(HOME);
       router.refresh();
     } catch (cause) {
       removeAuthToken();

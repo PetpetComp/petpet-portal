@@ -1,11 +1,10 @@
-import { CompetitionWorkspace } from "@/app/(portal)/event-management/[eventId]/competitions/_components/competition-workspace";
+import { CompetitionCreatePage } from "../_components/competition-create-page";
+
 export default async function Page({
   params,
 }: {
-  params: Promise<{ eventId: string; competitionId?: string }>;
+  params: Promise<{ eventId: string }>;
 }) {
-  const { eventId, competitionId } = await params;
-  return (
-    <CompetitionWorkspace eventId={eventId} id={competitionId} mode="create" />
-  );
+  const { eventId } = await params;
+  return <CompetitionCreatePage eventId={eventId} />;
 }

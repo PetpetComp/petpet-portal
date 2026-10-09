@@ -7,7 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import type { Collection, PortalData, PortalRecord } from "@/types/portal";
+import { needsLegacyData } from "@/lib/legacy/legacy-data-routes";
 import {
   deleteRecord,
   emptyPortalData,
@@ -26,7 +28,15 @@ const PortalContext = createContext<PortalContextValue | null>(null);
 export function PortalDataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<PortalData>(emptyPortalData);
   const [errors, setErrors] = useState<PortalContextValue["errors"]>({});
-  const [loading, setLoading] = useState(true);
+  // Load once, and only when the user first opens a page that still needs it.
+  const needed = needsLegacyData(usePathname());
+  const [requested, setRequested] = useState(needed);
+  const [loading, setLoading] = useState(needed);
+  if (needed && !requested) {
+    // First legacy page after a migrated one: show the loader, not empty data.
+    setRequested(true);
+    setLoading(true);
+  }
   const [error, setError] = useState("");
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -44,6 +54,7 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   useEffect(() => {
+    if (!requested) return;
     let active = true;
     loadPortalData()
       .then((result) => {
@@ -66,7 +77,7 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [requested]);
   async function save(collection: Collection, record: PortalRecord) {
     const saved = await saveRecord(
       collection,
@@ -92,7 +103,7 @@ export function PortalDataProvider({ children }: { children: ReactNode }) {
       [collection]: current[collection].filter((item) => item.id !== id),
     }));
   }
-  if (loading)
+  if (requested && loading)
     return (
       <main className="grid min-h-screen place-items-center">
         <p role="status">Loading your portal...</p>
