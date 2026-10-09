@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Fredoka, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
@@ -7,8 +7,12 @@ const jakartaSans = Plus_Jakarta_Sans({
   variable: "--font-jakarta-sans",
   subsets: ["latin"],
 });
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
+  subsets: ["latin"],
+});
+const jetBrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -23,7 +27,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${jakartaSans.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      className={`${jakartaSans.variable} ${fredoka.variable} ${jetBrainsMono.variable}`}
+    >
       <body>
         <Providers>{children}</Providers>
       </body>

@@ -537,19 +537,7 @@ tbody tr:hover {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-}
-.table-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-top: 1px solid var(--color-border);
-  padding: 10px 18px;
-  color: #767b9c;
-  font-size: 11px;
-  background: #fbfbfe;
-}
-.row-actions {
+}.row-actions {
   gap: 6px;
 }
 .row-actions a,
@@ -982,11 +970,7 @@ tbody tr:hover {
   .portal-footer {
     padding: 18px 16px;
     font-size: 10px;
-  }
-  .table-footer {
-    padding: 8px 12px;
-  }
-  td,
+  }  td,
   th {
     padding: 12px;
   }
@@ -1532,7 +1516,7 @@ tbody tr:hover {
 }
 .portal .desktop-sidebar .nav-link.active,
 .portal .desktop-sidebar .nav-children a.active {
-  background: #f0edfc;
+  background: var(--color-primary-soft);
   color: #5947bb;
   font-weight: 600;
 }
@@ -1636,7 +1620,7 @@ tbody tr:hover {
   border-color: #edf0f5;
 }
 .portal tbody tr:hover {
-  background: #faf9ff;
+  background: var(--color-primary-soft);
 }
 .portal .record-name strong {
   font-size: 13px;
@@ -1650,15 +1634,7 @@ tbody tr:hover {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-}
-.portal .table-footer {
-  background: #fff;
-  color: #626b7c;
-  padding-block: 14px;
-  font-size: 12px;
-  flex-wrap: wrap;
-}
-.portal .link-button {
+}.portal .link-button {
   min-height: 42px;
   font-size: 13px;
   box-shadow: var(--shadow-xs);
@@ -1720,8 +1696,8 @@ tbody tr:hover {
 }
 .portal .directory-count {
   font-size: 12px;
-  color: #6253b7;
-  background: #f0edfc;
+  color: var(--color-primary-dark);
+  background: var(--color-primary-soft);
   border-radius: 999px;
   padding: 6px 12px;
   white-space: nowrap;
@@ -1730,7 +1706,7 @@ tbody tr:hover {
   padding: 24px;
   border: 1px solid #dcd7f4;
   border-radius: 16px;
-  background: #f0edfc;
+  background: var(--color-primary-soft);
   flex-wrap: wrap;
 }
 .portal .competition-overview .resume-icon {

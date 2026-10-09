@@ -1,23 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #f6f7fa;
-  --color-foreground: #202536;
+  --color-background: #f5f6f8;
+  --color-foreground: #3a3055;
 
   --color-card: #ffffff;
-  --color-card-foreground: #202536;
+  --color-card-foreground: #3a3055;
 
-  --color-muted: #f0f2fa;
-  --color-muted-foreground: #626b7c;
+  --color-muted: #f3edf9;
+  --color-muted-foreground: #6b6180;
 
-  --color-border: #e4e7ee;
-  --color-input: #cdd3df;
-  --color-ring: #8b7cf6;
+  --color-border: #e9e0f3;
+  --color-input: #d9cdeb;
+  --color-ring: #8c75bb;
 
-  --color-primary: #6454d9;
-  --color-primary-dark: #5140bc;
-  --color-primary-soft: #eeecff;
+  --color-primary: #6c5c9a;
+  --color-primary-dark: #4a3d6d;
+  --color-primary-soft: #efe7fa;
   --color-primary-foreground: #ffffff;
+
+  /* brand lilac: logo, mascot, decorative panels only (not for text) */
+  --color-brand: #c9b8e6;
+  --color-brand-deep: #8c75bb;
 
   --color-danger: #e5484d;
   --color-danger-soft: #fdedee;
@@ -35,22 +39,24 @@
   --radius-lg: 1rem;
   --radius-xl: 1.375rem;
 
-  --shadow-xs: 0 1px 2px rgba(28, 24, 78, 0.05);
+  --shadow-xs: 0 1px 2px rgba(58, 48, 85, 0.05);
   --shadow-sm:
-    0 1px 2px rgba(28, 24, 78, 0.04), 0 2px 8px rgba(28, 24, 78, 0.05);
+    0 1px 2px rgba(58, 48, 85, 0.04), 0 2px 8px rgba(58, 48, 85, 0.05);
   --shadow-md:
-    0 4px 12px rgba(28, 24, 78, 0.07), 0 2px 4px rgba(28, 24, 78, 0.05);
+    0 4px 12px rgba(58, 48, 85, 0.07), 0 2px 4px rgba(58, 48, 85, 0.05);
   --shadow-lg:
-    0 16px 36px rgba(28, 24, 78, 0.12), 0 4px 10px rgba(28, 24, 78, 0.06);
-  --shadow-primary: 0 2px 4px rgba(65, 48, 150, 0.12);
+    0 16px 36px rgba(58, 48, 85, 0.12), 0 4px 10px rgba(58, 48, 85, 0.06);
+  --shadow-primary: 0 2px 4px rgba(58, 48, 85, 0.12);
 
-  --gradient-primary: linear-gradient(135deg, #7160df 0%, #5c4bc9 100%);
+  --gradient-primary: linear-gradient(#6c5c9a, #6c5c9a);
   --gradient-surface: linear-gradient(#ffffff, #ffffff);
 
   --font-sans:
     var(--font-jakarta-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display:
+    var(--font-fredoka), var(--font-jakarta-sans), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 * {
