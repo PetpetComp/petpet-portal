@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
+    "check": "npm run typecheck && npm run lint && vitest --run",
     "test:e2e": "node scripts/verify-api.mjs",
     "format": "prettier --write ."
   },

@@ -27,10 +27,7 @@ export function RegisterPetForm({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!competitionId) {
-      setPeriods([]);
-      return;
-    }
+    if (!competitionId) return;
     let active = true;
     collectRows((params) =>
       COMPETITION_SERVICES.periods(competitionId, params),
@@ -42,7 +39,8 @@ export function RegisterPetForm({
     };
   }, [competitionId]);
 
-  const activePeriod = currentPeriod(periods);
+  // periods belong to the selected competition; ignore stale ones after it is cleared
+  const activePeriod = currentPeriod(competitionId ? periods : []);
   const priceCategory = activePeriod
     ? String(activePeriod.period_type ?? "").replaceAll("_", " ")
     : "";
