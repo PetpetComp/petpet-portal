@@ -12,6 +12,7 @@ const MIGRATED: RegExp[] = [
   /^\/event-management\/?$/, // Events list
   new RegExp(`^/event-management/(?!(?:${EVENT_LEGACY_PAGES})/?$)[^/]+/?$`), // Event overview
   /^\/event-management\/[^/]+\/competitions(\/create)?\/?$/, // Competitions tab, Add competition
+  /^\/event-management\/[^/]+\/registrations\/?$/, // Registrations tab
 ];
 
 export function needsLegacyData(pathname: string): boolean {

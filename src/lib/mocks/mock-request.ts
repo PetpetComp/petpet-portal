@@ -128,8 +128,17 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/users",
-    handler: (_params, _body, query) =>
-      paginate(store.users.map(userRecord), query),
+    handler: (_params, _body, query) => {
+      const q = (query.get("q") ?? "").toLowerCase();
+      const users = store.users.filter(
+        (u) =>
+          !q ||
+          [u.username, u.email, u.first_name, u.last_name ?? ""].some((v) =>
+            v.toLowerCase().includes(q),
+          ),
+      );
+      return paginate(users.map(userRecord), query);
+    },
   },
   {
     method: "GET",
@@ -140,7 +149,14 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/pets",
-    handler: (_params, _body, query) => paginate(store.pets, query),
+    // `owner_id` is a proposed filter (docs/09 §H): the real API lists only your own pets.
+    handler: (_params, _body, query) => {
+      const ownerId = query.get("owner_id");
+      return paginate(
+        store.pets.filter((p) => !ownerId || p.owner_uuid === ownerId),
+        query,
+      );
+    },
   },
   {
     method: "GET",
@@ -573,7 +589,20 @@ const routes: Route[] = [
     pattern: "/competitions/:uuid/entries",
     handler: (params, _body, query) =>
       paginate(
-        store.entries.filter((item) => item.competition_uuid === params.uuid),
+        store.entries
+          .filter((item) => item.competition_uuid === params.uuid)
+          .map((entry) => {
+            // pet_name / owner_name are proposed additions to EntryData (docs/09 §H).
+            const pet = store.pets.find((p) => p.uuid === entry.pet_uuid);
+            const owner = store.users.find((u) => u.uuid === entry.owner_uuid);
+            return {
+              ...entry,
+              pet_name: pet?.name ?? null,
+              owner_name: owner
+                ? [owner.first_name, owner.last_name].filter(Boolean).join(" ")
+                : null,
+            };
+          }),
         query,
       ),
   },
@@ -581,15 +610,24 @@ const routes: Route[] = [
     method: "POST",
     pattern: "/competitions/:uuid/entries",
     handler: (params, body) => {
-      const owner = requireSession();
+      const actor = requireSession();
+      // Proposed (docs/09 §H): organizers may enter someone else's pet; the owner stays the pet's owner.
+      const pet = store.pets.find((p) => p.uuid === body?.pet_id);
+      const period = store.registrationPeriods.find(
+        (p) => p.uuid === body?.registration_period_id,
+      );
       const entry = {
         uuid: nextUuid(),
         competition_uuid: params.uuid,
-        owner_uuid: owner.uuid,
-        payment_status: "Pending",
-        checkin_status: "Pending",
-        status: "Pending",
-        ...body,
+        owner_uuid: pet?.owner_uuid ?? actor.uuid,
+        pet_uuid: pet?.uuid ?? null,
+        registration_period_uuid: (period?.uuid as string | undefined) ?? null,
+        bib_number: null,
+        registration_fee: Number(period?.price ?? 0),
+        eligibility_status: "PENDING",
+        payment_status: "UNPAID",
+        checkin_status: "NOT_CHECKED_IN",
+        status: "REGISTERED",
       };
       store.entries.push(entry as (typeof store.entries)[number]);
       return entry;
@@ -608,7 +646,7 @@ const routes: Route[] = [
     pattern: "/entries/:uuid/approve",
     handler: (params) => {
       const entry = findOrThrow(store.entries, params.uuid, "Entry");
-      entry.status = "Approved";
+      entry.eligibility_status = "APPROVED";
       return entry;
     },
   },
@@ -617,7 +655,7 @@ const routes: Route[] = [
     pattern: "/entries/:uuid/reject",
     handler: (params) => {
       const entry = findOrThrow(store.entries, params.uuid, "Entry");
-      entry.status = "Rejected";
+      entry.eligibility_status = "REJECTED";
       return entry;
     },
   },
@@ -626,7 +664,7 @@ const routes: Route[] = [
     pattern: "/entries/:uuid/checkin",
     handler: (params) => {
       const entry = findOrThrow(store.entries, params.uuid, "Entry");
-      entry.checkin_status = "Checked in";
+      entry.checkin_status = "CHECKED_IN";
       return entry;
     },
   },

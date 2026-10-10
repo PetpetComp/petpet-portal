@@ -4,6 +4,9 @@ import { needsLegacyData } from "./legacy-data-routes";
 describe("needsLegacyData", () => {
   it("skips the migrated events list and event overview", () => {
     expect(needsLegacyData("/home")).toBe(false);
+    expect(needsLegacyData("/event-management/7f3a-uuid/registrations")).toBe(
+      false,
+    );
     expect(needsLegacyData("/event-management")).toBe(false);
     expect(needsLegacyData("/event-management/7f3a-uuid")).toBe(false);
     expect(needsLegacyData("/event-management/7f3a-uuid/competitions")).toBe(

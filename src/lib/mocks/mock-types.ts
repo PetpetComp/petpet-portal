@@ -95,10 +95,12 @@ export interface MockEntry {
   uuid: string;
   competition_uuid: string;
   owner_uuid: string;
-  pet_uuid?: string;
-  team_uuid?: string;
-  bib_number?: string;
+  pet_uuid?: string | null;
+  team_uuid?: string | null;
+  registration_period_uuid?: string | null;
+  bib_number?: string | null;
   registration_fee?: number;
+  eligibility_status: string;
   payment_status: string;
   checkin_status: string;
   status: string;
