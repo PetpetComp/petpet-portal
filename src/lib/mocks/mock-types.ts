@@ -1,3 +1,8 @@
+import type {
+  CompetitionStatus,
+  RegistrationClosedReason,
+} from "@/domains/competitions/types";
+
 export interface MockUser {
   uuid: string;
   username: string;
@@ -52,7 +57,9 @@ export interface MockCompetition {
   scheduled_start_at: string;
   scheduled_end_at: string;
   registration_closed_at: string | null;
-  status: string;
+  status: CompetitionStatus;
+  registration_open: boolean;
+  registration_closed_reason: RegistrationClosedReason | null;
 }
 
 export interface MockPet {

@@ -11,6 +11,7 @@ import {
 } from "@/domains/competitions/queries";
 import {
   COMPETITION_STATUS_LABEL,
+  REGISTRATION_CLOSED_REASON_LABEL,
   type Competition,
 } from "@/domains/competitions/types";
 import { PERMISSION } from "@/lib/auth/permissions";
@@ -92,7 +93,16 @@ export function EventCompetitions({ eventId }: { eventId: string }) {
       label: "Registration",
       value: registration,
       filter: { type: "select", options: ["Open", "Closed"] },
-      render: (c) => <StatusBadge status={registration(c)} />,
+      render: (c) => (
+        <StatusBadge
+          status={registration(c)}
+          label={
+            c.registrationClosedReason
+              ? `Closed · ${REGISTRATION_CLOSED_REASON_LABEL[c.registrationClosedReason]}`
+              : undefined
+          }
+        />
+      ),
     },
   ];
 

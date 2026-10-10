@@ -33,6 +33,7 @@ vi.mock("@/domains/competitions/api", () => ({
       endAt: "",
       registrationClosed: false,
       registrationOpen: true,
+      registrationClosedReason: null,
       status: "SCHEDULED",
     },
     {
@@ -45,6 +46,7 @@ vi.mock("@/domains/competitions/api", () => ({
       endAt: "",
       registrationClosed: true,
       registrationOpen: false,
+      registrationClosedReason: "CLOSED_BY_ORGANIZER",
       status: "SCHEDULED",
     },
   ]),

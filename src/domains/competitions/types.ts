@@ -17,6 +17,25 @@ export const COMPETITION_STATUS_LABEL: Record<CompetitionStatus, string> = {
   CANCELLED: "Cancelled",
 };
 
+/** Why the API says registration is closed (backend `RegistrationWindow`). */
+export type RegistrationClosedReason =
+  | "EVENT_NOT_PUBLISHED"
+  | "NOT_SCHEDULED"
+  | "CLOSED_BY_ORGANIZER"
+  | "NO_ACTIVE_PERIOD"
+  | "FULL";
+
+export const REGISTRATION_CLOSED_REASON_LABEL: Record<
+  RegistrationClosedReason,
+  string
+> = {
+  EVENT_NOT_PUBLISHED: "Event not published",
+  NOT_SCHEDULED: "Not open",
+  CLOSED_BY_ORGANIZER: "Closed by organizer",
+  NO_ACTIVE_PERIOD: "No open period",
+  FULL: "Full",
+};
+
 /** One competition exactly as the API sends it (petpet-service `CompetitionData::toArray`). */
 export type ApiCompetition = {
   uuid: string;
@@ -33,6 +52,9 @@ export type ApiCompetition = {
   minimum_judges: number;
   registration_closed_at: string | null;
   status: CompetitionStatus;
+  /** Decided by the backend; never re-derive it here. */
+  registration_open: boolean;
+  registration_closed_reason: RegistrationClosedReason | null;
 };
 
 /** `GET /master/competition-types` item. */
@@ -62,8 +84,9 @@ export type Competition = {
   startAt: string;
   endAt: string;
   registrationClosed: boolean;
-  /** Accepting entries: upcoming and registration not closed (same rule as the API). */
+  /** From the API (`registration_open`); the backend owns the rule. */
   registrationOpen: boolean;
+  registrationClosedReason: RegistrationClosedReason | null;
   status: CompetitionStatus;
 };
 
@@ -87,8 +110,8 @@ export function fromApi(row: ApiCompetition): Competition {
     startAt: row.scheduled_start_at ?? "",
     endAt: row.scheduled_end_at ?? "",
     registrationClosed: row.registration_closed_at !== null,
-    registrationOpen:
-      row.status === "SCHEDULED" && row.registration_closed_at === null,
+    registrationOpen: row.registration_open,
+    registrationClosedReason: row.registration_closed_reason,
     status: row.status,
   };
 }
