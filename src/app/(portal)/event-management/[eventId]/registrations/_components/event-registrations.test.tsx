@@ -38,7 +38,8 @@ vi.mock("@/domains/competitions/api", () => ({
       startAt: "",
       endAt: "",
       registrationClosed: false,
-      status: "",
+      registrationOpen: true,
+      status: "SCHEDULED",
     },
   ]),
 }));

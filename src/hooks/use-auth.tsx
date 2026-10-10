@@ -44,17 +44,14 @@ function authenticated(profile: UserRecord, token: string): AuthState {
     },
     roles: profile.roles?.map((role) => role.code) ?? [],
     permissions: profile.permissions ?? [],
-    memberships: (profile.organization_memberships ?? [])
-      .filter((m) => m.organization && (m.status ?? "ACTIVE") === "ACTIVE")
-      .map((m) => ({
-        organizationId: m.organization!.uuid,
-        role: m.member_role,
-      })),
+    memberships: (profile.organizations ?? [])
+      .filter((m) => m.status === "ACTIVE")
+      .map((m) => ({ organizationId: m.uuid, role: m.member_role })),
     assignments: (profile.staff_assignments ?? [])
-      .filter((a) => a.event && (a.status ?? "ACTIVE") === "ACTIVE")
+      .filter((a) => a.status === "ACTIVE")
       .map((a) => ({
-        eventId: a.event!.uuid,
-        competitionId: a.competition?.uuid ?? null,
+        eventId: a.event_uuid,
+        competitionId: a.competition_uuid,
         role: a.assignment_role,
       })),
   };

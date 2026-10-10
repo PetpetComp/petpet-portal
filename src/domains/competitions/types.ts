@@ -2,6 +2,21 @@
 export type ResultMode =
   "TIME" | "POSITION" | "CHECKPOINT" | "JUDGED_SCORE" | "COMBINED";
 
+/**
+ * Lifecycle (backend `Competition::STATUS_*`). Registration open/closed is separate:
+ * `registration_closed_at` plus the registration periods.
+ */
+export type CompetitionStatus =
+  "DRAFT" | "SCHEDULED" | "ONGOING" | "COMPLETED" | "CANCELLED";
+
+export const COMPETITION_STATUS_LABEL: Record<CompetitionStatus, string> = {
+  DRAFT: "Draft",
+  SCHEDULED: "Upcoming",
+  ONGOING: "Live",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
+
 /** One competition exactly as the API sends it (petpet-service `CompetitionData::toArray`). */
 export type ApiCompetition = {
   uuid: string;
@@ -17,7 +32,7 @@ export type ApiCompetition = {
   scheduled_end_at: string | null;
   minimum_judges: number;
   registration_closed_at: string | null;
-  status: string;
+  status: CompetitionStatus;
 };
 
 /** `GET /master/competition-types` item. */
@@ -47,7 +62,9 @@ export type Competition = {
   startAt: string;
   endAt: string;
   registrationClosed: boolean;
-  status: string;
+  /** Accepting entries: upcoming and registration not closed (same rule as the API). */
+  registrationOpen: boolean;
+  status: CompetitionStatus;
 };
 
 export type CompetitionType = {
@@ -70,6 +87,8 @@ export function fromApi(row: ApiCompetition): Competition {
     startAt: row.scheduled_start_at ?? "",
     endAt: row.scheduled_end_at ?? "",
     registrationClosed: row.registration_closed_at !== null,
+    registrationOpen:
+      row.status === "SCHEDULED" && row.registration_closed_at === null,
     status: row.status,
   };
 }

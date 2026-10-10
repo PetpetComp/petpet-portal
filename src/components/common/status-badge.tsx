@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-const SUCCESS = ["Open", "Verified", "Paid", "Saved", "Completed", "Published", "Approved", "approved", "Active"];
+const SUCCESS = ["Open", "Verified", "Paid", "Saved", "Completed", "Published", "Approved", "approved", "Active", "Live"];
 const WARNING = ["Running", "Pending", "Countdown", "Draft", "pending"];
-const DANGER = ["Closed", "Stopped", "DSQ", "Rejected", "rejected"];
+const DANGER = ["Cancelled", "Closed", "Stopped", "DSQ", "Rejected", "rejected"];
 
 function toneFor(status: string): "success" | "warning" | "danger" | "neutral" {
   if (SUCCESS.includes(status)) return "success";

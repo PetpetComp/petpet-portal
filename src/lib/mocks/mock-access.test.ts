@@ -32,6 +32,6 @@ describe("mockAccess", () => {
       email: "p@x.dev",
     });
     expect(a.roles.map((r) => r.code)).toContain("ORGANIZER");
-    expect(a.organization_memberships[0].organization.uuid).toBe(org!.uuid);
+    expect(a.organizations[0].uuid).toBe(org!.uuid);
   });
 });

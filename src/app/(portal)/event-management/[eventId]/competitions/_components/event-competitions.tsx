@@ -9,7 +9,10 @@ import {
   useCompetitionTypes,
   useEventCompetitions,
 } from "@/domains/competitions/queries";
-import type { Competition } from "@/domains/competitions/types";
+import {
+  COMPETITION_STATUS_LABEL,
+  type Competition,
+} from "@/domains/competitions/types";
 import { PERMISSION } from "@/lib/auth/permissions";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatDateTime } from "@/lib/format/date";
@@ -25,13 +28,15 @@ export function EventCompetitions({ eventId }: { eventId: string }) {
   const typeName = (c: Competition) =>
     types.data?.find((t) => t.id === c.typeId)?.name ?? "-";
   const registration = (c: Competition) =>
-    c.registrationClosed ? "Closed" : "Open";
+    c.registrationOpen ? "Open" : "Closed";
+  const status = (c: Competition) => COMPETITION_STATUS_LABEL[c.status];
 
   const rows = (competitions.data ?? []).filter(
     (c) =>
       (!filters.name ||
         c.name.toLowerCase().includes(filters.name.toLowerCase())) &&
       (!filters.type || typeName(c) === filters.type) &&
+      (!filters.status || status(c) === filters.status) &&
       (!filters.registration || registration(c) === filters.registration),
   );
 
@@ -71,6 +76,16 @@ export function EventCompetitions({ eventId }: { eventId: string }) {
       label: "Slots",
       value: (c) => c.capacity ?? 0,
       render: (c) => c.capacity ?? "-",
+    },
+    {
+      key: "status",
+      label: "Status",
+      value: status,
+      filter: {
+        type: "select",
+        options: Object.values(COMPETITION_STATUS_LABEL),
+      },
+      render: (c) => <StatusBadge status={status(c)} />,
     },
     {
       key: "registration",

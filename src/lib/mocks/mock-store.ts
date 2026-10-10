@@ -279,7 +279,7 @@ export const store = {
       scheduled_start_at: "2026-11-05T09:00:00+07:00",
       scheduled_end_at: "2026-11-05T15:00:00+07:00",
       registration_closed_at: null,
-      status: "Open",
+      status: "SCHEDULED",
     },
     {
       uuid: "comp-obedience-trial",
@@ -290,7 +290,7 @@ export const store = {
       scheduled_start_at: "2026-11-06T09:00:00+07:00",
       scheduled_end_at: "2026-11-06T14:00:00+07:00",
       registration_closed_at: null,
-      status: "Open",
+      status: "SCHEDULED",
     },
     {
       uuid: "comp-best-in-show-cat",
@@ -301,7 +301,7 @@ export const store = {
       scheduled_start_at: "2026-09-20T10:00:00+07:00",
       scheduled_end_at: "2026-09-20T16:00:00+07:00",
       registration_closed_at: null,
-      status: "Open",
+      status: "SCHEDULED",
     },
     {
       uuid: "comp-kitten-beauty",
@@ -312,7 +312,7 @@ export const store = {
       scheduled_start_at: "2026-09-21T10:00:00+07:00",
       scheduled_end_at: "2026-09-21T13:00:00+07:00",
       registration_closed_at: null,
-      status: "Open",
+      status: "SCHEDULED",
     },
     {
       uuid: "comp-paw-race-100m",
@@ -323,7 +323,7 @@ export const store = {
       scheduled_start_at: "2026-08-15T08:00:00+07:00",
       scheduled_end_at: "2026-08-15T11:00:00+07:00",
       registration_closed_at: null,
-      status: "Open",
+      status: "SCHEDULED",
     },
     {
       uuid: "comp-paw-race-relay",
@@ -334,7 +334,7 @@ export const store = {
       scheduled_start_at: "2026-08-15T12:00:00+07:00",
       scheduled_end_at: "2026-08-15T15:00:00+07:00",
       registration_closed_at: "2026-08-01T00:00:00+07:00",
-      status: "Closed",
+      status: "SCHEDULED",
     },
     {
       uuid: "comp-agility-open",
@@ -345,7 +345,7 @@ export const store = {
       scheduled_start_at: "2026-12-10T09:00:00+07:00",
       scheduled_end_at: "2026-12-10T16:00:00+07:00",
       registration_closed_at: null,
-      status: "Open",
+      status: "SCHEDULED",
     },
     {
       uuid: "comp-exotic-reptile-show",
@@ -356,7 +356,7 @@ export const store = {
       scheduled_start_at: "2026-10-03T10:00:00+08:00",
       scheduled_end_at: "2026-10-03T14:00:00+08:00",
       registration_closed_at: null,
-      status: "Open",
+      status: "SCHEDULED",
     },
     {
       uuid: "comp-exotic-bird-show",
@@ -367,7 +367,7 @@ export const store = {
       scheduled_start_at: "2026-10-04T10:00:00+08:00",
       scheduled_end_at: "2026-10-04T14:00:00+08:00",
       registration_closed_at: null,
-      status: "Open",
+      status: "SCHEDULED",
     },
     {
       uuid: "comp-carnival-costume",
@@ -378,7 +378,7 @@ export const store = {
       scheduled_start_at: "2026-07-01T09:00:00+07:00",
       scheduled_end_at: "2026-07-01T12:00:00+07:00",
       registration_closed_at: "2026-06-20T00:00:00+07:00",
-      status: "Closed",
+      status: "SCHEDULED",
     },
     {
       uuid: "comp-medan-obedience",
@@ -389,7 +389,7 @@ export const store = {
       scheduled_start_at: "2027-01-18T09:00:00+07:00",
       scheduled_end_at: "2027-01-18T15:00:00+07:00",
       registration_closed_at: null,
-      status: "Open",
+      status: "SCHEDULED",
     },
   ] as MockCompetition[],
 

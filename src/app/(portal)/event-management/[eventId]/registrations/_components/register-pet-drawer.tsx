@@ -39,7 +39,7 @@ export function RegisterPetDrawer({
   const periods = usePeriods(competitionId);
   const period = periods.data ? openPeriod(periods.data, new Date()) : null;
   const create = useCreateEntry(eventId);
-  const openCompetitions = competitions.filter((c) => !c.registrationClosed);
+  const openCompetitions = competitions.filter((c) => c.registrationOpen);
 
   function reset() {
     setQuery("");

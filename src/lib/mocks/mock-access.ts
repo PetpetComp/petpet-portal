@@ -51,11 +51,19 @@ export function mockAccess(user: MockUser) {
   return {
     roles: roles.map((code) => ({ code, name: ROLE_NAMES[code] })),
     permissions,
-    organization_memberships: orgs.map((org) => ({
-      member_role: "ADMIN",
+    // Same shape as the real GET /auth/me (petpet-service UserData).
+    organizations: orgs.map((org) => ({
+      uuid: org.uuid,
+      name: org.name,
+      member_role: "ADMIN" as const,
       status: "ACTIVE",
-      organization: { uuid: org.uuid },
     })),
-    staff_assignments: [],
+    staff_assignments: [] as {
+      uuid: string;
+      event_uuid: string;
+      competition_uuid: string | null;
+      assignment_role: string;
+      status: string;
+    }[],
   };
 }

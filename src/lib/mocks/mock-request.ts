@@ -351,7 +351,7 @@ const routes: Route[] = [
         event_uuid: params.uuid,
         name: String(body?.name ?? ""),
         registration_closed_at: null,
-        status: "Open",
+        status: "DRAFT",
         ...body,
         // The real API answers with *_uuid keys for what it receives as *_id.
         competition_type_uuid: body?.competition_type_id as string | undefined,

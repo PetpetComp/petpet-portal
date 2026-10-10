@@ -38,16 +38,22 @@ export interface UserRecord extends ApiRecord {
   profile?: Record<string, string | null>;
   roles?: { uuid?: string; code: string; name: string }[];
   permissions?: string[];
-  organization_memberships?: {
-    member_role: string;
-    status?: string;
-    organization?: { uuid: string };
+  /**
+   * From `GET /auth/me` (petpet-service UserData). The shape is locked by
+   * tests/Feature/Auth/MeTest.php; change both sides together.
+   */
+  organizations?: {
+    uuid: string;
+    name: string;
+    member_role: "OWNER" | "ADMIN" | "STAFF";
+    status: string;
   }[];
   staff_assignments?: {
+    uuid: string;
+    event_uuid: string;
+    competition_uuid: string | null;
     assignment_role: string;
-    status?: string;
-    event?: { uuid: string };
-    competition?: { uuid: string } | null;
+    status: string;
   }[];
 }
 export type UserPayload = {

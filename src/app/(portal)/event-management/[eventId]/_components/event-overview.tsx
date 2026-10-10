@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { Check, Circle } from "lucide-react";
 import { useEventCompetitions } from "@/domains/competitions/queries";
+import { COMPETITION_STATUS_LABEL } from "@/domains/competitions/types";
 import {
   useEvent,
   useEventSponsorCount,
@@ -19,7 +20,7 @@ export function EventOverview({ eventId }: { eventId: string }) {
   const base = ROUTES.eventManagement.detail(eventId);
 
   const list = competitions.data ?? [];
-  const open = list.filter((c) => !c.registrationClosed).length;
+  const open = list.filter((c) => c.registrationOpen).length;
 
   const steps = [
     { label: "Event details", done: !!event.data },
@@ -83,7 +84,8 @@ export function EventOverview({ eventId }: { eventId: string }) {
                   {formatDateTime(c.startAt)}
                   {c.capacity ? ` · ${c.capacity} slots` : ""}
                   {" · "}
-                  {c.registrationClosed ? "Registration closed" : "Open"}
+                  {COMPETITION_STATUS_LABEL[c.status]}
+                  {c.registrationOpen ? " · Registration open" : ""}
                 </span>
               </li>
             ))}
