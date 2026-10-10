@@ -12,7 +12,11 @@ import {
 } from "@/components/common/data-table";
 import { StatusBadge } from "@/components/common/status-badge";
 import { useEventCompetitions } from "@/domains/competitions/queries";
-import { useEventEntries, useReviewEntry } from "@/domains/entries/queries";
+import {
+  useEventEntries,
+  useMarkPaid,
+  useReviewEntry,
+} from "@/domains/entries/queries";
 import {
   ELIGIBILITY_LABEL,
   ELIGIBILITY_STATUSES,
@@ -51,6 +55,7 @@ const petLabel = (e: Entry) => e.petName ?? "Team entry";
 export function EventRegistrations({ eventId }: { eventId: string }) {
   const competitions = useEventCompetitions(eventId);
   const review = useReviewEntry(eventId);
+  const markPaid = useMarkPaid(eventId);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [toReject, setToReject] = useState<Entry | null>(null);
   const [page, setPage] = useState(0);
@@ -97,6 +102,20 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
           ),
       },
     );
+  }
+
+  /**
+   * Simulasi pembayaran (kontrak 13 bagian 2): belum ada sistem bayar, jadi panitia menandai
+   * lunas manual. Dipanggil dari tombol "Mark paid" di kolom aksi.
+   */
+  function pay(entry: Entry) {
+    markPaid.mutate(entry.id, {
+      onSuccess: () => toast.success("Marked as paid (simulation)"),
+      onError: (cause) =>
+        toast.error(
+          cause instanceof Error ? cause.message : "Unable to mark as paid.",
+        ),
+    });
   }
 
   const columns: Column<Entry>[] = [
@@ -273,8 +292,20 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
             loading: entries.isFetching,
           }}
           actions={(e) =>
-            e.actions.approve || e.actions.reject ? (
+            e.actions.approve || e.actions.reject || e.actions.markPaid ? (
               <>
+                {e.actions.markPaid && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={markPaid.isPending}
+                    onClick={() => pay(e)}
+                    aria-label={`Mark ${petLabel(e)} as paid (simulation)`}
+                    title="Simulation: there is no payment system yet"
+                  >
+                    Mark paid
+                  </Button>
+                )}
                 {e.actions.approve && (
                   <Button
                     variant="secondary"

@@ -71,6 +71,8 @@ export const ENDPOINTS = {
     detail: (uuid: string) => `/entries/${id(uuid)}`,
     approve: (uuid: string) => `/entries/${id(uuid)}/approve`,
     reject: (uuid: string) => `/entries/${id(uuid)}/reject`,
+    /** Simulasi pembayaran (kontrak 13 bagian 2), belum ada di backend asli. */
+    markPaid: (uuid: string) => `/entries/${id(uuid)}/mark-paid`,
     checkin: (uuid: string) => `/entries/${id(uuid)}/checkin`,
     undoCheckin: (uuid: string) => `/entries/${id(uuid)}/undo-checkin`,
   },

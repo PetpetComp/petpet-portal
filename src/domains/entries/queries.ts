@@ -11,6 +11,7 @@ import {
   checkInEntry,
   createEntry,
   listEventEntries,
+  markEntryPaid,
   rejectEntry,
   searchOwners,
   undoCheckIn,
@@ -61,6 +62,15 @@ export function useReviewEntry(eventId: string) {
       id: string;
       decision: "approve" | "reject";
     }) => (decision === "approve" ? approveEntry(id) : rejectEntry(id)),
+    onSettled: invalidate,
+  });
+}
+
+/** Simulasi bayar: menandai satu entry lunas, lalu memuat ulang daftar entry event. */
+export function useMarkPaid(eventId: string) {
+  const invalidate = useInvalidateEntries(eventId);
+  return useMutation({
+    mutationFn: (id: string) => markEntryPaid(id),
     onSettled: invalidate,
   });
 }

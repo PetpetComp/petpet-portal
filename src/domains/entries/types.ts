@@ -55,6 +55,9 @@ export const ENTRY_STATUS_LABEL: Record<EntryStatus, string> = {
 export type ApiEntryActions = {
   approve: boolean;
   reject: boolean;
+  /** Simulasi bayar (kontrak 13 bagian 2): tandai entry sebagai lunas. */
+  mark_paid: boolean;
+  /** Hanya true bila entry sudah disetujui DAN lunas (kontrak 13 bagian 2). */
   check_in: boolean;
   undo_check_in: boolean;
   withdraw: boolean;
@@ -120,6 +123,7 @@ export type ApiOwnerSearchResult = {
 export type EntryActions = {
   approve: boolean;
   reject: boolean;
+  markPaid: boolean;
   checkIn: boolean;
   undoCheckIn: boolean;
   withdraw: boolean;
@@ -216,6 +220,7 @@ export function fromApi(row: ApiEntry): Entry {
     actions: {
       approve: row.actions.approve,
       reject: row.actions.reject,
+      markPaid: row.actions.mark_paid,
       checkIn: row.actions.check_in,
       undoCheckIn: row.actions.undo_check_in,
       withdraw: row.actions.withdraw,

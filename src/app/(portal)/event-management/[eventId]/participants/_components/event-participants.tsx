@@ -13,6 +13,7 @@ import {
   eventEntriesOptions,
   useCheckIn,
   useEventEntries,
+  useMarkPaid,
   useUndoCheckIn,
 } from "@/domains/entries/queries";
 import type { Entry, EntryListQuery } from "@/domains/entries/types";
@@ -51,6 +52,7 @@ export function EventParticipants({ eventId }: { eventId: string }) {
   const debounced = useDebouncedValue(search);
   const checkIn = useCheckIn(eventId);
   const undo = useUndoCheckIn(eventId);
+  const markPaid = useMarkPaid(eventId);
 
   const competitionId = chosen || defaultCompetitionId(competitions.data ?? []);
   /** Contract 10 §4: approved, still registered, by pet name. */
@@ -84,6 +86,25 @@ export function EventParticipants({ eventId }: { eventId: string }) {
     });
   }
 
+  /**
+   * Simulasi pembayaran di meja check-in (kontrak 13 bagian 2): menandai satu entry lunas
+   * supaya tombol check-in terbuka. Dipanggil dari kartu peserta.
+   */
+  function runMarkPaid(entry: Entry) {
+    markPaid.mutate(entry.id, {
+      onSuccess: () =>
+        setNotice({
+          tone: "success",
+          text: `${petLabel(entry)} marked as paid (simulation)`,
+        }),
+      onError: (cause) =>
+        setNotice({
+          tone: "error",
+          text: errorText(cause, "Unable to mark as paid."),
+        }),
+    });
+  }
+
   async function scan(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key !== "Enter") return;
     event.preventDefault();
@@ -101,6 +122,12 @@ export function EventParticipants({ eventId }: { eventId: string }) {
         runCheckIn(target, () => {
           setSearch("");
           setEntered(null);
+        });
+      else if (result.items.length === 1 && result.items[0].payment === "UNPAID")
+        // Satu peserta cocok tapi belum lunas: beri tahu kenapa tidak di-check-in.
+        setNotice({
+          tone: "error",
+          text: `${petLabel(result.items[0])} has not paid yet. Mark as paid first.`,
         });
     } catch (cause) {
       setNotice({ tone: "error", text: errorText(cause, "Search failed.") });
@@ -134,7 +161,7 @@ export function EventParticipants({ eventId }: { eventId: string }) {
     );
 
   const data = entries.data;
-  const busy = checkIn.isPending || undo.isPending;
+  const busy = checkIn.isPending || undo.isPending || markPaid.isPending;
 
   return (
     <section className="grid grid-cols-1 gap-5">
@@ -216,6 +243,7 @@ export function EventParticipants({ eventId }: { eventId: string }) {
               busy={busy}
               onCheckIn={() => runCheckIn(e)}
               onUndo={() => setToUndo(e)}
+              onMarkPaid={() => runMarkPaid(e)}
             />
           ))}
         </ul>
@@ -255,11 +283,13 @@ function ParticipantCard({
   busy,
   onCheckIn,
   onUndo,
+  onMarkPaid,
 }: {
   entry: Entry;
   busy: boolean;
   onCheckIn: () => void;
   onUndo: () => void;
+  onMarkPaid: () => void;
 }) {
   const pet = petLabel(entry);
   const checkedIn = entry.checkin === "CHECKED_IN";
@@ -312,6 +342,25 @@ function ParticipantCard({
         >
           Check in
         </Button>
+      ) : entry.payment === "UNPAID" ? (
+        // Belum lunas: check-in terkunci. Tombol simulasi bayar hanya untuk yang berhak (markPaid).
+        <span className="flex min-w-28 flex-col items-center gap-1.5">
+          <span className="text-muted-foreground text-sm font-semibold">
+            Unpaid
+          </span>
+          {entry.actions.markPaid && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              onClick={onMarkPaid}
+              aria-label={`Mark ${pet} as paid (simulation)`}
+              title="Simulation: there is no payment system yet"
+            >
+              Mark paid
+            </Button>
+          )}
+        </span>
       ) : (
         <span className="text-muted-foreground min-w-28 text-center text-sm font-semibold">
           Not checked in

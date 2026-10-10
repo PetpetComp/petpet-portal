@@ -38,6 +38,10 @@ export const approveEntry = (id: string) =>
 export const rejectEntry = (id: string) =>
   entryAction(ENDPOINTS.entries.reject(id), {});
 
+/** Simulasi pembayaran: menandai entry lunas. Belum ada di backend asli (kontrak 13 bagian 2). */
+export const markEntryPaid = (id: string) =>
+  entryAction(ENDPOINTS.entries.markPaid(id));
+
 export const checkInEntry = (id: string) =>
   entryAction(ENDPOINTS.entries.checkin(id));
 

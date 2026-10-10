@@ -31,6 +31,7 @@ const row: ApiEntry = {
   actions: {
     approve: false,
     reject: false,
+    mark_paid: true,
     check_in: true,
     undo_check_in: false,
     withdraw: false,
@@ -63,6 +64,7 @@ describe("entries fromApi", () => {
       actions: {
         approve: false,
         reject: false,
+        markPaid: true,
         checkIn: true,
         undoCheckIn: false,
         withdraw: false,

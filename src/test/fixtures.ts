@@ -55,6 +55,7 @@ export function entryFixture(over: Partial<Entry> = {}): Entry {
     actions: {
       approve: false,
       reject: false,
+      markPaid: false,
       checkIn: false,
       undoCheckIn: false,
       withdraw: false,

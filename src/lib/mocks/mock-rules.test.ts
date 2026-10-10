@@ -32,11 +32,17 @@ const owner: MockCaller = {
 
 type EntryState = Pick<
   MockEntry,
-  "owner_uuid" | "eligibility_status" | "checkin_status" | "status"
+  | "owner_uuid"
+  | "eligibility_status"
+  | "payment_status"
+  | "checkin_status"
+  | "status"
 >;
+/** Default sudah lunas, supaya tes lama tidak terpengaruh aturan gerbang bayar. */
 const entry = (over: Partial<EntryState> = {}): EntryState => ({
   owner_uuid: "owner",
   eligibility_status: "PENDING",
+  payment_status: "PAID",
   checkin_status: "NOT_CHECKED_IN",
   status: "REGISTERED",
   ...over,
@@ -57,6 +63,29 @@ describe("entryActions (EntryActions)", () => {
     expect(entryActions(approved, "SCHEDULED", staff).check_in).toBe(true);
     expect(entryActions(approved, "DRAFT", staff).check_in).toBe(false);
     expect(entryActions(entry(), "ONGOING", staff).check_in).toBe(false);
+  });
+  it("check-in is locked until the entry is paid (decision 10 Oct 2026)", () => {
+    const unpaid = entry({
+      eligibility_status: "APPROVED",
+      payment_status: "UNPAID",
+    });
+    expect(entryActions(unpaid, "ONGOING", staff).check_in).toBe(false);
+    expect(entryActions(unpaid, "ONGOING", staff).mark_paid).toBe(true);
+    const paid = { ...unpaid, payment_status: "PAID" as const };
+    expect(entryActions(paid, "ONGOING", staff).check_in).toBe(true);
+    expect(entryActions(paid, "ONGOING", staff).mark_paid).toBe(false);
+  });
+  it("mark_paid is for staff, and not for rejected entries", () => {
+    const unpaid = entry({ payment_status: "UNPAID" });
+    expect(entryActions(unpaid, "SCHEDULED", staff).mark_paid).toBe(true);
+    expect(entryActions(unpaid, "SCHEDULED", owner).mark_paid).toBe(false);
+    expect(
+      entryActions(
+        entry({ payment_status: "UNPAID", eligibility_status: "REJECTED" }),
+        "SCHEDULED",
+        staff,
+      ).mark_paid,
+    ).toBe(false);
   });
   it("undo only before the competition starts", () => {
     const done = entry({
@@ -79,6 +108,7 @@ describe("entryActions (EntryActions)", () => {
     const none = {
       approve: false,
       reject: false,
+      mark_paid: false,
       check_in: false,
       undo_check_in: false,
       withdraw: false,

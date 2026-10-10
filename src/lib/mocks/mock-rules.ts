@@ -47,11 +47,19 @@ const has = (caller: MockCaller, permission: Permission) =>
 
 const FINISHED: CompetitionStatus[] = ["COMPLETED", "CANCELLED"];
 
-/** Backend `EntryActions` (contract 10 §1 table). */
+/**
+ * Backend `EntryActions` (contract 10 §1 table).
+ * Keputusan 10 Okt 2026 (kontrak 13 bagian 2): check-in wajib lunas, dan karena belum ada
+ * sistem pembayaran, lunas disimulasikan lewat aksi `mark_paid`.
+ */
 export function entryActions(
   entry: Pick<
     MockEntry,
-    "owner_uuid" | "eligibility_status" | "checkin_status" | "status"
+    | "owner_uuid"
+    | "eligibility_status"
+    | "payment_status"
+    | "checkin_status"
+    | "status"
   >,
   competitionStatus: CompetitionStatus,
   caller: MockCaller,
@@ -67,10 +75,16 @@ export function entryActions(
   return {
     approve: live && approver && pending,
     reject: live && rejecter && pending,
+    mark_paid:
+      live &&
+      approver &&
+      entry.eligibility_status !== "REJECTED" &&
+      entry.payment_status === "UNPAID",
     check_in:
       live &&
       approver &&
       entry.eligibility_status === "APPROVED" &&
+      entry.payment_status === "PAID" &&
       !checkedIn &&
       (competitionStatus === "SCHEDULED" || competitionStatus === "ONGOING"),
     undo_check_in:

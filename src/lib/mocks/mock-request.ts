@@ -797,6 +797,17 @@ const routes: Route[] = [
   },
   {
     method: "POST",
+    pattern: "/entries/:uuid/mark-paid",
+    handler: (params) =>
+      entryAction(
+        params.uuid,
+        "mark_paid",
+        (e) => (e.payment_status = "PAID"),
+        "Only unpaid registrations that were not rejected can be marked as paid.",
+      ),
+  },
+  {
+    method: "POST",
     pattern: "/entries/:uuid/checkin",
     handler: (params) =>
       entryAction(
@@ -806,7 +817,7 @@ const routes: Route[] = [
           e.checkin_status = "CHECKED_IN";
           e.checked_in_at = iso(new Date());
         },
-        "Only approved participants of a scheduled or ongoing competition can check in.",
+        "Only approved and paid participants of a scheduled or ongoing competition can check in.",
       ),
   },
   {
