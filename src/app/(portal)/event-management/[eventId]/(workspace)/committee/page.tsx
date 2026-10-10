@@ -1,5 +1,10 @@
-import { TabComingSoon } from "../../_components/tab-coming-soon";
+import { EventCommittee } from "../../committee/_components/event-committee";
 
-export default function Page() {
-  return <TabComingSoon title="Committee" />;
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ eventId: string }>;
+}) {
+  const { eventId } = await params;
+  return <EventCommittee eventId={eventId} />;
 }

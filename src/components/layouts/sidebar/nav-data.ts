@@ -91,11 +91,6 @@ export const navigation: NavGroup[] = [
         permission: P.EVENT_UPDATE,
       },
       {
-        label: "Partner Registration",
-        href: ROUTES.eventManagement.partnerRegistration,
-        permission: P.EVENT_UPDATE,
-      },
-      {
         label: "Doorprize Drawing",
         href: ROUTES.eventManagement.doorprizeDrawing,
         permission: P.EVENT_UPDATE,

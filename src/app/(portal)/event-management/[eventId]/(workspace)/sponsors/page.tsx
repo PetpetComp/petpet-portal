@@ -1,5 +1,10 @@
-import { TabComingSoon } from "../../_components/tab-coming-soon";
+import { EventSponsors } from "../../sponsors/_components/event-sponsors";
 
-export default function Page() {
-  return <TabComingSoon title="Sponsors" />;
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ eventId: string }>;
+}) {
+  const { eventId } = await params;
+  return <EventSponsors eventId={eventId} />;
 }

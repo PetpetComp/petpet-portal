@@ -324,30 +324,3 @@ export function cancelEventRecord(user: MockUser, uuid: string): null {
   event.status = "CANCELLED";
   return null;
 }
-
-/**
- * `POST /staff-invitations` untuk peran EVENT_MANAGER (PIC). Mock hanya memvalidasi
- * dan mengembalikan undangan PENDING; penyimpanan dan daftar undangan dimodelkan di fase Committee.
- */
-export function inviteStaffRecord(
-  user: MockUser,
-  body: Record<string, unknown> | undefined,
-) {
-  const eventUuid = String(body?.event_id ?? "");
-  const email = String(body?.email ?? "").trim();
-  const event = findOrThrow(store.events, eventUuid, "Event");
-  const caller = callerFor(user, eventUuid);
-  forbidUnless(
-    caller.managesEvent && hasPermission(caller, PERMISSION.STAFF_INVITE),
-  );
-  if (!/^\S+@\S+\.\S+$/.test(email))
-    invalid({ email: ["The email must be a valid email address."] });
-  return {
-    uuid: nextUuid(),
-    event_uuid: event.uuid,
-    competition_uuid: null,
-    email,
-    assignment_role: String(body?.assignment_role ?? ""),
-    status: "PENDING",
-  };
-}

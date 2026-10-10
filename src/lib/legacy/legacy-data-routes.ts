@@ -5,7 +5,7 @@
  * delete the provider.
  */
 const EVENT_LEGACY_PAGES =
-  "event-registration|committee-registration|partner-registration|doorprize-drawing|event-participant";
+  "event-registration|doorprize-drawing|event-participant";
 
 const MIGRATED: RegExp[] = [
   /^\/home\/?$/, // Home
@@ -15,7 +15,8 @@ const MIGRATED: RegExp[] = [
   /^\/event-management\/[^/]+\/competitions(\/create)?\/?$/, // Competitions tab, Add competition
   /^\/event-management\/[^/]+\/registrations\/?$/, // Registrations tab
   /^\/event-management\/[^/]+\/participants\/?$/, // Participants & check-in tab
-  /^\/event-management\/[^/]+\/(committee|sponsors|doorprize)\/?$/, // Tabs that are still "coming soon"
+  /^\/event-management\/[^/]+\/committee\/?$/, // Committee tab
+  /^\/event-management\/[^/]+\/(sponsors|doorprize)\/?$/, // Tabs that are still "coming soon"
   /^\/event-management\/[^/]+\/edit\/?$/, // Edit event
 ];
 

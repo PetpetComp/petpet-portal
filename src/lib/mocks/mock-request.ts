@@ -25,11 +25,24 @@ import {
   cancelEventRecord,
   createEventRecord,
   eventRecord,
-  inviteStaffRecord,
   listEventRecords,
   publishEventRecord,
   updateEventRecord,
 } from "./mock-events";
+import {
+  createInvitationRecord,
+  listAssignmentRoles,
+  listCompetitionStaff,
+  listEventStaff,
+  listInvitations,
+  revokeAssignmentRecord,
+  revokeInvitationRecord,
+} from "./mock-staff";
+import {
+  addEventSponsorRecord,
+  listEventSponsorRecords,
+  removeEventSponsorRecord,
+} from "./mock-sponsors";
 
 function matchPath(
   pattern: string,
@@ -137,7 +150,6 @@ const routes: Route[] = [
       const user = store.users.find(
         (item) => item.email.toLowerCase() === email,
       );
-      console.log("mock login", email, password, user);
       if (!user || user.password !== password)
         throw new ApiError(401, "Invalid email or password.");
       currentSessionUserUuid = user.uuid;
@@ -514,19 +526,33 @@ const routes: Route[] = [
       return null;
     },
   },
-  // Staff/committee assignments aren't modeled in this demo phase; these
-  // three read endpoints return an empty list instead of a generic 404 so
-  // the portal's "some data could not be loaded" banner doesn't fire on
-  // every page for a feature that simply has nothing to show yet.
+  // Committee (kontrak 13 bagian 3): aturannya ada di mock-staff.ts.
   {
     method: "GET",
     pattern: "/staff-invitations",
-    handler: (_params, _body, query) => paginate([], query),
+    handler: (_params, _body, query) =>
+      listInvitations(requireSession(), query),
   },
   {
     method: "POST",
     pattern: "/staff-invitations",
-    handler: (_params, body) => inviteStaffRecord(requireSession(), body),
+    handler: (_params, body) => createInvitationRecord(requireSession(), body),
+  },
+  {
+    method: "DELETE",
+    pattern: "/staff-invitations/:uuid",
+    handler: (params) => revokeInvitationRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "DELETE",
+    pattern: "/staff-assignments/:uuid",
+    handler: (params) => revokeAssignmentRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "GET",
+    pattern: "/master/assignment-roles",
+    // Data master dikirim sebagai array datar, seperti master lain.
+    handler: () => listAssignmentRoles(),
   },
   {
     method: "GET",
@@ -608,12 +634,14 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/events/:uuid/staff",
-    handler: (_params, _body, query) => paginate([], query),
+    handler: (params, _body, query) =>
+      listEventStaff(requireSession(), params.uuid, query),
   },
   {
     method: "GET",
     pattern: "/competitions/:uuid/staff",
-    handler: (_params, _body, query) => paginate([], query),
+    handler: (params, _body, query) =>
+      listCompetitionStaff(requireSession(), params.uuid, query),
   },
   {
     method: "GET",
@@ -678,42 +706,23 @@ const routes: Route[] = [
       return null;
     },
   },
+  // Sponsor event: aturan di mock-sponsors.ts (kontrak 13 bagian 4). GET mengembalikan array datar.
   {
     method: "GET",
     pattern: "/events/:uuid/sponsors",
-    handler: (params, _body, query) =>
-      paginate(
-        store.eventSponsors.filter((item) => item.event_uuid === params.uuid),
-        query,
-      ),
+    handler: (params) => listEventSponsorRecords(params.uuid),
   },
   {
     method: "POST",
     pattern: "/events/:uuid/sponsors",
-    handler: (params, body) => {
-      const link = {
-        uuid: nextUuid(),
-        event_uuid: params.uuid,
-        sponsor_uuid: String(body?.sponsor_id ?? ""),
-        sponsorship_level: String(body?.sponsorship_level ?? "BRONZE"),
-        campaign_text: body?.campaign_text
-          ? String(body.campaign_text)
-          : undefined,
-        status: "pending" as const,
-      };
-      store.eventSponsors.push(link);
-      return link;
-    },
+    handler: (params, body) =>
+      addEventSponsorRecord(requireSession(), params.uuid, body),
   },
   {
     method: "DELETE",
     pattern: "/events/:eventId/sponsors/:linkId",
-    handler: (params) => {
-      store.eventSponsors = store.eventSponsors.filter(
-        (item) => item.uuid !== params.linkId,
-      );
-      return null;
-    },
+    handler: (params) =>
+      removeEventSponsorRecord(requireSession(), params.eventId, params.linkId),
   },
   {
     method: "GET",

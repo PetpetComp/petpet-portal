@@ -28,6 +28,9 @@ const ORGANIZER = [
   P.SCORING_INPUT,
   P.SCORING_VERIFY,
   P.STAFF_INVITE,
+  // Backend asli hanya memberi staff.manage ke OWNER organisasi. Mock tidak punya role OWNER
+  // (semua anggota organisasi ADMIN), jadi organizer demo diberi izin ini supaya Remove bisa dicoba.
+  P.STAFF_MANAGE,
 ];
 
 const ROLE_NAMES: Record<string, string> = {

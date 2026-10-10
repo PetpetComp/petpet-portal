@@ -62,6 +62,7 @@ export const ENDPOINTS = {
     species: "/master/species",
     petMorphs: "/master/pet-morphs",
     competitionTypes: "/master/competition-types",
+    assignmentRoles: "/master/assignment-roles",
     countries: "/master/countries",
     provinces: "/master/provinces",
     cities: "/master/cities",

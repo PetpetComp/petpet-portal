@@ -1,8 +1,8 @@
 import { apiClient } from "@/lib/api-client";
 import { ENDPOINTS } from "@/lib/constants/endpoints";
 import { buildUrl, collectRows } from "@/services/common";
-import { countAt } from "@/lib/api-count";
 import { listEventEntries } from "@/domains/entries/api";
+import { countEventCommittee } from "@/domains/staff/api";
 import type { ApiResponse } from "@/types/common";
 import type { ListResponse, MutationResponse } from "@/types/api";
 import {
@@ -109,8 +109,12 @@ export async function createEventWithPic(input: {
   }
 }
 
+/**
+ * Angka checklist "Committee invited": penugasan + undangan PENDING (kontrak 13 bagian 3).
+ * Hitungannya ada di domain staff; fungsi ini tinggal nama lama yang dipakai hook Overview.
+ */
 export const countEventStaff = (eventId: string) =>
-  countAt(ENDPOINTS.events.staff(eventId));
+  countEventCommittee(eventId);
 
 /** Sponsor satu event: total dan jumlah per level ("GOLD" -> 2), untuk Overview dan tab. */
 export type EventSponsorLevels = {
