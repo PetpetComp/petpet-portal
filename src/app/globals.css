@@ -13,6 +13,7 @@
   --color-border: #e9e0f3;
   --color-input: #d9cdeb;
   --color-ring: #8c75bb;
+  --color-lilac-300: #b5a2dc;
 
   --color-primary: #6c5c9a;
   --color-primary-dark: #4a3d6d;
@@ -26,6 +27,7 @@
   --color-danger: #e5484d;
   --color-danger-soft: #fdedee;
   --color-danger-foreground: #ffffff;
+  --color-danger-ink: #b91c1c; /* teks error dan badge Cancelled, kontras lebih tinggi dari danger */
 
   --color-success: #16a26a;
   --color-success-soft: #e8f8f0;
@@ -33,6 +35,21 @@
   --color-warning-soft: #fdf3e0;
   --color-info: #2e6ee0;
   --color-info-soft: #eaf1fd;
+
+  /* status event dan jenis lomba (desain DS-Foundations): selalu dipakai bersama label teks */
+  --color-event-day: #c2410c;
+  --color-event-day-soft: #ffedd5;
+  --color-event-day-ink: #9a3412;
+  --color-upcoming: #1e40af;
+  --color-upcoming-soft: #dbeafe;
+  --color-done: #166534;
+  --color-done-soft: #dcfce7;
+  --color-race: #c2410c;
+  --color-checkpoint: #b45309;
+  --color-time-trial: #0e7490;
+  --color-time-trial-soft: #cffafe;
+  --color-time-trial-ink: #155e75;
+  --color-contest: #a21caf;
 
   --radius-sm: 0.5rem;
   --radius: 0.75rem;
