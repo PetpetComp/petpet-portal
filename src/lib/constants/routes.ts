@@ -1,10 +1,10 @@
 export const ROUTES = {
-  home: "/",
   auth: {
     signIn: "/sign-in",
     forgotPassword: "/forgot-password",
     resetPassword: "/reset-password",
   },
+  home: "/home",
   dashboard: "/dashboard",
   landing: "/",
   competitorHome: "/my-competitions",

@@ -10,3 +10,15 @@ export type ApiOrganization = {
   status: string;
   sponsor_uuid: string | null;
 };
+
+/** Backend values of `organizer_applications.status`. */
+export const ORGANIZER_APPLICATION_STATUSES = [
+  "DRAFT",
+  "SUBMITTED",
+  "UNDER_REVIEW",
+  "APPROVED",
+  "REJECTED",
+  "CANCELLED",
+] as const;
+export type OrganizerApplicationStatus =
+  (typeof ORGANIZER_APPLICATION_STATUSES)[number];

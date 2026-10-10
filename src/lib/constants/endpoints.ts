@@ -48,6 +48,7 @@ export const ENDPOINTS = {
     pic: (uuid: string, userId: string) =>
       `/sponsors/${id(uuid)}/pics/${id(userId)}`,
   },
+  organizerApplications: { list: "/organizer-applications" },
   organizations: {
     list: "/organizations",
     detail: (uuid: string) => `/organizations/${id(uuid)}`,

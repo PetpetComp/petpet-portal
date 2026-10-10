@@ -1,4 +1,5 @@
 import {
+  House,
   Building2,
   CalendarDays,
   ChartNoAxesCombined,
@@ -32,6 +33,7 @@ export interface NavGroup {
  * replacement ships inside the event workspace (F1 to F3).
  */
 export const navigation: NavGroup[] = [
+  { label: "Home", icon: House, href: ROUTES.home, section: "Main" },
   {
     label: "Events",
     icon: CalendarDays,

@@ -2,7 +2,8 @@ import { apiClient } from "@/lib/api-client";
 import { ENDPOINTS } from "@/lib/constants/endpoints";
 import { buildUrl, collectRows, fetchPageRows } from "@/services/common";
 import type { ApiResponse } from "@/types/common";
-import type { ListParams, ListResponse, MutationResponse } from "@/types/api";
+import type { ListResponse, MutationResponse } from "@/types/api";
+import { countAt } from "@/lib/api-count";
 import type { ApiOrganization } from "@/domains/organizations/types";
 import { fromApi, type ApiEvent, type Event } from "./types";
 
@@ -38,15 +39,8 @@ export async function organizationNames(): Promise<Record<string, string>> {
   return Object.fromEntries(rows.map((o) => [o.uuid, o.name]));
 }
 
-/** Only the total is needed, so ask for the smallest page. */
-async function countOf(url: string): Promise<number> {
-  const fetchPage = (p: ListParams) =>
-    apiClient.get<ListResponse<{ uuid: string }>>(buildUrl(url, p));
-  return (await fetchPageRows(fetchPage, { page: 1, per_page: 1 })).total;
-}
-
 export const countEventStaff = (eventId: string) =>
-  countOf(ENDPOINTS.events.staff(eventId));
+  countAt(ENDPOINTS.events.staff(eventId));
 
 export const countEventSponsors = (eventId: string) =>
-  countOf(ENDPOINTS.events.sponsors(eventId));
+  countAt(ENDPOINTS.events.sponsors(eventId));

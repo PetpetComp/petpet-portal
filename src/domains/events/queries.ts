@@ -56,6 +56,18 @@ export function useEvents(page: number, perPage: number) {
   });
 }
 
+/**
+ * Events for the Home page: the first 100, filtered in the browser because the
+ * API has no date filter or sort yet (docs/09 §F).
+ */
+export function useHomeEvents(enabled: boolean) {
+  return useQuery({
+    queryKey: [...eventKeys.all, "home"],
+    queryFn: () => listEvents({ page: 1, perPage: 100 }),
+    enabled,
+  });
+}
+
 export function useOrganizerNames() {
   return useQuery({
     queryKey: eventKeys.organizerNames,

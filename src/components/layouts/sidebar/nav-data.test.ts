@@ -6,7 +6,7 @@ const labels = (allowed: string[]) =>
 
 describe("visibleNavigation", () => {
   it("shows a user without permissions only what needs none", () => {
-    expect(labels([])).toEqual(["Pets"]);
+    expect(labels([])).toEqual(["Home", "Pets"]);
   });
   it("shows organizer menus once the permission is held", () => {
     expect(labels(["event.update"])).toEqual(

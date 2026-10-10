@@ -390,6 +390,19 @@ const routes: Route[] = [
   },
   {
     method: "GET",
+    pattern: "/organizer-applications",
+    handler: (_params, _body, query) => {
+      const status = query.get("status");
+      return paginate(
+        store.organizerApplications.filter(
+          (a) => !status || a.status === status,
+        ),
+        query,
+      );
+    },
+  },
+  {
+    method: "GET",
     pattern: "/master/competition-types",
     // The real API returns master data as a plain array, not a page.
     handler: () => store.competitionTypes,

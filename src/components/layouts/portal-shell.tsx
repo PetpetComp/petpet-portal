@@ -92,11 +92,7 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link
-      href="/event-management"
-      aria-label="Petpet home"
-      className="shell-brand"
-    >
+    <Link href="/home" aria-label="Petpet home" className="shell-brand">
       {compact ? (
         <Image
           src="/brand/petpet-icon.png"

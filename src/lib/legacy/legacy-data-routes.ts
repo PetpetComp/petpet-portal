@@ -8,6 +8,7 @@ const EVENT_LEGACY_PAGES =
   "create|event-registration|committee-registration|partner-registration|doorprize-drawing|event-participant";
 
 const MIGRATED: RegExp[] = [
+  /^\/home\/?$/, // Home
   /^\/event-management\/?$/, // Events list
   new RegExp(`^/event-management/(?!(?:${EVENT_LEGACY_PAGES})/?$)[^/]+/?$`), // Event overview
   /^\/event-management\/[^/]+\/competitions(\/create)?\/?$/, // Competitions tab, Add competition

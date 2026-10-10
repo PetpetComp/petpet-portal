@@ -16,7 +16,7 @@ import type { Permission } from "@/lib/auth/permissions";
 import type { AuthState, SignUpPayload } from "@/types/auth";
 import type { UserRecord } from "@/types/api";
 /** Everyone lands here after signing in; the page adapts to their access (docs/08). */
-const HOME = "/event-management";
+const HOME = "/home";
 const anonymous: AuthState = {
   user: null,
   token: null,

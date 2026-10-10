@@ -679,6 +679,32 @@ export const store = {
   ],
   registrationPeriods: [] as Record<string, unknown>[],
   scoreCriteria: [] as Record<string, unknown>[],
+  organizerApplications: [
+    {
+      uuid: "app-bekasi-pet-club",
+      proposed_organization_name: "Bekasi Pet Club",
+      organization_type: "COMMUNITY",
+      description: null,
+      contact_email: "hello@bekasipet.id",
+      contact_phone: null,
+      address: null,
+      status: "SUBMITTED",
+      review_note: null,
+      approved_organization_uuid: null,
+    },
+    {
+      uuid: "app-solo-glider",
+      proposed_organization_name: "Solo Glider Society",
+      organization_type: "COMMUNITY",
+      description: null,
+      contact_email: "admin@sologlider.id",
+      contact_phone: null,
+      address: null,
+      status: "UNDER_REVIEW",
+      review_note: null,
+      approved_organization_uuid: null,
+    },
+  ],
 };
 
 export const SUPERADMIN_EMAILS = (
