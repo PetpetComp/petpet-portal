@@ -21,6 +21,15 @@ import {
   searchOwners,
 } from "./mock-records";
 import { UNRESTRICTED, competitionActions, entryActions } from "./mock-rules";
+import {
+  cancelEventRecord,
+  createEventRecord,
+  eventRecord,
+  inviteStaffRecord,
+  listEventRecords,
+  publishEventRecord,
+  updateEventRecord,
+} from "./mock-events";
 
 function matchPath(
   pattern: string,
@@ -128,6 +137,7 @@ const routes: Route[] = [
       const user = store.users.find(
         (item) => item.email.toLowerCase() === email,
       );
+      console.log("mock login", email, password, user);
       if (!user || user.password !== password)
         throw new ApiError(401, "Invalid email or password.");
       currentSessionUserUuid = user.uuid;
@@ -190,11 +200,30 @@ const routes: Route[] = [
       const users = store.users.filter(
         (u) =>
           !q ||
-          [u.username, u.email, u.first_name, u.last_name ?? ""].some((v) =>
-            v.toLowerCase().includes(q),
-          ),
+          [
+            u.username,
+            u.email,
+            u.first_name,
+            u.last_name ?? "",
+            u.phone ?? "",
+            `${u.first_name} ${u.last_name ?? ""}`,
+          ].some((v) => v.toLowerCase().includes(q)),
       );
-      return paginate(users.map(userRecord), query);
+      // Kontrak 13 bagian 1: dengan organization_id, anggota organisasi itu diurutkan
+      // lebih dulu dan ditandai is_member (dipakai pencarian PIC di wizard New event).
+      const organization = store.organizations.find(
+        (o) => o.uuid === query.get("organization_id"),
+      );
+      if (!organization) return paginate(users.map(userRecord), query);
+      const isMember = (u: MockUser) =>
+        organization.pics.some((pic) => pic.user_uuid === u.uuid);
+      const ordered = [...users].sort(
+        (a, b) => Number(isMember(b)) - Number(isMember(a)),
+      );
+      return paginate(
+        ordered.map((u) => ({ ...userRecord(u), is_member: isMember(u) })),
+        query,
+      );
     },
   },
   {
@@ -302,86 +331,34 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/events",
-    handler: (_params, _body, query) => {
-      const organizationId = query.get("organization_id");
-      const filtered = organizationId
-        ? store.events.filter(
-            (event) => event.organization_uuid === organizationId,
-          )
-        : store.events;
-      return paginate(filtered, query);
-    },
+    handler: (_params, _body, query) => listEventRecords(query),
   },
   {
     method: "GET",
     pattern: "/events/:uuid",
-    handler: (params) => findOrThrow(store.events, params.uuid, "Event"),
+    handler: (params) =>
+      eventRecord(findOrThrow(store.events, params.uuid, "Event")),
   },
   {
     method: "POST",
     pattern: "/events",
-    handler: (_params, body) => {
-      const owner = requireSession();
-      let organizationUuid = body?.organization_id
-        ? String(body.organization_id)
-        : "";
-      const newOrganization = body?.new_organization as
-        | { name?: string; email?: string; phone?: string; address?: string }
-        | undefined;
-      if (!organizationUuid && newOrganization?.name) {
-        organizationUuid = nextUuid();
-        store.organizations.push({
-          uuid: organizationUuid,
-          name: newOrganization.name,
-          email: newOrganization.email,
-          phone: newOrganization.phone,
-          address: newOrganization.address,
-          pics: [
-            { uuid: nextUuid(), name: owner.first_name, user_uuid: owner.uuid },
-          ],
-        });
-      }
-      if (!organizationUuid)
-        throw new ApiError(
-          422,
-          "Choose an organization or enter a new organization name.",
-        );
-      const event = {
-        uuid: nextUuid(),
-        organization_uuid: organizationUuid,
-        name: String(body?.name ?? ""),
-        status: "Draft",
-        ...body,
-      };
-      store.events.push(event as (typeof store.events)[number]);
-      return event;
-    },
+    handler: (_params, body) => createEventRecord(requireSession(), body),
   },
   {
     method: "PATCH",
     pattern: "/events/:uuid",
-    handler: (params, body) => {
-      const event = findOrThrow(store.events, params.uuid, "Event");
-      Object.assign(event, body);
-      return event;
-    },
+    handler: (params, body) =>
+      updateEventRecord(requireSession(), params.uuid, body),
   },
   {
     method: "DELETE",
     pattern: "/events/:uuid",
-    handler: (params) => {
-      store.events = store.events.filter((item) => item.uuid !== params.uuid);
-      return null;
-    },
+    handler: (params) => cancelEventRecord(requireSession(), params.uuid),
   },
   {
     method: "POST",
     pattern: "/events/:uuid/publish",
-    handler: (params) => {
-      const event = findOrThrow(store.events, params.uuid, "Event");
-      event.status = "Published";
-      return event;
-    },
+    handler: (params) => publishEventRecord(requireSession(), params.uuid),
   },
   {
     method: "GET",
@@ -545,6 +522,11 @@ const routes: Route[] = [
     method: "GET",
     pattern: "/staff-invitations",
     handler: (_params, _body, query) => paginate([], query),
+  },
+  {
+    method: "POST",
+    pattern: "/staff-invitations",
+    handler: (_params, body) => inviteStaffRecord(requireSession(), body),
   },
   {
     method: "GET",

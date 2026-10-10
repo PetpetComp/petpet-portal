@@ -1,25 +1,29 @@
 import {
   keepPreviousData,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import {
-  countEventSponsors,
+  cancelEvent,
+  countEventEntries,
   countEventStaff,
-  deleteEvent,
+  createEventWithPic,
   getEvent,
+  getEventSponsorLevels,
   listEvents,
-  organizationNames,
+  publishEvent,
+  updateEvent,
 } from "./api";
+import type { EventDetails } from "./schema";
+import type { EventListQuery } from "./types";
 
 export const eventKeys = {
   all: ["events"] as const,
-  list: (page: number, perPage: number) =>
-    [...eventKeys.all, "list", { page, perPage }] as const,
+  list: (query: EventListQuery) => [...eventKeys.all, "list", query] as const,
   detail: (id: string) => [...eventKeys.all, "detail", id] as const,
   counts: (id: string) => [...eventKeys.all, "counts", id] as const,
-  organizerNames: ["organizations", "names"] as const,
 };
 
 export function useEvent(id: string) {
@@ -29,9 +33,18 @@ export function useEvent(id: string) {
   });
 }
 
+/** Satu halaman list event dari server. Halaman lama tetap tampil selama halaman baru dimuat. */
+export function useEvents(query: EventListQuery) {
+  return useQuery({
+    queryKey: eventKeys.list(query),
+    queryFn: () => listEvents(query),
+    placeholderData: keepPreviousData,
+  });
+}
+
 /**
- * Committee and sponsor totals for the overview. Two queries on purpose:
- * each endpoint has its own access rule, so one may fail while the other works.
+ * Jumlah panitia event untuk checklist Setup. Query terpisah dari sponsor dan entry
+ * karena tiap endpoint punya aturan akses sendiri: satu boleh gagal, yang lain tetap jalan.
  */
 export function useEventStaffCount(id: string) {
   return useQuery({
@@ -40,46 +53,94 @@ export function useEventStaffCount(id: string) {
   });
 }
 
-export function useEventSponsorCount(id: string) {
+/** Total sponsor dan rinciannya per level (tab Sponsors, kartu Sponsors, checklist). */
+export function useEventSponsors(id: string) {
   return useQuery({
     queryKey: [...eventKeys.counts(id), "sponsors"],
-    queryFn: () => countEventSponsors(id),
+    queryFn: () => getEventSponsorLevels(id),
   });
 }
 
-/** `page` is 1-based, like the API. Keeps the previous page on screen while the next one loads. */
-export function useEvents(page: number, perPage: number) {
+/** Total entry semua kompetisi event (hitungan tab Participants dan kartu Participants). */
+export function useEventEntryCount(id: string) {
   return useQuery({
-    queryKey: eventKeys.list(page, perPage),
-    queryFn: () => listEvents({ page, perPage }),
-    placeholderData: keepPreviousData,
+    queryKey: [...eventKeys.counts(id), "entries"],
+    queryFn: () => countEventEntries(id),
   });
 }
 
 /**
- * Events for the Home page: the first 100, filtered in the browser because the
- * API has no date filter or sort yet (docs/09 §F).
+ * Jumlah entry per kompetisi untuk bar "Participants per competition".
+ * Satu request kecil per kompetisi (backend belum punya `entries_count`, docs 09 bagian G).
+ * Hasilnya `Record<competitionId, jumlah>`; kompetisi yang gagal dimuat tidak ada di record.
+ */
+export function useCompetitionEntryCounts(
+  eventId: string,
+  competitionIds: string[],
+) {
+  return useQueries({
+    queries: competitionIds.map((competitionId) => ({
+      queryKey: [...eventKeys.counts(eventId), "entries", competitionId],
+      queryFn: () => countEventEntries(eventId, competitionId),
+    })),
+    combine: (results) => ({
+      counts: Object.fromEntries(
+        competitionIds.flatMap((id, i) =>
+          results[i]?.data === undefined ? [] : [[id, results[i].data]],
+        ),
+      ) as Record<string, number>,
+      isPending: results.some((r) => r.isPending),
+    }),
+  });
+}
+
+/** Buat event + undang PIC. Setelah berhasil, semua list dan detail event dimuat ulang. */
+export function useCreateEvent() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: createEventWithPic,
+    onSuccess: () => client.invalidateQueries({ queryKey: eventKeys.all }),
+  });
+}
+
+/** Simpan perubahan Edit event. */
+export function useUpdateEvent(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (details: EventDetails) => updateEvent(id, details),
+    onSuccess: () => client.invalidateQueries({ queryKey: eventKeys.all }),
+  });
+}
+
+/** Terbitkan event Draft. */
+export function usePublishEvent(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => publishEvent(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: eventKeys.all }),
+  });
+}
+
+/** Batalkan event (di backend: `DELETE`, status menjadi CANCELLED). */
+export function useCancelEvent(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => cancelEvent(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: eventKeys.all }),
+  });
+}
+
+/**
+ * Event untuk halaman Home: 100 pertama, disaring di browser karena API belum punya
+ * filter tanggal (docs 09 bagian F). Mengembalikan `{ items, total }` seperti sebelumnya.
  */
 export function useHomeEvents(enabled: boolean) {
   return useQuery({
     queryKey: [...eventKeys.all, "home"],
-    queryFn: () => listEvents({ page: 1, perPage: 100 }),
+    queryFn: async () => {
+      const page = await listEvents({ page: 1, perPage: 100 });
+      return { items: page.items, total: page.meta.total };
+    },
     enabled,
-  });
-}
-
-export function useOrganizerNames() {
-  return useQuery({
-    queryKey: eventKeys.organizerNames,
-    queryFn: organizationNames,
-    staleTime: 5 * 60_000,
-  });
-}
-
-export function useDeleteEvent() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: deleteEvent,
-    onSuccess: () => client.invalidateQueries({ queryKey: eventKeys.all }),
   });
 }

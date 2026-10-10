@@ -11,6 +11,15 @@ describe("needsLegacyData", () => {
       false,
     );
     expect(needsLegacyData("/event-management")).toBe(false);
+    expect(needsLegacyData("/event-management/create")).toBe(false);
+    expect(needsLegacyData("/event-management/7f3a-uuid/edit")).toBe(false);
+    expect(needsLegacyData("/event-management/7f3a-uuid/committee")).toBe(
+      false,
+    );
+    expect(needsLegacyData("/event-management/7f3a-uuid/sponsors")).toBe(false);
+    expect(needsLegacyData("/event-management/7f3a-uuid/doorprize")).toBe(
+      false,
+    );
     expect(needsLegacyData("/event-management/7f3a-uuid")).toBe(false);
     expect(needsLegacyData("/event-management/7f3a-uuid/competitions")).toBe(
       false,
@@ -20,12 +29,10 @@ describe("needsLegacyData", () => {
     ).toBe(false);
   });
   it("still loads for old pages that read the shared store", () => {
-    expect(needsLegacyData("/event-management/create")).toBe(true);
     expect(needsLegacyData("/event-management/event-registration")).toBe(true);
     expect(needsLegacyData("/event-management/7f3a-uuid/competitions/c1")).toBe(
       true,
     );
-    expect(needsLegacyData("/event-management/7f3a-uuid/edit")).toBe(true);
     expect(needsLegacyData("/user-management")).toBe(true);
     expect(needsLegacyData("/competition")).toBe(true);
   });

@@ -1,9 +1,10 @@
-import { EventWorkspace } from "@/app/(portal)/event-management/_components/event-workspace";
+import { EventEditPage } from "../../_components/event-edit-form";
+
 export default async function Page({
   params,
 }: {
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = await params;
-  return <EventWorkspace mode="edit" id={eventId} />;
+  return <EventEditPage eventId={eventId} />;
 }

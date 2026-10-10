@@ -22,3 +22,14 @@ export const ORGANIZER_APPLICATION_STATUSES = [
 ] as const;
 export type OrganizerApplicationStatus =
   (typeof ORGANIZER_APPLICATION_STATUSES)[number];
+
+/** Organisasi seperti dipakai layar (pemilih organizer, filter list event). Dibuat oleh `fromApi`. */
+export type Organization = {
+  id: string;
+  name: string;
+};
+
+/** Mengubah satu baris API menjadi bentuk layar. Dipanggil dari `listOrganizations`. */
+export function fromApi(row: ApiOrganization): Organization {
+  return { id: row.uuid, name: row.name };
+}

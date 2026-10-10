@@ -1,172 +1,208 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Plus, Search } from "lucide-react";
 import { Can } from "@/components/common/can";
-import { ConfirmDialog } from "@/components/common/confirm-dialog";
-import { DataTable, type Column } from "@/components/common/data-table";
-import { PageHeading } from "@/components/common/page-heading";
-import { StatusBadge } from "@/components/common/status-badge";
+import { ErrorState } from "@/components/common/error-state";
+import { buttonVariants } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 import {
-  useDeleteEvent,
-  useEvents,
-  useOrganizerNames,
-} from "@/domains/events/queries";
-import { EVENT_STATUSES, type Event } from "@/domains/events/types";
+  SegmentedTabs,
+  type SegmentedTab,
+} from "@/components/ui/segmented-tabs";
+import {
+  EMPTY_COLUMN_FILTERS,
+  INITIAL_LIST_STATE,
+  PER_PAGE_OPTIONS,
+  buildEventListQuery,
+  hasActiveFilters,
+  type EventColumnFilters,
+  type EventListState,
+} from "@/domains/events/list-state";
+import { useEvents } from "@/domains/events/queries";
+import {
+  EVENT_PHASE_LABEL,
+  EVENT_TAB_PHASES,
+  type EventPhase,
+  type EventSort,
+  type EventSummary,
+} from "@/domains/events/types";
+import { useOrganizations } from "@/domains/organizations/queries";
+import { useAuth } from "@/hooks/use-auth";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { USING_MOCK_BACKEND } from "@/lib/backend-mode";
 import { PERMISSION } from "@/lib/auth/permissions";
 import { ROUTES } from "@/lib/constants/routes";
-import { formatDateTime } from "@/lib/format/date";
-import { eventInitials } from "../_lib/event-rules";
+import { cn } from "@/lib/utils";
+import { EventsTable } from "./events-table";
 
+/** Nilai tab "All". Tab lain memakai nama fase. */
+type TabValue = EventPhase | "ALL";
+
+/** Jumlah di samping label tab, diambil dari `summary` server (hanya ada di mode mock). */
+const SUMMARY_KEY: Record<
+  (typeof EVENT_TAB_PHASES)[number],
+  keyof EventSummary
+> = {
+  EVENT_DAY: "eventDay",
+  UPCOMING: "upcoming",
+  DRAFT: "draft",
+  FINISHED: "finished",
+};
+
+/**
+ * Halaman list event (`/event-management`), sesuai desain A-Events.
+ * Filter, pencarian, urutan, dan paging semuanya dikirim ke server lewat `useEvents`.
+ * Di mode backend asli (yang belum mendukungnya) tab status, pencarian, dan filter kolom
+ * disembunyikan; yang tersisa filter organizer dan paging (docs 08 bagian 9.3, docs 09 bagian F).
+ */
 export function EventsPage() {
-  const [page, setPage] = useState(0); // 0-based, as DataTable's `server` expects
-  const [pageSize, setPageSize] = useState(10);
-  const [toDelete, setToDelete] = useState<Event | null>(null);
-  const events = useEvents(page + 1, pageSize);
-  const organizers = useOrganizerNames();
-  const remove = useDeleteEvent();
-  const organizerOf = (e: Event) => organizers.data?.[e.organizationId] ?? "-";
+  const { can } = useAuth();
+  const [state, setState] = useState<EventListState>(INITIAL_LIST_STATE);
+  const organizations = useOrganizations();
+  const serverFilters = USING_MOCK_BACKEND;
 
-  // Filters are shown but inactive: the events API only filters by
-  // organization_id. Tracked in docs/09 §A.
-  const columns: Column<Event>[] = [
-    {
-      key: "name",
-      label: "Event",
-      filter: { type: "text" },
-      render: (row) => (
-        <div className="record-name">
-          <span className="record-initials">{eventInitials(row.name)}</span>
-          <div>
-            <strong>{row.name}</strong>
-            <small>{row.tagline || row.id}</small>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "startAt",
-      label: "Start",
-      render: (row) => formatDateTime(row.startAt),
-    },
-    { key: "endAt", label: "End", render: (row) => formatDateTime(row.endAt) },
-    {
-      key: "venue",
-      label: "Venue",
-      filter: { type: "text" },
-      render: (row) => row.venueName || "-",
-    },
-    {
-      key: "organizer",
-      label: "Organizer",
-      filter: {
-        type: "select",
-        options: Object.values(organizers.data ?? {}),
-      },
-      render: organizerOf,
-    },
-    {
-      key: "status",
-      label: "Status",
-      filter: { type: "select", options: [...EVENT_STATUSES] },
-      render: (row) => <StatusBadge status={row.status} />,
-    },
+  // Ketikan di-debounce supaya server tidak ditembak di tiap huruf.
+  const search = useDebouncedValue(state.search);
+  const name = useDebouncedValue(state.filters.name);
+  const venue = useDebouncedValue(state.filters.venue);
+  const events = useEvents(buildEventListQuery(state, { search, name, venue }));
+
+  /** Ubah satu bagian status, lalu kembali ke halaman 1 (hasil berubah, nomor halaman lama tak berarti). */
+  function update(patch: Partial<EventListState>) {
+    setState((current) => ({ ...current, ...patch, page: 1 }));
+  }
+
+  function changeFilters(patch: Partial<EventColumnFilters>) {
+    setState((current) => ({
+      ...current,
+      filters: { ...current.filters, ...patch },
+      page: 1,
+    }));
+  }
+
+  /** Klik judul kolom: urutan yang sama dibalik, kolom baru mulai dari urutan bawaannya. */
+  function changeSort(sort: EventSort) {
+    setState((current) => ({
+      ...current,
+      sort,
+      direction:
+        current.sort === sort
+          ? current.direction === "asc"
+            ? "desc"
+            : "asc"
+          : sort === "name"
+            ? "asc"
+            : "desc",
+      page: 1,
+    }));
+  }
+
+  const summary = events.data?.summary ?? null;
+  const tabs: SegmentedTab<TabValue>[] = [
+    { value: "ALL", label: "All", count: summary?.all },
+    ...EVENT_TAB_PHASES.map((phase) => ({
+      value: phase,
+      label: EVENT_PHASE_LABEL[phase],
+      count: summary?.[SUMMARY_KEY[phase]],
+    })),
   ];
+  const filtersActive = hasActiveFilters(state);
 
   return (
-    <div className="page-stack">
-      <PageHeading
-        title="Events"
-        description="Schedules, organizers, and status of every event."
-        actions={
-          <Can permission={PERMISSION.EVENT_CREATE}>
-            <Link href={ROUTES.eventManagement.create} className="link-button">
-              <Plus size={16} />
-              New event
-            </Link>
-          </Can>
-        }
-      />
-      {events.isError ? (
-        <div role="alert" className="form-error">
-          {events.error instanceof Error
-            ? events.error.message
-            : "Unable to load events."}{" "}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => events.refetch()}
-          >
-            Try again
-          </Button>
+    <div className="grid min-w-0 grid-cols-1 gap-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="grid gap-1.5">
+          <h1 className="font-display text-[34px] leading-[38px] font-bold">
+            Events
+          </h1>
+          <p className="text-muted-foreground text-[15px]">
+            Open an event to manage its competitions, registrations and
+            event-day operations.
+          </p>
         </div>
-      ) : (
-        <DataTable
-          label="Events"
-          rows={events.data?.items ?? []}
-          columns={columns}
-          server={{
-            page,
-            pageSize,
-            total: events.data?.total ?? 0,
-            onPageChange: setPage,
-            onPageSizeChange: (size) => {
-              setPageSize(size);
-              setPage(0);
-            },
-            loading: events.isFetching,
-          }}
-          actions={(event) => (
-            <>
-              <Link
-                href={ROUTES.eventManagement.detail(event.id)}
-                title={"View " + event.name}
-                aria-label={"View " + event.name}
-              >
-                <Eye size={15} />
-              </Link>
-              <Can permission={PERMISSION.EVENT_UPDATE}>
-                <Link
-                  href={ROUTES.eventManagement.edit(event.id)}
-                  title={"Edit " + event.name}
-                  aria-label={"Edit " + event.name}
-                >
-                  <Pencil size={14} />
-                </Link>
-              </Can>
-              <Can permission={PERMISSION.EVENT_DELETE}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title={"Delete " + event.name}
-                  aria-label={"Delete " + event.name}
-                  onClick={() => setToDelete(event)}
-                >
-                  <Trash2 size={15} />
-                </Button>
-              </Can>
-            </>
-          )}
-        />
+        <Can permission={PERMISSION.EVENT_CREATE}>
+          <Link
+            href={ROUTES.eventManagement.create}
+            className={cn(
+              buttonVariants(),
+              "min-h-11 rounded-xl px-[18px] text-[15px] font-bold",
+            )}
+          >
+            <Plus size={18} aria-hidden />
+            New event
+          </Link>
+        </Can>
+      </header>
+
+      {serverFilters && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <SegmentedTabs
+            label="Status"
+            tabs={tabs}
+            value={state.filters.phase || "ALL"}
+            onChange={(value) =>
+              changeFilters({ phase: value === "ALL" ? "" : value })
+            }
+          />
+          <label className="border-input focus-within:border-primary flex min-h-11 w-full max-w-80 items-center gap-2 rounded-xl border bg-white px-3.5 sm:w-80">
+            <Search size={18} aria-hidden className="text-muted-foreground" />
+            <input
+              type="search"
+              aria-label="Search events"
+              placeholder="Search event, venue or organizer"
+              value={state.search}
+              onChange={(e) => update({ search: e.target.value })}
+              className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+            />
+          </label>
+        </div>
       )}
-      <ConfirmDialog
-        open={!!toDelete}
-        onOpenChange={(open) => !open && setToDelete(null)}
-        title="Delete event"
-        description={`Delete "${toDelete?.name}"? This cannot be undone.`}
-        onConfirm={() =>
-          toDelete &&
-          remove.mutate(toDelete.id, {
-            onSuccess: () => toast.success("Event deleted"),
-            onError: (cause) =>
-              toast.error(
-                cause instanceof Error ? cause.message : "Unable to delete.",
-              ),
-          })
-        }
-      />
+
+      {events.isError ? (
+        <ErrorState
+          error={events.error}
+          fallback="Unable to load events."
+          onRetry={() => events.refetch()}
+        />
+      ) : (
+        <>
+          <EventsTable
+            events={events.data?.items ?? []}
+            organizers={organizations.data ?? []}
+            loading={events.isPending || events.isPlaceholderData}
+            features={{ serverFilters }}
+            filters={state.filters}
+            onFilterChange={changeFilters}
+            onClearFilters={() =>
+              setState((current) => ({
+                ...current,
+                filters: EMPTY_COLUMN_FILTERS,
+                search: "",
+                page: 1,
+              }))
+            }
+            filtersActive={filtersActive}
+            sort={state.sort}
+            direction={state.direction}
+            onSortChange={changeSort}
+            canCreate={can(PERMISSION.EVENT_CREATE)}
+          />
+          <div className="[&>nav]:border-t-0">
+            <Pagination
+              label="events"
+              page={state.page}
+              perPage={state.perPage}
+              total={events.data?.meta.total ?? 0}
+              perPageOptions={PER_PAGE_OPTIONS}
+              onPageChange={(page) => setState((s) => ({ ...s, page }))}
+              onPerPageChange={(perPage) =>
+                setState((s) => ({ ...s, perPage, page: 1 }))
+              }
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

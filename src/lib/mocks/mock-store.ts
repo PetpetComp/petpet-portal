@@ -25,7 +25,7 @@ const COMPETITION_UUID = "comp-agility-sprint";
 const PET_UUID = "pet-bolt";
 const SPONSOR_UUID = "spo-whiskas-indonesia";
 
-export const DEMO_PASSWORD = "password123";
+export const DEMO_PASSWORD = "password";
 
 /** Event-day demo: Jakarta Pet Festival has one competition per lifecycle status. */
 const BEAUTY_UUID = "comp-beauty-class-open";
@@ -422,7 +422,7 @@ export const store = {
       timezone: "Asia/Jakarta",
       start_at: "2026-10-05T08:00:00+07:00",
       end_at: "2026-11-06T18:00:00+07:00",
-      status: "Published",
+      status: "PUBLISHED",
     },
     {
       uuid: "evt-jakarta-cat-show",
@@ -434,7 +434,7 @@ export const store = {
       timezone: "Asia/Jakarta",
       start_at: "2026-09-20T09:00:00+07:00",
       end_at: "2026-09-21T17:00:00+07:00",
-      status: "Published",
+      status: "PUBLISHED",
     },
     {
       uuid: "evt-surabaya-paw-race",
@@ -446,7 +446,7 @@ export const store = {
       timezone: "Asia/Jakarta",
       start_at: "2026-08-15T07:00:00+07:00",
       end_at: "2026-08-15T16:00:00+07:00",
-      status: "Published",
+      status: "PUBLISHED",
     },
     {
       uuid: "evt-bandung-dog-agility",
@@ -458,7 +458,7 @@ export const store = {
       timezone: "Asia/Jakarta",
       start_at: "2026-12-10T08:00:00+07:00",
       end_at: "2026-12-10T17:00:00+07:00",
-      status: "Draft",
+      status: "DRAFT",
     },
     {
       uuid: "evt-bali-exotic-pet-expo",
@@ -470,7 +470,7 @@ export const store = {
       timezone: "Asia/Makassar",
       start_at: "2026-10-03T09:00:00+08:00",
       end_at: "2026-10-04T18:00:00+08:00",
-      status: "Published",
+      status: "PUBLISHED",
     },
     {
       uuid: "evt-yogya-pet-carnival",
@@ -482,7 +482,7 @@ export const store = {
       timezone: "Asia/Jakarta",
       start_at: "2026-07-01T08:00:00+07:00",
       end_at: "2026-07-01T20:00:00+07:00",
-      status: "Closed",
+      status: "PUBLISHED",
     },
     {
       uuid: "evt-medan-pet-championship",
@@ -494,7 +494,79 @@ export const store = {
       timezone: "Asia/Jakarta",
       start_at: "2027-01-18T08:00:00+07:00",
       end_at: "2027-01-19T17:00:00+07:00",
-      status: "Draft",
+      status: "DRAFT",
+    },
+    {
+      uuid: "evt-solo-glider-cup",
+      organization_uuid: "org-surabaya-pet-sports",
+      name: "Solo Sugar Glider Agility Cup",
+      tagline: "Glide further",
+      venue_name: "Palur Plaza",
+      venue_address: "Jl. Raya Palur, Solo",
+      timezone: "Asia/Jakarta",
+      start_at: "2026-11-14T08:00:00+07:00",
+      end_at: "2026-11-15T18:00:00+07:00",
+      status: "PUBLISHED",
+    },
+    {
+      uuid: "evt-bandung-glider-festival",
+      organization_uuid: ORG_UUID,
+      name: "Bandung Sugar Glider Festival",
+      tagline: "A night of gliders",
+      venue_name: "Bandung Convention Centre",
+      venue_address: "Jl. Braga, Bandung",
+      timezone: "Asia/Jakarta",
+      start_at: "2026-11-28T09:00:00+07:00",
+      end_at: "2026-11-28T18:00:00+07:00",
+      status: "PUBLISHED",
+    },
+    {
+      uuid: "evt-semarang-tournament",
+      organization_uuid: "org-jakarta-cat-lovers",
+      name: "Semarang Sugar Glider Tournament",
+      tagline: "Champions of Central Java",
+      venue_name: "Taman Indonesia Kaya",
+      venue_address: "Jl. Menteri Supeno, Semarang",
+      timezone: "Asia/Jakarta",
+      start_at: "2026-12-05T10:00:00+07:00",
+      end_at: "2026-12-05T18:00:00+07:00",
+      status: "PUBLISHED",
+    },
+    {
+      uuid: "evt-tangerang-glider-party",
+      organization_uuid: "org-surabaya-pet-sports",
+      name: "Tangerang Glider Party",
+      tagline: "Small pets, big party",
+      venue_name: "Mall @ Alam Sutera",
+      venue_address: "Jl. Jalur Sutera, Tangerang",
+      timezone: "Asia/Jakarta",
+      start_at: "2026-08-09T09:00:00+07:00",
+      end_at: "2026-08-09T18:00:00+07:00",
+      status: "PUBLISHED",
+    },
+    {
+      uuid: "evt-malang-pet-show",
+      organization_uuid: ORG_UUID,
+      name: "Malang Pet Show 2026",
+      tagline: "Cancelled for renovation",
+      venue_name: "Malang Town Square",
+      venue_address: "Jl. Veteran, Malang",
+      timezone: "Asia/Jakarta",
+      start_at: "2026-11-01T09:00:00+07:00",
+      end_at: "2026-11-01T17:00:00+07:00",
+      status: "CANCELLED",
+    },
+    {
+      uuid: "evt-makassar-pet-expo",
+      organization_uuid: "org-jakarta-cat-lovers",
+      name: "Makassar Pet Expo 2027",
+      tagline: "Eastern Indonesia meets paws",
+      venue_name: "Celebes Convention Centre",
+      venue_address: "Jl. Metro Tanjung Bunga, Makassar",
+      timezone: "Asia/Makassar",
+      start_at: "2027-02-20T08:00:00+08:00",
+      end_at: "2027-02-21T17:00:00+08:00",
+      status: "DRAFT",
     },
   ] as MockEvent[],
 

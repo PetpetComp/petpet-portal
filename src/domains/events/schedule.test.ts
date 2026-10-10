@@ -4,14 +4,20 @@ import type { Event } from "./types";
 
 const ev = (id: string, startAt: string, endAt = startAt): Event => ({
   id,
+  code: "",
   organizationId: "o1",
+  organizationName: "",
   name: id,
   tagline: "",
+  description: "",
   venueName: "",
   venueAddress: "",
+  mapLocation: "",
+  timezone: "Asia/Jakarta",
   startAt,
   endAt,
   status: "PUBLISHED",
+  phase: null,
 });
 const now = new Date(2026, 8, 4, 12, 0); // 4 Sep 2026, noon local time
 const at = (d: number, h: number) => new Date(2026, 8, d, h).toISOString();

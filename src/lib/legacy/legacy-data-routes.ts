@@ -5,15 +5,18 @@
  * delete the provider.
  */
 const EVENT_LEGACY_PAGES =
-  "create|event-registration|committee-registration|partner-registration|doorprize-drawing|event-participant";
+  "event-registration|committee-registration|partner-registration|doorprize-drawing|event-participant";
 
 const MIGRATED: RegExp[] = [
   /^\/home\/?$/, // Home
   /^\/event-management\/?$/, // Events list
+  /^\/event-management\/create\/?$/, // New event wizard
   new RegExp(`^/event-management/(?!(?:${EVENT_LEGACY_PAGES})/?$)[^/]+/?$`), // Event overview
   /^\/event-management\/[^/]+\/competitions(\/create)?\/?$/, // Competitions tab, Add competition
   /^\/event-management\/[^/]+\/registrations\/?$/, // Registrations tab
   /^\/event-management\/[^/]+\/participants\/?$/, // Participants & check-in tab
+  /^\/event-management\/[^/]+\/(committee|sponsors|doorprize)\/?$/, // Tabs that are still "coming soon"
+  /^\/event-management\/[^/]+\/edit\/?$/, // Edit event
 ];
 
 export function needsLegacyData(pathname: string): boolean {

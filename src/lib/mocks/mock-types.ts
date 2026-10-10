@@ -2,6 +2,7 @@ import type {
   CompetitionStatus,
   RegistrationPeriodType,
 } from "@/domains/competitions/types";
+import type { EventStatus } from "@/domains/events/types";
 import type {
   CheckinStatus,
   EligibilityStatus,
@@ -47,7 +48,8 @@ export interface MockEvent {
   timezone?: string;
   start_at: string;
   end_at: string;
-  status: string;
+  /** Nilai backend: DRAFT, PUBLISHED, CANCELLED. Fase (Event day, Upcoming, ...) dihitung di mock-events.ts. */
+  status: EventStatus;
 }
 
 export interface MockCompetition {

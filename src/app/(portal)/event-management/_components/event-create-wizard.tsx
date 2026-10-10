@@ -1,402 +1,336 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Building2,
-  Calendar,
-  Check,
-  ClipboardCheck,
-  Info,
-} from "lucide-react";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Textarea } from "@/components/ui/form-controls";
-import { SelectField, MultiSelectField } from "@/components/common/select-field";
-import { usePortalData } from "@/components/providers/portal-data-provider";
-import { useCapabilities } from "@/hooks/use-capabilities";
-import { EVENT_SERVICES } from "@/services/event-management";
-import { ORGANIZATION_SERVICES, mapOrganization } from "@/services/organization";
-import { collectRows } from "@/services/common";
-import { formatDateTime } from "@/lib/format/date";
-import { isDuplicateEventName, isValidDateRange } from "../_lib/event-rules";
-import type { Organization } from "@/types/organization";
-import "./event-create-wizard.css";
+import { Stepper } from "@/components/ui/stepper";
+import { ApiError } from "@/lib/api-client";
+import {
+  WIZARD_STEPS,
+  WIZARD_STEP_LABEL,
+  hasErrors,
+  organizerDisplayName,
+  picDisplayName,
+  validateOrganizerStep,
+  type OrganizerChoice,
+  type OrganizerStepErrors,
+  type PicChoice,
+  type WizardStep,
+} from "@/domains/events/create-flow";
+import { formatEventSchedule } from "@/domains/events/format";
+import { useCreateEvent } from "@/domains/events/queries";
+import {
+  EMPTY_EVENT_DETAILS,
+  eventDetailsSchema,
+  serverErrorsToFormErrors,
+  toIsoString,
+  type EventDetails,
+  type EventDetailsValues,
+} from "@/domains/events/schema";
+import { ROUTES } from "@/lib/constants/routes";
+import { EventAvatar } from "./event-avatar";
+import { EventDetailsFields } from "./event-details-fields";
+import { EventPhaseBadge } from "./event-phase-badge";
+import { OrganizerStep } from "./organizer-step";
+import { ReviewStep } from "./review-step";
 
-const BASE_PATH = "/event-management";
-const STEPS = [
-  { label: "Event", icon: Calendar },
-  { label: "Organizer", icon: Building2 },
-  { label: "Review", icon: ClipboardCheck },
-] as const;
-
+/**
+ * Wizard New event (`/event-management/create`), 3 langkah sesuai desain:
+ * Event -> Organizer & PIC -> Review. Tiap langkah divalidasi sebelum lanjut.
+ * Tidak ada yang dikirim ke server sebelum tombol "Create event" di langkah Review.
+ * Isi langkah 1 dipegang react-hook-form di sini supaya tetap ada saat pindah langkah;
+ * pilihan organizer dan PIC dipegang state biasa (logikanya di domains/events/create-flow.ts).
+ */
 export function EventCreateWizard() {
   const router = useRouter();
-  const { data, refresh } = usePortalData();
-  const capabilities = useCapabilities();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const create = useCreateEvent();
+  const [step, setStep] = useState<WizardStep>("details");
+  const [organizer, setOrganizer] = useState<OrganizerChoice | null>(null);
+  const [pic, setPic] = useState<PicChoice | null>(null);
+  const [stepErrors, setStepErrors] = useState<OrganizerStepErrors>({});
+  const [submitError, setSubmitError] = useState("");
 
-  const [name, setName] = useState("");
-  const [tagline, setTagline] = useState("");
-  const [description, setDescription] = useState("");
-  const [startAt, setStartAt] = useState("");
-  const [endAt, setEndAt] = useState("");
-  const [venueName, setVenueName] = useState("");
-  const [venueAddress, setVenueAddress] = useState("");
-  const [mapLocation, setMapLocation] = useState("");
-  const [timezone, setTimezone] = useState("Asia/Jakarta");
+  const form = useForm<EventDetailsValues, unknown, EventDetails>({
+    resolver: zodResolver(eventDetailsSchema),
+    defaultValues: EMPTY_EVENT_DETAILS,
+  });
+  const values = useWatch({ control: form.control });
+  const stepIndex = WIZARD_STEPS.indexOf(step);
 
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [loadingOrganizations, setLoadingOrganizations] = useState(true);
-  const [organizationId, setOrganizationId] = useState(() =>
-    !capabilities.isSuperAdmin ? (capabilities.organizationIds[0] ?? "") : "",
-  );
-  const [newOrganizationName, setNewOrganizationName] = useState("");
-  const [picIds, setPicIds] = useState<string[]>([]);
-
-  const myOrganization = capabilities.organizationIds[0]
-    ? organizations.find((org) => org.id === capabilities.organizationIds[0])
-    : undefined;
-
-  useEffect(() => {
-    let active = true;
-    collectRows(ORGANIZATION_SERVICES.list)
-      .then((rows) => {
-        if (active) setOrganizations(rows.map(mapOrganization));
-      })
-      .finally(() => {
-        if (active) setLoadingOrganizations(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  function goToStep2() {
-    if (!name.trim()) return setError("Event name is required.");
-    if (isDuplicateEventName(data.events, { id: "", name })) {
-      return setError("An event with this name already exists.");
-    }
-    if (!startAt || !endAt) return setError("Start and end date are required.");
-    if (!isValidDateRange(startAt, endAt)) {
-      return setError("End date must be after the start date.");
-    }
-    setError("");
-    setStep(2);
+  /** Langkah 1 -> 2: lanjut hanya bila isian event valid. */
+  async function continueToOrganizer() {
+    if (await form.trigger()) setStep("organizer");
   }
 
-  function goToStep3() {
-    if (capabilities.isSuperAdmin) {
-      if (!organizationId && !newOrganizationName.trim()) {
-        return setError("Select an existing organization or name a new one.");
-      }
-    } else if (!organizationId && !newOrganizationName.trim()) {
-      return setError("Enter your organization's name.");
-    }
-    setError("");
-    setStep(3);
+  /** Langkah 2 -> 3: lanjut hanya bila organizer dipilih dan PIC (bila ada) valid. */
+  function continueToReview() {
+    const errors = validateOrganizerStep(organizer, pic);
+    setStepErrors(errors);
+    if (!hasErrors(errors)) setStep("review");
   }
 
-  async function confirm() {
-    if (submitting) return;
-    setSubmitting(true);
-    setError("");
-    try {
-      const response = await EVENT_SERVICES.create({
-        name: name.trim(),
-        tagline: tagline.trim() || undefined,
-        description: description.trim() || undefined,
-        venue_name: venueName.trim() || undefined,
-        venue_address: venueAddress.trim() || undefined,
-        map_location: mapLocation.trim() || undefined,
-        timezone,
-        start_at: new Date(startAt).toISOString(),
-        end_at: new Date(endAt).toISOString(),
-        ...(organizationId
-          ? { organization_id: organizationId }
-          : { new_organization: { name: newOrganizationName.trim() } }),
-      });
-      if (!organizationId && picIds.length > 0) {
-        const createdOrganizationId = String(response.data.organization_uuid ?? "");
-        if (createdOrganizationId) {
-          await ORGANIZATION_SERVICES.update(createdOrganizationId, {
-            name: newOrganizationName.trim(),
-            photo: "",
-            campaign: "",
-            picIds,
-          });
-        }
-      }
-      await refresh();
-      toast.success("Event created");
-      router.push(BASE_PATH + "/" + response.data.uuid);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to create event.");
-      setSubmitting(false);
-    }
+  /** Langkah 3: simpan event, lalu undang PIC. Pesan 422 server dikembalikan ke field-nya. */
+  const confirm = form.handleSubmit((details) => {
+    if (!organizer) return;
+    setSubmitError("");
+    create.mutate(
+      { details, organizer, pic },
+      {
+        onSuccess: (outcome) => {
+          toast.success(`Event "${outcome.eventName}" created`);
+          if (outcome.inviteError)
+            toast.warning(
+              `The PIC invitation was not sent: ${outcome.inviteError} Invite them from the Committee tab.`,
+            );
+          router.push(ROUTES.eventManagement.detail(outcome.eventId));
+        },
+        onError: (cause) => {
+          const fieldErrors =
+            cause instanceof ApiError
+              ? serverErrorsToFormErrors(cause.errors)
+              : {};
+          if (Object.keys(fieldErrors).length > 0) {
+            for (const [field, message] of Object.entries(fieldErrors))
+              form.setError(field as keyof EventDetailsValues, { message });
+            setStep("details");
+            return;
+          }
+          setSubmitError(
+            cause instanceof Error
+              ? cause.message
+              : "Unable to create the event.",
+          );
+        },
+      },
+    );
+  });
+
+  /** Klik pada langkah yang sudah selesai di Stepper: kembali ke langkah itu. */
+  function goToStep(index: number) {
+    setStep(WIZARD_STEPS[index]);
   }
 
-  const selectedOrganizationName = organizationId
-    ? organizations.find((org) => org.id === organizationId)?.name
-    : newOrganizationName.trim()
-      ? newOrganizationName.trim() + " (new)"
-      : "";
+  const orgName = organizerDisplayName(organizer);
+  const picName = pic ? picDisplayName(pic) : "The PIC";
 
   return (
-    <div className="page-stack">
-      <header>
-        <h1>Create New Event</h1>
-        <p className="muted">Create the event and confirm its organizer in one guided flow.</p>
-      </header>
-      <ol className="ecw-stepper">
-        {STEPS.map((entry, index) => {
-          const stepNumber = index + 1;
-          const status = step === stepNumber ? "active" : step > stepNumber ? "done" : "";
-          return (
-            <li key={entry.label}>
-              <button
-                type="button"
-                className={"ecw-step " + status}
-                disabled={status !== "done"}
-                onClick={() => setStep(stepNumber as 1 | 2 | 3)}
-              >
-                <span className="ecw-step-index">
-                  {step > stepNumber ? <Check size={14} /> : stepNumber}
-                </span>
-                <entry.icon size={15} aria-hidden="true" />
-                {entry.label}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+    <div className="grid gap-5.5">
+      <nav
+        aria-label="Breadcrumb"
+        className="text-muted-foreground flex items-center gap-2"
+      >
+        <Link
+          href={ROUTES.eventManagement.root}
+          className="text-primary font-semibold"
+        >
+          Events
+        </Link>
+        <ChevronRight size={14} aria-hidden />
+        <span className="text-foreground font-semibold">New event</span>
+      </nav>
+      <h1 className="font-display text-[32px] leading-10 font-bold">
+        New event
+      </h1>
+      <Stepper
+        steps={WIZARD_STEPS.map((s) => ({ label: WIZARD_STEP_LABEL[s] }))}
+        current={stepIndex}
+        onStepClick={goToStep}
+      />
 
-      {step === 1 && (
-        <section className="form-section ecw-panel">
-          <h2>Event Information</h2>
-          <p className="muted">Enter the primary event information. Event name must be unique.</p>
-          <div className="form-grid">
-            <div className="form-grid-span-2">
-              <Field label="Event Name *">
-                <Input value={name} onChange={(event) => setName(event.target.value)} />
-              </Field>
-            </div>
-            <div className="form-grid-span-2">
-              <Field label="Tagline">
-                <Input
-                  placeholder="Optional event tagline"
-                  value={tagline}
-                  onChange={(event) => setTagline(event.target.value)}
-                />
-              </Field>
-            </div>
-            <div className="form-grid-span-2">
-              <Field label="Description">
-                <Textarea value={description} onChange={(event) => setDescription(event.target.value)} />
-              </Field>
-            </div>
-            <Field label="Start Date *">
-              <Input
-                type="datetime-local"
-                value={startAt}
-                onChange={(event) => setStartAt(event.target.value)}
+      <div className="flex flex-wrap items-start gap-6">
+        <div className="min-w-0 flex-[999_1_520px]">
+          {step === "details" && (
+            <form
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                void continueToOrganizer();
+              }}
+              className="border-border grid gap-4.5 rounded-2xl border bg-white p-6 sm:grid-cols-2"
+            >
+              <EventDetailsFields
+                register={form.register}
+                errors={form.formState.errors}
+                name={values.name ?? ""}
+                phase="DRAFT"
               />
-            </Field>
-            <Field label="End Date *">
-              <Input
-                type="datetime-local"
-                value={endAt}
-                onChange={(event) => setEndAt(event.target.value)}
-              />
-            </Field>
-            <Field label="Venue">
-              <Input value={venueName} onChange={(event) => setVenueName(event.target.value)} />
-            </Field>
-            <Field label="Venue Address">
-              <Input value={venueAddress} onChange={(event) => setVenueAddress(event.target.value)} />
-            </Field>
-            <Field label="Map Location">
-              <Input value={mapLocation} onChange={(event) => setMapLocation(event.target.value)} />
-            </Field>
-            <Field label="Timezone">
-              <Input value={timezone} onChange={(event) => setTimezone(event.target.value)} />
-            </Field>
-          </div>
-          {error && (
-            <p role="alert" className="form-error">
-              {error}
-            </p>
+              <div className="flex justify-between gap-3 pt-1.5 sm:col-span-2">
+                <Link
+                  href={ROUTES.eventManagement.root}
+                  className="text-primary-dark flex min-h-11 items-center rounded-xl px-4 font-bold"
+                >
+                  Cancel
+                </Link>
+                <Button
+                  type="submit"
+                  className="min-h-11 rounded-xl px-5.5 font-bold"
+                >
+                  Continue to organizer
+                </Button>
+              </div>
+            </form>
           )}
-          <div className="form-actions">
-            <Button variant="secondary" onClick={() => router.push(BASE_PATH)}>
-              Cancel
-            </Button>
-            <Button onClick={goToStep2}>Continue</Button>
-          </div>
-        </section>
-      )}
 
-      {step === 2 && (
-        <section className="form-section ecw-panel">
-          <h2>Organizer</h2>
-          {capabilities.isSuperAdmin ? (
-            <>
-              <p className="muted">
-                <Info size={13} aria-hidden="true" /> Select an existing organization for this
-                event, or name a new one.
-              </p>
-              <Field label="Organization">
-                <SelectField
-                  items={organizations}
-                  value={organizationId}
-                  onChange={(id) => {
-                    setOrganizationId(id);
-                    if (id) setNewOrganizationName("");
-                  }}
-                  getId={(org) => org.id}
-                  getLabel={(org) => org.name}
-                  placeholder={loadingOrganizations ? "Loading organizations..." : "Search organization"}
-                  emptyLabel="No organization found."
-                />
-              </Field>
-              {!organizationId && (
-                <>
-                  <Field label="Or create organization named">
-                    <Input
-                      value={newOrganizationName}
-                      onChange={(event) => setNewOrganizationName(event.target.value)}
-                      placeholder="New organization name"
-                    />
-                  </Field>
-                  <Field label="PIC (optional)">
-                    <MultiSelectField
-                      items={data.users}
-                      selectedIds={picIds}
-                      onAdd={(id) => setPicIds((current) => [...new Set([...current, id])])}
-                      onRemove={(id) => setPicIds((current) => current.filter((item) => item !== id))}
-                      getId={(user) => user.id}
-                      getLabel={(user) => user.name}
-                      getDescription={(user) => [user.email, user.phone].filter(Boolean).join(" · ")}
-                      placeholder="Search PIC by name, email, or phone"
-                      emptyLabel="No matching users found."
-                    />
-                  </Field>
-                </>
+          {step === "organizer" && (
+            <div className="grid gap-4">
+              <OrganizerStep
+                organizer={organizer}
+                onOrganizerChange={setOrganizer}
+                pic={pic}
+                onPicChange={setPic}
+                errors={stepErrors}
+              />
+              <div className="flex justify-between gap-3">
+                <Button
+                  variant="ghost"
+                  className="min-h-11 rounded-xl font-bold"
+                  onClick={() => setStep("details")}
+                >
+                  Back
+                </Button>
+                <Button
+                  className="min-h-11 rounded-xl px-5.5 font-bold"
+                  onClick={continueToReview}
+                >
+                  Review event
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === "review" && organizer && (
+            <div className="grid gap-4">
+              <ReviewStep
+                details={eventDetailsSchema.parse(form.getValues())}
+                organizer={organizer}
+                pic={pic}
+                onEditDetails={() => setStep("details")}
+                onEditOrganizer={() => setStep("organizer")}
+              />
+              {submitError && (
+                <p role="alert" className="form-error">
+                  {submitError}
+                </p>
               )}
-            </>
-          ) : myOrganization ? (
-            <>
-              <p className="muted">This event will be created under your organization.</p>
-              <div className="detail-grid">
-                <div>
-                  <dt>Organization</dt>
-                  <dd>{myOrganization.name}</dd>
-                </div>
+              <div className="flex justify-between gap-3">
+                <Button
+                  variant="ghost"
+                  className="min-h-11 rounded-xl font-bold"
+                  onClick={() => setStep("organizer")}
+                  disabled={create.isPending}
+                >
+                  Back
+                </Button>
+                <Button
+                  className="min-h-11 rounded-xl px-5.5 font-bold"
+                  onClick={() => void confirm()}
+                  disabled={create.isPending}
+                >
+                  {create.isPending ? "Creating..." : "Create event"}
+                </Button>
               </div>
-            </>
-          ) : (
-            <>
-              <p className="muted">
-                You&apos;re not part of an organization yet. Name one to create it along with this
-                event.
-              </p>
-              <Field label="Organization Name *">
-                <Input
-                  value={newOrganizationName}
-                  onChange={(event) => setNewOrganizationName(event.target.value)}
-                  placeholder="Your organization's name"
-                />
-              </Field>
-              <Field label="PIC (optional)">
-                <MultiSelectField
-                  items={data.users}
-                  selectedIds={picIds}
-                  onAdd={(id) => setPicIds((current) => [...new Set([...current, id])])}
-                  onRemove={(id) => setPicIds((current) => current.filter((item) => item !== id))}
-                  getId={(user) => user.id}
-                  getLabel={(user) => user.name}
-                  getDescription={(user) => [user.email, user.phone].filter(Boolean).join(" · ")}
-                  placeholder="Search PIC by name, email, or phone"
-                  emptyLabel="No matching users found."
-                />
-              </Field>
-            </>
+            </div>
           )}
-          {error && (
-            <p role="alert" className="form-error">
-              {error}
-            </p>
-          )}
-          <div className="form-actions">
-            <Button variant="secondary" onClick={() => setStep(1)}>
-              Back
-            </Button>
-            <Button onClick={goToStep3}>Review Event</Button>
-          </div>
-        </section>
-      )}
+        </div>
 
-      {step === 3 && (
-        <section className="form-section ecw-panel">
-          <h2>Review &amp; Confirm</h2>
-          <p className="muted">Review the event details before it&apos;s created.</p>
-          <dl className="detail-grid">
-            <div>
-              <dt>Event Name</dt>
-              <dd>{name}</dd>
-            </div>
-            {tagline && (
-              <div>
-                <dt>Tagline</dt>
-                <dd>{tagline}</dd>
-              </div>
-            )}
-            <div>
-              <dt>Start Date</dt>
-              <dd>{formatDateTime(new Date(startAt).toISOString())}</dd>
-            </div>
-            <div>
-              <dt>End Date</dt>
-              <dd>{formatDateTime(new Date(endAt).toISOString())}</dd>
-            </div>
-            {venueName && (
-              <div>
-                <dt>Venue</dt>
-                <dd>{venueName}</dd>
-              </div>
-            )}
-            <div>
-              <dt>Organizer</dt>
-              <dd>{selectedOrganizationName || myOrganization?.name}</dd>
-            </div>
-            {!organizationId && picIds.length > 0 && (
-              <div>
-                <dt>PIC</dt>
-                <dd>
-                  {picIds
-                    .map((id) => data.users.find((user) => user.id === id)?.name)
-                    .filter(Boolean)
-                    .join(", ")}
-                </dd>
-              </div>
-            )}
-          </dl>
-          {error && (
-            <p role="alert" className="form-error">
-              {error}
-            </p>
+        <aside className="flex min-w-0 flex-[1_1_280px] flex-col gap-2.5">
+          {step === "details" && <ListPreview values={values} />}
+          {step === "organizer" && (
+            <SidePanel title="WHAT HAPPENS">
+              <span>
+                The event is listed under <b>{orgName}</b>.
+              </span>
+              <span>
+                <b>{picName}</b> becomes Event manager: can edit the event and
+                invite committee and judges.
+              </span>
+              <span className="text-primary-dark">
+                The PIC does not have to be an organization member. Nothing is
+                saved until Review.
+              </span>
+            </SidePanel>
           )}
-          <div className="form-actions">
-            <Button variant="secondary" onClick={() => setStep(2)} disabled={submitting}>
-              Edit Data
-            </Button>
-            <Button onClick={() => void confirm()} disabled={submitting}>
-              {submitting ? "Creating..." : "Confirm & Create Event"}
-            </Button>
-          </div>
-        </section>
-      )}
+          {step === "review" && (
+            <SidePanel title="WHAT HAPPENS">
+              <span>
+                The event is created as a <b>Draft</b> under <b>{orgName}</b>.
+              </span>
+              <span>
+                {pic ? (
+                  <>
+                    <b>{picName}</b> gets an email invitation to be Event
+                    manager.
+                  </>
+                ) : (
+                  "No PIC is invited. Organization owners and admins can still manage the event."
+                )}
+              </span>
+              <span className="text-primary-dark">
+                Publish it from the event page when it is ready.
+              </span>
+            </SidePanel>
+          )}
+        </aside>
+      </div>
     </div>
+  );
+}
+
+/** Kartu lilac "WHAT HAPPENS" di sisi kanan langkah 2 dan 3. */
+function SidePanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <div className="text-muted-foreground text-xs font-bold tracking-[0.08em]">
+        {title}
+      </div>
+      <div className="bg-primary-soft grid gap-2.5 rounded-2xl p-4.5 leading-5.25">
+        {children}
+      </div>
+    </>
+  );
+}
+
+/**
+ * Pratinjau baris event seperti di list ("PREVIEW IN EVENT LIST") yang ikut berubah
+ * selagi mengetik. Tanggal ditampilkan hanya bila keduanya sudah diisi.
+ */
+function ListPreview({ values }: { values: Partial<EventDetailsValues> }) {
+  const name = values.name?.trim() || "Untitled event";
+  const hasDates = !!values.startAt && !!values.endAt;
+  const date = hasDates
+    ? formatEventSchedule(
+        toIsoString(values.startAt as string),
+        toIsoString(values.endAt as string),
+      ).date
+    : "";
+  const meta = [date, values.venueName?.trim()].filter(Boolean).join(" · ");
+  return (
+    <>
+      <div className="text-muted-foreground text-xs font-bold tracking-[0.08em]">
+        PREVIEW IN EVENT LIST
+      </div>
+      <div className="border-border flex items-center gap-3 rounded-2xl border bg-white p-4">
+        <EventAvatar name={name} phase="DRAFT" />
+        <span className="flex min-w-0 flex-1 flex-col">
+          <b className="wrap-break-word">{name}</b>
+          {meta && <span className="text-muted-foreground">{meta}</span>}
+        </span>
+        <EventPhaseBadge event={{ phase: "DRAFT", status: "DRAFT" }} />
+      </div>
+      <p className="text-muted-foreground leading-5">
+        Competitions, prices and committee are added after the event is created,
+        from the event page.
+      </p>
+    </>
   );
 }

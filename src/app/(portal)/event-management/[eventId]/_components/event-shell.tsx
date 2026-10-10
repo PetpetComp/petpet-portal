@@ -1,34 +1,65 @@
 "use client";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ChevronRight, Pencil } from "lucide-react";
-import { Can } from "@/components/common/can";
-import { StatusBadge } from "@/components/common/status-badge";
-import { useEvent, useOrganizerNames } from "@/domains/events/queries";
+import { ChevronRight } from "lucide-react";
+import { ErrorState } from "@/components/common/error-state";
+import { TabNav, type TabNavItem } from "@/components/common/tab-nav";
+import { buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useEventCompetitions } from "@/domains/competitions/queries";
+import { formatEventSchedule } from "@/domains/events/format";
+import {
+  useEvent,
+  useEventEntryCount,
+  useEventSponsors,
+} from "@/domains/events/queries";
+import { useOrganizations } from "@/domains/organizations/queries";
+import { useAuth } from "@/hooks/use-auth";
 import { PERMISSION } from "@/lib/auth/permissions";
 import { ROUTES } from "@/lib/constants/routes";
-import { formatDateTime } from "@/lib/format/date";
 import { cn } from "@/lib/utils";
-import { eventInitials } from "../../_lib/event-rules";
+import { EventAvatar } from "../../_components/event-avatar";
+import { EventPhaseBadge } from "../../_components/event-phase-badge";
 
 /**
- * Tabs appear here as their pages ship (docs/08 §6, F1 to F2).
- * Committee, Sponsors and Doorprize come next.
+ * Tujuh tab event sesuai desain EventHeader. Hitungan `null` berarti belum ada atau gagal dimuat
+ * (mis. akun tidak boleh melihat peserta) dan tab tampil tanpa angka.
+ * Committee, Sponsors, dan Doorprize masih halaman "coming soon" yang rapi, bukan 404.
  */
-function tabsFor(eventId: string) {
+export function eventTabs(
+  eventId: string,
+  counts: {
+    competitions: number | null;
+    participants: number | null;
+    sponsors: number | null;
+  },
+): TabNavItem[] {
   const base = ROUTES.eventManagement.detail(eventId);
   return [
     { label: "Overview", href: base, exact: true },
-    { label: "Competitions", href: base + "/competitions", exact: false },
-    { label: "Registrations", href: base + "/registrations", exact: false },
-    { label: "Participants", href: base + "/participants", exact: false },
+    {
+      label: "Competitions",
+      href: base + "/competitions",
+      count: counts.competitions,
+    },
+    { label: "Registrations", href: base + "/registrations" },
+    {
+      label: "Participants & check-in",
+      href: base + "/participants",
+      count: counts.participants,
+    },
+    { label: "Committee", href: base + "/committee" },
+    { label: "Sponsors", href: base + "/sponsors", count: counts.sponsors },
+    { label: "Doorprize", href: base + "/doorprize" },
   ];
 }
 
-const titleCase = (value: string) =>
-  value ? value.charAt(0).toUpperCase() + value.slice(1).toLowerCase() : "";
-
+/**
+ * Header + tab yang dipakai semua halaman event (layout `[eventId]/(workspace)`):
+ * breadcrumb, kotak inisial, nama, badge status, jadwal, venue, "by organisasi",
+ * tombol Edit event (hanya bila berhak), dan bar tab dengan hitungan.
+ * Hitungan tab memakai query yang sama dengan halaman tab, jadi tidak ada request tambahan.
+ */
 export function EventShell({
   eventId,
   children,
@@ -36,104 +67,107 @@ export function EventShell({
   eventId: string;
   children: ReactNode;
 }) {
-  const pathname = usePathname();
   const event = useEvent(eventId);
-  const organizers = useOrganizerNames();
+  const organizations = useOrganizations();
+  const competitions = useEventCompetitions(eventId);
+  const entries = useEventEntryCount(eventId);
+  const sponsors = useEventSponsors(eventId);
+  const { canOnEvent } = useAuth();
 
   if (event.isError)
     return (
-      <div role="alert" className="page-stack">
-        <p>
-          {event.error instanceof Error
-            ? event.error.message
-            : "Unable to load this event."}
-        </p>
-        <Link href={ROUTES.eventManagement.root}>Back to events</Link>
+      <div className="grid gap-4">
+        <ErrorState
+          error={event.error}
+          fallback="Unable to load this event."
+          onRetry={() => event.refetch()}
+        />
+        <Link
+          href={ROUTES.eventManagement.root}
+          className="text-primary font-semibold"
+        >
+          Back to events
+        </Link>
       </div>
     );
 
   const e = event.data;
+  const organizer = e
+    ? e.organizationName ||
+      organizations.data?.find((o) => o.id === e.organizationId)?.name
+    : undefined;
+  const schedule = e && formatEventSchedule(e.startAt, e.endAt);
+  const tabs = eventTabs(eventId, {
+    competitions: competitions.data?.length ?? null,
+    participants: entries.data ?? null,
+    sponsors: sponsors.data?.total ?? null,
+  });
+
   return (
-    <div className="page-stack">
+    <div className="grid gap-4.5">
       <nav
         aria-label="Breadcrumb"
-        className="text-muted-foreground flex items-center gap-2 text-sm"
+        className="text-muted-foreground flex items-center gap-2"
       >
-        <Link href={ROUTES.eventManagement.root} className="font-semibold">
+        <Link
+          href={ROUTES.eventManagement.root}
+          className="text-primary font-semibold"
+        >
           Events
         </Link>
         <ChevronRight size={14} aria-hidden />
         <span className="text-foreground font-semibold">
-          {e?.name ?? "Loading…"}
+          {e?.name ?? "Loading..."}
         </span>
       </nav>
 
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
-          <span
-            aria-hidden
-            className="bg-brand text-primary-dark font-display grid size-14 shrink-0 place-items-center rounded-2xl text-lg font-bold"
-          >
-            {e ? eventInitials(e.name) : ""}
-          </span>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="font-display text-2xl font-semibold break-words">
-                {e?.name ?? "Loading event…"}
+          {e ? (
+            <EventAvatar name={e.name} phase={e.phase} size="lg" />
+          ) : (
+            <Skeleton className="size-15 shrink-0 rounded-2xl" />
+          )}
+          <div className="grid min-w-0 gap-1.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="font-display text-[30px] leading-8.5 font-bold wrap-break-word">
+                {e?.name ?? "Loading event..."}
               </h1>
-              {e && <StatusBadge status={titleCase(e.status)} />}
+              {e && <EventPhaseBadge event={e} />}
             </div>
-            {e && (
-              <p className="text-muted-foreground mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            {e && schedule ? (
+              <p className="text-primary-dark flex flex-wrap gap-x-4.5 gap-y-1">
                 <span>
-                  {formatDateTime(e.startAt)} – {formatDateTime(e.endAt)}
+                  {schedule.date} · {schedule.time}
                 </span>
                 {e.venueName && <span>{e.venueName}</span>}
-                {organizers.data?.[e.organizationId] && (
+                {organizer && (
                   <span>
-                    by <b>{organizers.data[e.organizationId]}</b>
+                    by <b>{organizer}</b>
                   </span>
                 )}
               </p>
+            ) : (
+              <Skeleton className="h-4 w-72 max-w-full" />
             )}
           </div>
         </div>
-        <Can permission={PERMISSION.EVENT_UPDATE}>
+        {e && canOnEvent(e, PERMISSION.EVENT_UPDATE) && (
           <Link
             href={ROUTES.eventManagement.edit(eventId)}
-            className="link-button"
+            className={cn(
+              buttonVariants({ variant: "secondary" }),
+              "min-h-11 rounded-xl px-4 font-bold",
+            )}
           >
-            <Pencil size={14} />
             Edit event
           </Link>
-        </Can>
+        )}
       </header>
 
-      <nav
-        aria-label="Event sections"
-        className="border-border flex gap-1 overflow-x-auto border-b"
-      >
-        {tabsFor(eventId).map((tab) => {
-          const active = tab.exact
-            ? pathname === tab.href
-            : pathname.startsWith(tab.href);
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "text-primary-dark flex min-h-11 items-center border-b-2 px-3.5 font-semibold whitespace-nowrap",
-                active ? "border-primary font-bold" : "border-transparent",
-              )}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <TabNav label="Event sections" items={tabs} />
 
-      {children}
+      <div className="mt-1.5 grid min-w-0 gap-5">{children}</div>
     </div>
   );
 }
