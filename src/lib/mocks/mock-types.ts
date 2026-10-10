@@ -1,7 +1,13 @@
 import type {
   CompetitionStatus,
-  RegistrationClosedReason,
+  RegistrationPeriodType,
 } from "@/domains/competitions/types";
+import type {
+  CheckinStatus,
+  EligibilityStatus,
+  EntryStatus,
+  PaymentStatus,
+} from "@/domains/entries/types";
 
 export interface MockUser {
   uuid: string;
@@ -52,14 +58,31 @@ export interface MockCompetition {
   arena_name?: string;
   capacity?: number;
   minimum_judges?: number;
-  competition_type_uuid?: string;
+  competition_type_uuid: string;
   species_uuid?: string;
   scheduled_start_at: string;
   scheduled_end_at: string;
   registration_closed_at: string | null;
+  /** `registration_open`, its reason and `actions` are computed (mock-rules.ts), never stored. */
   status: CompetitionStatus;
-  registration_open: boolean;
-  registration_closed_reason: RegistrationClosedReason | null;
+}
+
+/** Same columns as petpet-service `registration_periods`. */
+export interface MockRegistrationPeriod {
+  uuid: string;
+  competition_uuid: string;
+  period_type: RegistrationPeriodType;
+  price: number;
+  quota: number | null;
+  registration_start_at: string;
+  registration_end_at: string;
+  status: "ACTIVE" | "CLOSED";
+}
+
+export interface MockPetMorph {
+  uuid: string;
+  species_uuid: string;
+  name: string;
 }
 
 export interface MockPet {
@@ -98,17 +121,22 @@ export interface MockEventSponsor {
   status: "pending" | "approved" | "rejected";
 }
 
+/** Stored columns only; names and `actions` are added when serialized (mock-records.ts). */
 export interface MockEntry {
   uuid: string;
+  participant_code: string | null;
   competition_uuid: string;
   owner_uuid: string;
-  pet_uuid?: string | null;
-  team_uuid?: string | null;
-  registration_period_uuid?: string | null;
-  bib_number?: string | null;
-  registration_fee?: number;
-  eligibility_status: string;
-  payment_status: string;
-  checkin_status: string;
-  status: string;
+  pet_uuid: string | null;
+  team_uuid: string | null;
+  registration_period_uuid: string | null;
+  bib_number: string | null;
+  registration_fee: number;
+  eligibility_status: EligibilityStatus;
+  payment_status: PaymentStatus;
+  checkin_status: CheckinStatus;
+  status: EntryStatus;
+  registered_at: string;
+  checked_in_at: string | null;
+  registered_by_uuid: string;
 }

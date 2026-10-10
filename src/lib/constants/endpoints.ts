@@ -28,9 +28,14 @@ export const ENDPOINTS = {
     sponsor: (uuid: string, linkId: string) =>
       `/events/${id(uuid)}/sponsors/${id(linkId)}`,
     staff: (uuid: string) => `/events/${id(uuid)}/staff`,
+    entries: (uuid: string) => `/events/${id(uuid)}/entries`,
+    ownerSearch: (uuid: string) => `/events/${id(uuid)}/owner-search`,
   },
   competitions: {
     detail: (uuid: string) => `/competitions/${id(uuid)}`,
+    publish: (uuid: string) => `/competitions/${id(uuid)}/publish`,
+    start: (uuid: string) => `/competitions/${id(uuid)}/start`,
+    complete: (uuid: string) => `/competitions/${id(uuid)}/complete`,
     closeRegistration: (uuid: string) =>
       `/competitions/${id(uuid)}/close-registration`,
     rules: (uuid: string) => `/competitions/${id(uuid)}/rules`,
@@ -67,6 +72,7 @@ export const ENDPOINTS = {
     approve: (uuid: string) => `/entries/${id(uuid)}/approve`,
     reject: (uuid: string) => `/entries/${id(uuid)}/reject`,
     checkin: (uuid: string) => `/entries/${id(uuid)}/checkin`,
+    undoCheckin: (uuid: string) => `/entries/${id(uuid)}/undo-checkin`,
   },
   staff: {
     invitations: "/staff-invitations",

@@ -1,33 +1,48 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEventCompetitions } from "@/domains/competitions/queries";
+import {
+  keepPreviousData,
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { competitionKeys } from "@/domains/competitions/queries";
 import {
   approveEntry,
+  checkInEntry,
   createEntry,
   listEventEntries,
-  listOwnerPets,
-  listPeriods,
   rejectEntry,
   searchOwners,
+  undoCheckIn,
 } from "./api";
+import type { EntryListQuery } from "./types";
 
 export const entryKeys = {
   all: ["entries"] as const,
   forEvent: (eventId: string) => [...entryKeys.all, "event", eventId] as const,
-  periods: (competitionId: string) => ["periods", competitionId] as const,
-  owners: (q: string) => ["owners", q] as const,
-  ownerPets: (ownerId: string) => ["pets", "owner", ownerId] as const,
+  list: (eventId: string, query: EntryListQuery) =>
+    [...entryKeys.forEvent(eventId), "list", query] as const,
+  owners: (eventId: string, q: string) => ["owner-search", eventId, q] as const,
 };
 
-/** Waits for the event's competitions, then loads their entries. */
-export function useEventEntries(eventId: string) {
-  const competitions = useEventCompetitions(eventId);
-  const ids = (competitions.data ?? []).map((c) => c.id);
-  const entries = useQuery({
-    queryKey: [...entryKeys.forEvent(eventId), ids],
-    queryFn: () => listEventEntries(ids),
-    enabled: competitions.isSuccess,
+/** Shared by `useEventEntries` and imperative reads (QR scan) so both hit one cache entry. */
+export const eventEntriesOptions = (eventId: string, query: EntryListQuery) =>
+  queryOptions({
+    queryKey: entryKeys.list(eventId, query),
+    queryFn: () => listEventEntries(eventId, query),
   });
-  return { competitions, entries };
+
+/** One server page; keeps the previous page on screen while the next one loads. */
+export function useEventEntries(
+  eventId: string,
+  query: EntryListQuery,
+  enabled = true,
+) {
+  return useQuery({
+    ...eventEntriesOptions(eventId, query),
+    placeholderData: keepPreviousData,
+    enabled,
+  });
 }
 
 function useInvalidateEntries(eventId: string) {
@@ -46,49 +61,50 @@ export function useReviewEntry(eventId: string) {
       id: string;
       decision: "approve" | "reject";
     }) => (decision === "approve" ? approveEntry(id) : rejectEntry(id)),
-    onSuccess: invalidate,
+    onSettled: invalidate,
   });
 }
 
-export function useCreateEntry(eventId: string) {
+export function useCheckIn(eventId: string) {
   const invalidate = useInvalidateEntries(eventId);
   return useMutation({
-    mutationFn: (v: {
-      competitionId: string;
-      petId: string;
-      periodId?: string;
-    }) =>
-      createEntry(v.competitionId, {
-        pet_id: v.petId,
-        registration_period_id: v.periodId,
-      }),
-    onSuccess: invalidate,
+    mutationFn: (id: string) => checkInEntry(id),
+    onSettled: invalidate,
   });
 }
 
-export function usePeriods(competitionId: string) {
-  return useQuery({
-    queryKey: entryKeys.periods(competitionId),
-    queryFn: () => listPeriods(competitionId),
-    enabled: !!competitionId,
+export function useUndoCheckIn(eventId: string) {
+  const invalidate = useInvalidateEntries(eventId);
+  return useMutation({
+    mutationFn: (id: string) => undoCheckIn(id),
+    onSettled: invalidate,
+  });
+}
+
+/** Also refreshes competitions: a new entry can fill one up (`registration_open`). */
+export function useCreateEntry(eventId: string) {
+  const client = useQueryClient();
+  const invalidate = useInvalidateEntries(eventId);
+  return useMutation({
+    mutationFn: (v: { competitionId: string; petId: string }) =>
+      createEntry(v.competitionId, { pet_id: v.petId }),
+    onSuccess: () =>
+      Promise.all([
+        invalidate(),
+        client.invalidateQueries({
+          queryKey: competitionKeys.forEvent(eventId),
+        }),
+      ]),
   });
 }
 
 /** Starts searching from two characters, like the PIC search in the design. */
-export function useOwnerSearch(q: string) {
+export function useOwnerSearch(eventId: string, q: string) {
   const term = q.trim();
   return useQuery({
-    queryKey: entryKeys.owners(term),
-    queryFn: () => searchOwners(term),
+    queryKey: entryKeys.owners(eventId, term),
+    queryFn: () => searchOwners(eventId, term),
     enabled: term.length >= 2,
     staleTime: 60_000,
-  });
-}
-
-export function useOwnerPets(ownerId: string) {
-  return useQuery({
-    queryKey: entryKeys.ownerPets(ownerId),
-    queryFn: () => listOwnerPets(ownerId),
-    enabled: !!ownerId,
   });
 }

@@ -19,6 +19,13 @@ export type ListResponse<T extends Record<string, unknown> = ApiRecord> =
         };
       }
   >;
+/** `meta` of a paged list, exactly as the API sends it. */
+export type ApiPageMeta = {
+  current_page: number;
+  per_page: number;
+  total: number;
+  last_page: number;
+};
 export type RecordResponse<T extends ApiRecord = ApiRecord> = ApiResponse<T>;
 export type MutationResponse = ApiResponse<null>;
 export type PhotoPresignResponse = ApiResponse<{

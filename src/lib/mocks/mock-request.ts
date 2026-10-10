@@ -6,8 +6,21 @@ import {
   nextUuid,
   DEMO_PASSWORD,
 } from "./mock-store";
-import type { MockUser } from "./mock-types";
+import type { MockCompetition, MockEntry, MockUser } from "./mock-types";
 import { mockAccess } from "./mock-access";
+import type { ApiCompetitionActions } from "@/domains/competitions/types";
+import type { ApiEntryActions } from "@/domains/entries/types";
+import {
+  callerFor,
+  competitionRecord,
+  createEntry,
+  entryRecord,
+  guard,
+  iso,
+  listEventEntries,
+  searchOwners,
+} from "./mock-records";
+import { UNRESTRICTED, competitionActions, entryActions } from "./mock-rules";
 
 function matchPath(
   pattern: string,
@@ -47,6 +60,50 @@ function requireSession(): MockUser {
   if (!currentSessionUserUuid)
     throw new ApiError(401, "Session expired. Please sign in again.");
   return findOrThrow(store.users, currentSessionUserUuid, "User");
+}
+
+/** Runs one lifecycle action through the same rule as `actions` (backend `CompetitionActions`). */
+function competitionAction(
+  uuid: string,
+  action: keyof ApiCompetitionActions,
+  apply: (competition: MockCompetition) => void,
+  message: string,
+) {
+  const user = requireSession();
+  const competition = findOrThrow(store.competitions, uuid, "Competition");
+  const event = findOrThrow(store.events, competition.event_uuid, "Event");
+  const caller = callerFor(user, competition.event_uuid);
+  guard(
+    competitionActions(competition, event.status, caller)[action],
+    competitionActions(competition, event.status, UNRESTRICTED)[action],
+    message,
+  );
+  apply(competition);
+  return competitionRecord(competition, caller);
+}
+
+/** Runs one entry action through the same rule as `actions` (backend `EntryActions`). */
+function entryAction(
+  uuid: string,
+  action: keyof ApiEntryActions,
+  apply: (entry: MockEntry) => void,
+  message: string,
+) {
+  const user = requireSession();
+  const entry = findOrThrow(store.entries, uuid, "Entry");
+  const competition = findOrThrow(
+    store.competitions,
+    entry.competition_uuid,
+    "Competition",
+  );
+  const caller = callerFor(user, competition.event_uuid);
+  guard(
+    entryActions(entry, competition.status, caller)[action],
+    entryActions(entry, competition.status, UNRESTRICTED)[action],
+    message,
+  );
+  apply(entry);
+  return entryRecord(entry, caller);
 }
 
 type Route = {
@@ -149,14 +206,7 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/pets",
-    // `owner_id` is a proposed filter (docs/09 §H): the real API lists only your own pets.
-    handler: (_params, _body, query) => {
-      const ownerId = query.get("owner_id");
-      return paginate(
-        store.pets.filter((p) => !ownerId || p.owner_uuid === ownerId),
-        query,
-      );
-    },
+    handler: (_params, _body, query) => paginate(store.pets, query),
   },
   {
     method: "GET",
@@ -336,40 +386,82 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/events/:uuid/competitions",
-    handler: (params, _body, query) =>
-      paginate(
-        store.competitions.filter((item) => item.event_uuid === params.uuid),
+    handler: (params, _body, query) => {
+      const caller = callerFor(currentMockUser(), params.uuid);
+      return paginate(
+        store.competitions
+          .filter((item) => item.event_uuid === params.uuid)
+          .map((item) => competitionRecord(item, caller)),
         query,
+      );
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/events/:uuid/entries",
+    handler: (params, _body, query) =>
+      listEventEntries(
+        params.uuid,
+        query,
+        callerFor(requireSession(), params.uuid),
+      ),
+  },
+  {
+    method: "GET",
+    pattern: "/events/:uuid/owner-search",
+    handler: (params, _body, query) =>
+      searchOwners(
+        params.uuid,
+        query.get("q") ?? "",
+        callerFor(requireSession(), params.uuid),
       ),
   },
   {
     method: "POST",
     pattern: "/events/:uuid/competitions",
     handler: (params, body) => {
-      const competition = {
+      const optional = (key: string) =>
+        body?.[key] == null ? undefined : String(body[key]);
+      const competition: MockCompetition = {
         uuid: nextUuid(),
         event_uuid: params.uuid,
         name: String(body?.name ?? ""),
-        registration_closed_at: null,
-        status: "DRAFT" as const,
-        registration_open: false,
-        registration_closed_reason: "NOT_SCHEDULED" as const,
-        ...body,
+        description: optional("description"),
+        arena_name: optional("arena_name"),
+        capacity: body?.capacity == null ? undefined : Number(body.capacity),
+        minimum_judges:
+          body?.minimum_judges == null
+            ? undefined
+            : Number(body.minimum_judges),
         // The real API answers with *_uuid keys for what it receives as *_id.
-        competition_type_uuid: body?.competition_type_id as string | undefined,
-        species_uuid: body?.species_id as string | undefined,
+        competition_type_uuid: String(body?.competition_type_id ?? ""),
+        species_uuid: optional("species_id"),
+        scheduled_start_at: String(body?.scheduled_start_at ?? ""),
+        scheduled_end_at: String(body?.scheduled_end_at ?? ""),
+        registration_closed_at: null,
+        status: "DRAFT",
       };
-      store.competitions.push(
-        competition as (typeof store.competitions)[number],
+      store.competitions.push(competition);
+      return competitionRecord(
+        competition,
+        callerFor(currentMockUser(), params.uuid),
       );
-      return competition;
     },
   },
   {
     method: "GET",
     pattern: "/competitions/:uuid",
-    handler: (params) =>
-      findOrThrow(store.competitions, params.uuid, "Competition"),
+    handler: (params) => {
+      const competition = findOrThrow(
+        store.competitions,
+        params.uuid,
+        "Competition",
+      );
+      return competitionRecord(
+        competition,
+        callerFor(currentMockUser(), competition.event_uuid),
+      );
+    },
   },
   {
     method: "PATCH",
@@ -381,22 +473,68 @@ const routes: Route[] = [
         "Competition",
       );
       Object.assign(competition, body);
-      return competition;
+      return competitionRecord(
+        competition,
+        callerFor(currentMockUser(), competition.event_uuid),
+      );
     },
   },
   {
     method: "POST",
-    pattern: "/competitions/:uuid/close-registration",
-    handler: (params) => {
-      const competition = findOrThrow(
-        store.competitions,
+    pattern: "/competitions/:uuid/publish",
+    handler: (params) =>
+      competitionAction(
         params.uuid,
-        "Competition",
+        "publish",
+        (c) => (c.status = "SCHEDULED"),
+        "Only draft competitions of an active event can be published.",
+      ),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/start",
+    handler: (params) =>
+      competitionAction(
+        params.uuid,
+        "start",
+        (c) => (c.status = "ONGOING"),
+        "Only scheduled competitions can be started.",
+      ),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/complete",
+    handler: (params) =>
+      competitionAction(
+        params.uuid,
+        "complete",
+        (c) => (c.status = "COMPLETED"),
+        "Only ongoing competitions can be completed.",
+      ),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/close-registration",
+    handler: (params) =>
+      competitionAction(
+        params.uuid,
+        "close_registration",
+        (c) => (c.registration_closed_at = iso(new Date())),
+        "Registration is already closed or the competition is not scheduled.",
+      ),
+  },
+  {
+    method: "DELETE",
+    pattern: "/competitions/:uuid",
+    // Cancels: the row stays so the list can show it as Cancelled.
+    handler: (params) => {
+      competitionAction(
+        params.uuid,
+        "cancel",
+        (c) => (c.status = "CANCELLED"),
+        "Completed or cancelled competitions cannot be cancelled.",
       );
-      competition.registration_closed_at = new Date().toISOString();
-      competition.registration_open = false;
-      competition.registration_closed_reason = "CLOSED_BY_ORGANIZER";
-      return competition;
+      return null;
     },
   },
   // Staff/committee assignments aren't modeled in this demo phase; these
@@ -450,7 +588,14 @@ const routes: Route[] = [
       const period = {
         uuid: nextUuid(),
         competition_uuid: params.uuid,
-        ...body,
+        period_type: String(
+          body?.period_type ?? "ONLINE",
+        ) as (typeof store.registrationPeriods)[number]["period_type"],
+        price: Number(body?.price ?? 0),
+        quota: body?.quota == null ? null : Number(body.quota),
+        registration_start_at: String(body?.registration_start_at ?? ""),
+        registration_end_at: String(body?.registration_end_at ?? ""),
+        status: "ACTIVE" as const,
       };
       store.registrationPeriods.push(period);
       return period;
@@ -591,50 +736,33 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/competitions/:uuid/entries",
-    handler: (params, _body, query) =>
-      paginate(
+    handler: (params, _body, query) => {
+      const competition = findOrThrow(
+        store.competitions,
+        params.uuid,
+        "Competition",
+      );
+      const caller = callerFor(requireSession(), competition.event_uuid);
+      return paginate(
         store.entries
           .filter((item) => item.competition_uuid === params.uuid)
-          .map((entry) => {
-            // pet_name / owner_name are proposed additions to EntryData (docs/09 §H).
-            const pet = store.pets.find((p) => p.uuid === entry.pet_uuid);
-            const owner = store.users.find((u) => u.uuid === entry.owner_uuid);
-            return {
-              ...entry,
-              pet_name: pet?.name ?? null,
-              owner_name: owner
-                ? [owner.first_name, owner.last_name].filter(Boolean).join(" ")
-                : null,
-            };
-          }),
+          .map((entry) => entryRecord(entry, caller)),
         query,
-      ),
+      );
+    },
   },
   {
     method: "POST",
     pattern: "/competitions/:uuid/entries",
     handler: (params, body) => {
       const actor = requireSession();
-      // Proposed (docs/09 §H): organizers may enter someone else's pet; the owner stays the pet's owner.
-      const pet = store.pets.find((p) => p.uuid === body?.pet_id);
-      const period = store.registrationPeriods.find(
-        (p) => p.uuid === body?.registration_period_id,
+      const entry = createEntry(params.uuid, body, actor);
+      const competition = findOrThrow(
+        store.competitions,
+        entry.competition_uuid,
+        "Competition",
       );
-      const entry = {
-        uuid: nextUuid(),
-        competition_uuid: params.uuid,
-        owner_uuid: pet?.owner_uuid ?? actor.uuid,
-        pet_uuid: pet?.uuid ?? null,
-        registration_period_uuid: (period?.uuid as string | undefined) ?? null,
-        bib_number: null,
-        registration_fee: Number(period?.price ?? 0),
-        eligibility_status: "PENDING",
-        payment_status: "UNPAID",
-        checkin_status: "NOT_CHECKED_IN",
-        status: "REGISTERED",
-      };
-      store.entries.push(entry as (typeof store.entries)[number]);
-      return entry;
+      return entryRecord(entry, callerFor(actor, competition.event_uuid));
     },
   },
   {
@@ -648,29 +776,52 @@ const routes: Route[] = [
   {
     method: "POST",
     pattern: "/entries/:uuid/approve",
-    handler: (params) => {
-      const entry = findOrThrow(store.entries, params.uuid, "Entry");
-      entry.eligibility_status = "APPROVED";
-      return entry;
-    },
+    handler: (params) =>
+      entryAction(
+        params.uuid,
+        "approve",
+        (e) => (e.eligibility_status = "APPROVED"),
+        "Only pending registrations can be approved.",
+      ),
   },
   {
     method: "POST",
     pattern: "/entries/:uuid/reject",
-    handler: (params) => {
-      const entry = findOrThrow(store.entries, params.uuid, "Entry");
-      entry.eligibility_status = "REJECTED";
-      return entry;
-    },
+    handler: (params) =>
+      entryAction(
+        params.uuid,
+        "reject",
+        (e) => (e.eligibility_status = "REJECTED"),
+        "Only pending registrations can be rejected.",
+      ),
   },
   {
     method: "POST",
     pattern: "/entries/:uuid/checkin",
-    handler: (params) => {
-      const entry = findOrThrow(store.entries, params.uuid, "Entry");
-      entry.checkin_status = "CHECKED_IN";
-      return entry;
-    },
+    handler: (params) =>
+      entryAction(
+        params.uuid,
+        "check_in",
+        (e) => {
+          e.checkin_status = "CHECKED_IN";
+          e.checked_in_at = iso(new Date());
+        },
+        "Only approved participants of a scheduled or ongoing competition can check in.",
+      ),
+  },
+  {
+    method: "POST",
+    pattern: "/entries/:uuid/undo-checkin",
+    handler: (params) =>
+      entryAction(
+        params.uuid,
+        "undo_check_in",
+        (e) => {
+          e.checkin_status = "NOT_CHECKED_IN";
+          e.checked_in_at = null;
+        },
+        "Check-in can only be undone before the competition starts.",
+      ),
   },
 ];
 

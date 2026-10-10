@@ -1,55 +1,83 @@
 "use client";
 import { useState } from "react";
-import { Check, Plus, X } from "lucide-react";
+import { Check, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Can } from "@/components/common/can";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
-import { DataTable, type Column } from "@/components/common/data-table";
+import {
+  DataTable,
+  type Column,
+  type Sort,
+} from "@/components/common/data-table";
 import { StatusBadge } from "@/components/common/status-badge";
+import { useEventCompetitions } from "@/domains/competitions/queries";
 import { useEventEntries, useReviewEntry } from "@/domains/entries/queries";
 import {
+  ELIGIBILITY_LABEL,
   ELIGIBILITY_STATUSES,
-  PAYMENT_STATUSES,
+  ENTRY_STATUS_LABEL,
+  PAYMENT_LABEL,
   type EligibilityStatus,
   type Entry,
+  type EntryListQuery,
+  type EntrySort,
 } from "@/domains/entries/types";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { PERMISSION } from "@/lib/auth/permissions";
-import { humanize, rupiah } from "@/lib/format/label";
+import { formatDateTime } from "@/lib/format/date";
+import { rupiah } from "@/lib/format/label";
 import { cn } from "@/lib/utils";
 import { RegisterPetDrawer } from "./register-pet-drawer";
 
-/** Shown on a badge; "Pending" reads as "waiting for review" to the committee. */
-const REVIEW_LABEL: Record<EligibilityStatus, string> = {
-  PENDING: "Pending",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
+/** Table column -> API `sort`. Only these columns get a sort button. */
+const SORT_BY_COLUMN: Record<string, EntrySort> = {
+  pet: "pet_name",
+  owner: "owner_name",
+  registered: "registered_at",
 };
 
+/** Filter selects show labels; the API wants the enum value behind the label. */
+function valueOf<T extends string>(
+  labels: Record<T, string>,
+  label: string | undefined,
+): T | undefined {
+  return (Object.keys(labels) as T[]).find((key) => labels[key] === label);
+}
+
+const petLabel = (e: Entry) => e.petName ?? "Team entry";
+
+/** F2.1: every registration of the event, filtered, sorted and paged by the API. */
 export function EventRegistrations({ eventId }: { eventId: string }) {
-  const { competitions, entries } = useEventEntries(eventId);
+  const competitions = useEventCompetitions(eventId);
   const review = useReviewEntry(eventId);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [toReject, setToReject] = useState<Entry | null>(null);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const [reviewFilter, setReviewFilter] = useState<EligibilityStatus | "">("");
-  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<Record<string, string>>({
+    status: ENTRY_STATUS_LABEL.REGISTERED,
+  });
+  const [sort, setSort] = useState<Sort>({ key: "registered", direction: -1 });
+  const q = useDebouncedValue(search);
 
-  const competitionName = (id: string) =>
-    competitions.data?.find((c) => c.id === id)?.name ?? "-";
-  const all = (entries.data ?? []).filter((e) => !e.withdrawn);
-  const count = (s: EligibilityStatus) =>
-    all.filter((e) => e.eligibility === s).length;
-  const has = (value: string, filter = "") =>
-    !filter || value.toLowerCase().includes(filter.toLowerCase());
-  const rows = all.filter(
-    (e) =>
-      (!reviewFilter || e.eligibility === reviewFilter) &&
-      has(e.petName, filters.pet) &&
-      has(e.ownerName, filters.owner) &&
-      (!filters.competition ||
-        competitionName(e.competitionId) === filters.competition) &&
-      (!filters.payment || humanize(e.payment) === filters.payment),
-  );
+  const query: EntryListQuery = {
+    competitionId: competitions.data?.find(
+      (c) => c.name === filters.competition,
+    )?.id,
+    eligibility: reviewFilter || undefined,
+    payment: valueOf(PAYMENT_LABEL, filters.payment),
+    status: valueOf(ENTRY_STATUS_LABEL, filters.status),
+    q,
+    sort: SORT_BY_COLUMN[sort.key],
+    direction: sort.direction === 1 ? "asc" : "desc",
+    page: page + 1,
+    perPage: pageSize,
+  };
+  const entries = useEventEntries(eventId, query);
+  const summary = entries.data?.summary;
 
   function decide(entry: Entry, decision: "approve" | "reject") {
     review.mutate(
@@ -75,16 +103,15 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
     {
       key: "pet",
       label: "Pet",
-      value: (e) => e.petName,
-      filter: { type: "text" },
+      value: petLabel,
       render: (e) => (
         <span>
-          <b>{e.petName}</b>
-          {e.bib && (
-            <span className="text-muted-foreground block font-mono text-xs">
-              #{e.bib}
-            </span>
-          )}
+          <b>{petLabel(e)}</b>
+          <span className="text-muted-foreground block font-mono text-xs whitespace-nowrap">
+            {[e.bib && `#${e.bib}`, e.participantCode]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
         </span>
       ),
     },
@@ -92,35 +119,52 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
       key: "owner",
       label: "Owner",
       value: (e) => e.ownerName,
-      filter: { type: "text" },
+      render: (e) => (
+        <span>
+          {e.ownerName}
+          {e.ownerPhone && (
+            <span className="text-muted-foreground block text-xs">
+              {e.ownerPhone}
+            </span>
+          )}
+        </span>
+      ),
     },
     {
       key: "competition",
       label: "Competition",
-      value: (e) => competitionName(e.competitionId),
       filter: {
         type: "select",
         options: (competitions.data ?? []).map((c) => c.name),
       },
-    },
-    {
-      key: "fee",
-      label: "Fee",
-      value: (e) => e.fee,
-      render: (e) => rupiah(e.fee),
+      render: (e) => e.competitionName,
     },
     {
       key: "payment",
       label: "Payment",
-      value: (e) => humanize(e.payment),
-      filter: { type: "select", options: PAYMENT_STATUSES.map(humanize) },
-      render: (e) => <StatusBadge status={humanize(e.payment)} />,
+      filter: { type: "select", options: Object.values(PAYMENT_LABEL) },
+      render: (e) => (
+        <span className="flex flex-col items-start gap-1">
+          <StatusBadge status={PAYMENT_LABEL[e.payment]} />
+          <small className="text-muted-foreground">{rupiah(e.fee)}</small>
+        </span>
+      ),
     },
     {
       key: "review",
       label: "Review",
-      value: (e) => REVIEW_LABEL[e.eligibility],
-      render: (e) => <StatusBadge status={REVIEW_LABEL[e.eligibility]} />,
+      render: (e) =>
+        e.status === "WITHDRAWN" ? (
+          <StatusBadge status={ENTRY_STATUS_LABEL.WITHDRAWN} />
+        ) : (
+          <StatusBadge status={ELIGIBILITY_LABEL[e.eligibility]} />
+        ),
+    },
+    {
+      key: "registered",
+      label: "Registered",
+      value: (e) => e.registeredAt,
+      render: (e) => formatDateTime(e.registeredAt),
     },
   ];
 
@@ -137,7 +181,10 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
               key={s || "all"}
               type="button"
               aria-pressed={reviewFilter === s}
-              onClick={() => setReviewFilter(s)}
+              onClick={() => {
+                setReviewFilter(s);
+                setPage(0);
+              }}
               className={cn(
                 "min-h-10 rounded-full border px-4 text-sm font-semibold",
                 reviewFilter === s
@@ -145,8 +192,7 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
                   : "border-input bg-white",
               )}
             >
-              {s ? REVIEW_LABEL[s] : "All"}{" "}
-              <span className="font-mono">{s ? count(s) : all.length}</span>
+              {s ? ELIGIBILITY_LABEL[s] : "All"}
             </button>
           ))}
         </div>
@@ -157,42 +203,102 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
         </Can>
       </div>
 
-      {entries.isError || competitions.isError ? (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <label className="border-input focus-within:border-primary flex min-h-11 w-full max-w-md items-center gap-2 rounded-xl border bg-white px-3">
+          <Search size={16} aria-hidden className="text-muted-foreground" />
+          <input
+            type="search"
+            aria-label="Search registrations"
+            placeholder="Pet, owner, bib or participant code"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
+            className="min-w-0 flex-1 bg-transparent outline-none"
+          />
+        </label>
+        <label className="text-muted-foreground flex items-center gap-2 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={!filters.status}
+            onChange={(e) => {
+              setFilters((f) => ({
+                ...f,
+                status: e.target.checked ? "" : ENTRY_STATUS_LABEL.REGISTERED,
+              }));
+              setPage(0);
+            }}
+          />
+          Show withdrawn
+        </label>
+        {summary && (
+          <p className="text-muted-foreground text-sm">
+            <b className="text-foreground">{summary.total}</b> registrations ·{" "}
+            <b className="text-foreground">{summary.approved}</b> approved
+          </p>
+        )}
+      </div>
+
+      {entries.isError ? (
         <p role="alert" className="form-error">
-          {((entries.error ?? competitions.error) as Error | null)?.message ??
-            "Unable to load registrations."}
+          {entries.error instanceof Error
+            ? entries.error.message
+            : "Unable to load registrations."}
         </p>
       ) : (
         <DataTable
           label="Registrations"
-          rows={rows}
+          rows={entries.data?.items ?? []}
           columns={columns}
           filters={filters}
-          onFilterChange={(key, value) =>
-            setFilters((f) => ({ ...f, [key]: value }))
-          }
+          onFilterChange={(key, value) => {
+            setFilters((f) => ({ ...f, [key]: value }));
+            setPage(0);
+          }}
+          sort={sort}
+          onSortChange={(next) => {
+            setSort(next);
+            setPage(0);
+          }}
+          server={{
+            page,
+            pageSize,
+            total: entries.data?.meta.total ?? 0,
+            onPageChange: setPage,
+            onPageSizeChange: (size) => {
+              setPageSize(size);
+              setPage(0);
+            },
+            loading: entries.isFetching,
+          }}
           actions={(e) =>
-            e.eligibility === "PENDING" ? (
-              <Can permission={PERMISSION.REGISTRATION_APPROVE}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={review.isPending}
-                  onClick={() => decide(e, "approve")}
-                  aria-label={`Approve ${e.petName}`}
-                >
-                  <Check size={14} /> Approve
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={review.isPending}
-                  onClick={() => setToReject(e)}
-                  aria-label={`Reject ${e.petName}`}
-                >
-                  <X size={14} /> Reject
-                </Button>
-              </Can>
+            e.actions.approve || e.actions.reject ? (
+              <>
+                {e.actions.approve && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={review.isPending}
+                    onClick={() => decide(e, "approve")}
+                    aria-label={`Approve ${petLabel(e)}`}
+                  >
+                    <Check size={14} /> Approve
+                  </Button>
+                )}
+                {e.actions.reject && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={review.isPending}
+                    onClick={() => setToReject(e)}
+                    aria-label={`Reject ${petLabel(e)}`}
+                    title="Reject"
+                  >
+                    <X size={16} />
+                  </Button>
+                )}
+              </>
             ) : null
           }
         />
@@ -208,7 +314,7 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
         open={!!toReject}
         onOpenChange={(open) => !open && setToReject(null)}
         title="Reject registration"
-        description={`Reject ${toReject?.petName} (${toReject?.ownerName})? The owner will not be able to compete.`}
+        description={`Reject ${toReject ? petLabel(toReject) : ""} (${toReject?.ownerName})? The owner will not be able to compete.`}
         confirmLabel="Reject"
         onConfirm={() => toReject && decide(toReject, "reject")}
       />

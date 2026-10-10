@@ -6,6 +6,7 @@ import type {
   CompetitionPayload,
   CriterionPayload,
   ListResponse,
+  MutationResponse,
   PeriodPayload,
 } from "@/types/api";
 import type { NewCompetition } from "./schema";
@@ -18,6 +19,7 @@ import {
   type ApiCompetitionType,
   type ApiSpecies,
   type Competition,
+  type CompetitionAction,
   type CompetitionType,
   type ResultMode,
   type Species,
@@ -33,6 +35,32 @@ export async function listEventCompetitions(
     ),
   );
   return rows.map(fromApi);
+}
+
+/** Lifecycle actions. The server applies the same rules as `actions` (contract 10 §3). */
+export function runCompetitionAction(id: string, action: CompetitionAction) {
+  switch (action) {
+    case "publish":
+      return apiClient.post<ApiResponse<ApiCompetition>>(
+        ENDPOINTS.competitions.publish(id),
+      );
+    case "start":
+      return apiClient.post<ApiResponse<ApiCompetition>>(
+        ENDPOINTS.competitions.start(id),
+      );
+    case "complete":
+      return apiClient.post<ApiResponse<ApiCompetition>>(
+        ENDPOINTS.competitions.complete(id),
+      );
+    case "closeRegistration":
+      return apiClient.post<ApiResponse<ApiCompetition>>(
+        ENDPOINTS.competitions.closeRegistration(id),
+      );
+    case "cancel":
+      return apiClient.delete<MutationResponse>(
+        ENDPOINTS.competitions.detail(id),
+      );
+  }
 }
 
 export async function listCompetitionTypes(): Promise<CompetitionType[]> {

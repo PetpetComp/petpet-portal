@@ -7,6 +7,9 @@ describe("needsLegacyData", () => {
     expect(needsLegacyData("/event-management/7f3a-uuid/registrations")).toBe(
       false,
     );
+    expect(needsLegacyData("/event-management/7f3a-uuid/participants")).toBe(
+      false,
+    );
     expect(needsLegacyData("/event-management")).toBe(false);
     expect(needsLegacyData("/event-management/7f3a-uuid")).toBe(false);
     expect(needsLegacyData("/event-management/7f3a-uuid/competitions")).toBe(

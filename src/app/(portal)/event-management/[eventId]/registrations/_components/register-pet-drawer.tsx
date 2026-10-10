@@ -4,19 +4,21 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { Input, Select } from "@/components/ui/form-controls";
+import { PERIOD_LABEL } from "@/domains/competitions/schema";
 import type { Competition } from "@/domains/competitions/types";
-import {
-  useCreateEntry,
-  useOwnerPets,
-  useOwnerSearch,
-  usePeriods,
-} from "@/domains/entries/queries";
-import { openPeriod } from "@/domains/entries/types";
+import { useCreateEntry, useOwnerSearch } from "@/domains/entries/queries";
+import type { Owner } from "@/domains/entries/types";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { humanize, rupiah } from "@/lib/format/label";
+import { formatDateTime } from "@/lib/format/date";
+import { rupiah } from "@/lib/format/label";
 import { cn } from "@/lib/utils";
 
-type Owner = { id: string; name: string; email: string };
+/** What the entry will cost, as the API reports it (`active_registration_period`). */
+function priceNote(competition: Competition): string {
+  const period = competition.activeRegistrationPeriod;
+  if (!period) return "No registration fee for this competition.";
+  return `${PERIOD_LABEL[period.type]} price: ${rupiah(period.price)} · until ${formatDateTime(period.endsAt)}`;
+}
 
 /** On-the-spot registration by the committee: owner, then pet, then competition. */
 export function RegisterPetDrawer({
@@ -34,12 +36,10 @@ export function RegisterPetDrawer({
   const [owner, setOwner] = useState<Owner | null>(null);
   const [petId, setPetId] = useState("");
   const [competitionId, setCompetitionId] = useState("");
-  const owners = useOwnerSearch(useDebouncedValue(query));
-  const pets = useOwnerPets(owner?.id ?? "");
-  const periods = usePeriods(competitionId);
-  const period = periods.data ? openPeriod(periods.data, new Date()) : null;
+  const owners = useOwnerSearch(eventId, useDebouncedValue(query));
   const create = useCreateEntry(eventId);
   const openCompetitions = competitions.filter((c) => c.registrationOpen);
+  const competition = openCompetitions.find((c) => c.id === competitionId);
 
   function reset() {
     setQuery("");
@@ -50,9 +50,9 @@ export function RegisterPetDrawer({
   }
 
   function submit() {
-    if (!petId || !competitionId || !period) return;
+    if (!petId || !competition) return;
     create.mutate(
-      { competitionId, petId, periodId: period.id },
+      { competitionId: competition.id, petId },
       {
         onSuccess: () => {
           toast.success("Pet registered");
@@ -79,7 +79,7 @@ export function RegisterPetDrawer({
           </Button>
           <Button
             onClick={submit}
-            disabled={!petId || !competitionId || !period || create.isPending}
+            disabled={!petId || !competition || create.isPending}
           >
             {create.isPending ? "Registering…" : "Register"}
           </Button>
@@ -93,10 +93,10 @@ export function RegisterPetDrawer({
           </label>
           {owner ? (
             <div className="border-primary bg-primary-soft flex items-center justify-between gap-3 rounded-xl border p-3">
-              <span>
+              <span className="min-w-0">
                 <b>{owner.name}</b>
-                <span className="text-muted-foreground block text-sm">
-                  {owner.email}
+                <span className="text-muted-foreground block text-sm break-words">
+                  {[owner.email, owner.phone].filter(Boolean).join(" · ")}
                 </span>
               </span>
               <Button
@@ -115,12 +115,16 @@ export function RegisterPetDrawer({
               <Input
                 id="owner-search"
                 type="search"
-                placeholder="Name, username or email"
+                placeholder="Name, username, email or phone"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 autoComplete="off"
               />
-              {query.trim().length >= 2 && (
+              {query.trim().length < 2 ? (
+                <p className="text-muted-foreground text-sm">
+                  Type at least 2 characters.
+                </p>
+              ) : (
                 <ul
                   className="border-border grid rounded-xl border"
                   aria-label="Owners found"
@@ -129,7 +133,7 @@ export function RegisterPetDrawer({
                     <li className="text-muted-foreground p-3">Searching…</li>
                   )}
                   {owners.isError && (
-                    <li className="p-3 text-[#b91c1c]">
+                    <li className="text-danger p-3">
                       {owners.error instanceof Error
                         ? owners.error.message
                         : "Search failed."}
@@ -148,8 +152,9 @@ export function RegisterPetDrawer({
                         className="hover:bg-muted w-full p-3 text-left"
                       >
                         <b>{o.name}</b>
-                        <span className="text-muted-foreground block text-sm">
-                          {o.email}
+                        <span className="text-muted-foreground block text-sm break-words">
+                          {o.email} · {o.pets.length}{" "}
+                          {o.pets.length === 1 ? "pet" : "pets"}
                         </span>
                       </button>
                     </li>
@@ -163,20 +168,17 @@ export function RegisterPetDrawer({
         {owner && (
           <fieldset className="grid gap-2">
             <legend className="mb-2 font-semibold">2. Pet</legend>
-            {pets.isPending && (
-              <p className="text-muted-foreground">Loading pets…</p>
-            )}
-            {pets.data?.length === 0 && (
+            {owner.pets.length === 0 && (
               <p className="text-muted-foreground">
                 This owner has no pets yet.
               </p>
             )}
             <div className="flex flex-wrap gap-2">
-              {pets.data?.map((p) => (
+              {owner.pets.map((p) => (
                 <label
                   key={p.id}
                   className={cn(
-                    "min-h-11 cursor-pointer rounded-xl border px-4 py-2.5 font-semibold",
+                    "min-h-11 cursor-pointer rounded-xl border px-4 py-2",
                     petId === p.id
                       ? "border-primary bg-primary-soft border-2"
                       : "border-input",
@@ -189,7 +191,10 @@ export function RegisterPetDrawer({
                     checked={petId === p.id}
                     onChange={() => setPetId(p.id)}
                   />
-                  {p.name}
+                  <b>{p.name}</b>
+                  <span className="text-muted-foreground block text-xs">
+                    {[p.speciesName, p.morphName].filter(Boolean).join(" · ")}
+                  </span>
                 </label>
               ))}
             </div>
@@ -201,37 +206,34 @@ export function RegisterPetDrawer({
             <label htmlFor="competition" className="font-semibold">
               3. Competition
             </label>
-            <Select
-              id="competition"
-              value={competitionId}
-              onChange={(e) => setCompetitionId(e.target.value)}
-            >
-              <option value="">Choose a competition</option>
-              {openCompetitions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-            {competitionId && periods.isSuccess && (
-              <p
-                className={cn(
-                  "rounded-xl p-3 text-sm",
-                  period
-                    ? "bg-primary-soft text-primary-dark"
-                    : "bg-[#fef3c7] text-[#92400e]",
-                )}
+            {openCompetitions.length === 0 ? (
+              <p className="bg-warning-soft rounded-xl p-3 text-sm">
+                No competition of this event is open for registration.
+              </p>
+            ) : (
+              <Select
+                id="competition"
+                value={competitionId}
+                onChange={(e) => setCompetitionId(e.target.value)}
               >
-                {period
-                  ? `${humanize(period.type)} price: ${rupiah(period.price)}`
-                  : "No registration channel is open for this competition right now."}
+                <option value="">Choose a competition</option>
+                {openCompetitions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+            {competition && (
+              <p className="bg-primary-soft text-primary-dark rounded-xl p-3 text-sm">
+                {priceNote(competition)}
               </p>
             )}
           </section>
         )}
 
         {create.isError && (
-          <p role="alert" className="font-semibold text-[#b91c1c]">
+          <p role="alert" className="text-danger font-semibold">
             {create.error instanceof Error
               ? create.error.message
               : "Registration failed."}

@@ -4,8 +4,11 @@ import {
   listCompetitionTypes,
   listEventCompetitions,
   listSpecies,
+  runCompetitionAction,
 } from "./api";
 import type { NewCompetition } from "./schema";
+import type { CompetitionAction } from "./types";
+import { entryKeys } from "@/domains/entries/queries";
 
 export const competitionKeys = {
   all: ["competitions"] as const,
@@ -46,5 +49,25 @@ export function useCreateCompetition(eventId: string) {
     // Also on error: a partial create still added a competition.
     onSettled: () =>
       client.invalidateQueries({ queryKey: competitionKeys.forEvent(eventId) }),
+  });
+}
+
+/**
+ * Publish / start / complete / close registration / cancel. Entries are
+ * refreshed too: their `actions` depend on the competition status.
+ */
+export function useCompetitionAction(eventId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: { id: string; action: CompetitionAction }) => {
+      await runCompetitionAction(v.id, v.action);
+    },
+    onSettled: () =>
+      Promise.all([
+        client.invalidateQueries({
+          queryKey: competitionKeys.forEvent(eventId),
+        }),
+        client.invalidateQueries({ queryKey: entryKeys.forEvent(eventId) }),
+      ]),
   });
 }

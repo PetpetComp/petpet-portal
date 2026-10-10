@@ -14,7 +14,7 @@ import { eventInitials } from "../../_lib/event-rules";
 
 /**
  * Tabs appear here as their pages ship (docs/08 §6, F1 to F2).
- * Participants, Committee, Sponsors and Doorprize come next.
+ * Committee, Sponsors and Doorprize come next.
  */
 function tabsFor(eventId: string) {
   const base = ROUTES.eventManagement.detail(eventId);
@@ -22,6 +22,7 @@ function tabsFor(eventId: string) {
     { label: "Overview", href: base, exact: true },
     { label: "Competitions", href: base + "/competitions", exact: false },
     { label: "Registrations", href: base + "/registrations", exact: false },
+    { label: "Participants", href: base + "/participants", exact: false },
   ];
 }
 

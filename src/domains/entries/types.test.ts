@@ -1,77 +1,169 @@
 import { describe, expect, it } from "vitest";
 import {
+  entryListParams,
+  eventEntriesFromApi,
   fromApi,
-  openPeriod,
+  ownerFromApi,
   type ApiEntry,
-  type RegistrationPeriod,
 } from "./types";
 
 const row: ApiEntry = {
   uuid: "en1",
+  participant_code: "PTC-12-001",
   competition_uuid: "c1",
-  registration_period_uuid: null,
-  owner_uuid: "4f6a2b1c-0000",
-  pet_uuid: "9d8e7f6a-0000",
+  competition_name: "Beauty Class Open",
+  registration_period_uuid: "per1",
+  owner_uuid: "u1",
+  owner_name: "Alya Maulana",
+  owner_phone: null,
+  pet_uuid: "p1",
+  pet_name: "Chibi",
+  pet_morph_name: "Classic Grey",
   team_uuid: null,
-  bib_number: null,
-  registration_fee: "65000.00",
-  eligibility_status: "PENDING",
+  bib_number: "001",
+  registration_fee: "75000.00",
+  eligibility_status: "APPROVED",
   payment_status: "UNPAID",
   checkin_status: "NOT_CHECKED_IN",
   status: "REGISTERED",
+  registered_at: "2026-10-10T08:12:00+00:00",
+  checked_in_at: null,
+  actions: {
+    approve: false,
+    reject: false,
+    check_in: true,
+    undo_check_in: false,
+    withdraw: false,
+  },
 };
 
 describe("entries fromApi", () => {
-  it("uses names when the API sends them", () => {
-    expect(
-      fromApi({ ...row, pet_name: "Bolt", owner_name: "Rani" }),
-    ).toMatchObject({
-      petName: "Bolt",
-      ownerName: "Rani",
-      fee: 65000,
+  it("maps every field and parses the decimal fee", () => {
+    expect(fromApi(row)).toEqual({
+      id: "en1",
+      participantCode: "PTC-12-001",
+      competitionId: "c1",
+      competitionName: "Beauty Class Open",
+      registrationPeriodId: "per1",
+      ownerId: "u1",
+      ownerName: "Alya Maulana",
+      ownerPhone: null,
+      petId: "p1",
+      petName: "Chibi",
+      petMorphName: "Classic Grey",
+      teamId: null,
+      bib: "001",
+      fee: 75000,
+      eligibility: "APPROVED",
+      payment: "UNPAID",
+      checkin: "NOT_CHECKED_IN",
+      status: "REGISTERED",
+      registeredAt: "2026-10-10T08:12:00+00:00",
+      checkedInAt: null,
+      actions: {
+        approve: false,
+        reject: false,
+        checkIn: true,
+        undoCheckIn: false,
+        withdraw: false,
+      },
     });
   });
-  it("falls back to short ids while the API has no names", () => {
-    expect(fromApi(row)).toMatchObject({
-      petName: "Pet 9d8e7f6a",
-      ownerName: "User 4f6a2b1c",
+
+  it("keeps nulls as nulls (no placeholder names)", () => {
+    const team = fromApi({
+      ...row,
+      pet_uuid: null,
+      pet_name: null,
+      pet_morph_name: null,
+      team_uuid: "t1",
+    });
+    expect(team).toMatchObject({
+      petName: null,
+      petMorphName: null,
+      teamId: "t1",
     });
   });
 });
 
-describe("openPeriod", () => {
-  const p = (
-    type: RegistrationPeriod["type"],
-    opensAt: string,
-    closesAt: string,
-  ): RegistrationPeriod => ({
-    id: type,
-    type,
-    price: 0,
-    opensAt,
-    closesAt,
+describe("eventEntriesFromApi", () => {
+  it("maps items, meta and summary", () => {
+    const list = eventEntriesFromApi({
+      items: [row],
+      meta: { current_page: 2, per_page: 15, total: 42, last_page: 3 },
+      summary: { total: 40, approved: 31, checked_in: 12 },
+    });
+    expect(list.items[0].id).toBe("en1");
+    expect(list.meta).toEqual({
+      currentPage: 2,
+      perPage: 15,
+      total: 42,
+      lastPage: 3,
+    });
+    expect(list.summary).toEqual({ total: 40, approved: 31, checkedIn: 12 });
   });
-  const now = new Date("2026-09-04T10:00:00Z");
-  it("picks the channel whose window contains now", () => {
-    const periods = [
-      p("EARLY_BIRD", "2026-08-01T00:00:00Z", "2026-08-20T00:00:00Z"),
-      p("ONLINE", "2026-08-20T00:00:00Z", "2026-09-10T00:00:00Z"),
-    ];
-    expect(openPeriod(periods, now)?.type).toBe("ONLINE");
-  });
-  it("prefers on-the-spot when several are open", () => {
-    const periods = [
-      p("ONLINE", "2026-08-20T00:00:00Z", "2026-09-10T00:00:00Z"),
-      p("ON_SITE", "2026-09-04T00:00:00Z", "2026-09-04T23:00:00Z"),
-    ];
-    expect(openPeriod(periods, now)?.type).toBe("ON_SITE");
-  });
-  it("returns null when registration is closed", () => {
+});
+
+describe("ownerFromApi", () => {
+  it("maps the owner and their pets", () => {
     expect(
-      openPeriod(
-        [p("ONLINE", "2026-08-01T00:00:00Z", "2026-08-02T00:00:00Z")],
-        now,
-      ),
-    ).toBeNull();
+      ownerFromApi({
+        uuid: "u1",
+        name: "Alya Maulana",
+        email: "alya@x.dev",
+        phone: "0812",
+        pets: [
+          {
+            uuid: "p1",
+            name: "Chibi",
+            species_name: "Sugar Glider",
+            morph_name: "Classic Grey",
+          },
+        ],
+      }),
+    ).toEqual({
+      id: "u1",
+      name: "Alya Maulana",
+      email: "alya@x.dev",
+      phone: "0812",
+      pets: [
+        {
+          id: "p1",
+          name: "Chibi",
+          speciesName: "Sugar Glider",
+          morphName: "Classic Grey",
+        },
+      ],
+    });
+  });
+});
+
+describe("entryListParams", () => {
+  it("uses the contract's query names", () => {
+    expect(
+      entryListParams({
+        competitionId: "c1",
+        eligibility: "APPROVED",
+        payment: "PAID",
+        checkin: "CHECKED_IN",
+        status: "REGISTERED",
+        q: "  PTC-12-001 ",
+        sort: "pet_name",
+        direction: "asc",
+        page: 2,
+        perPage: 12,
+      }),
+    ).toEqual({
+      competition_id: "c1",
+      eligibility_status: "APPROVED",
+      payment_status: "PAID",
+      checkin_status: "CHECKED_IN",
+      status: "REGISTERED",
+      q: "PTC-12-001",
+      sort: "pet_name",
+      direction: "asc",
+      page: 2,
+      per_page: 12,
+    });
   });
 });
