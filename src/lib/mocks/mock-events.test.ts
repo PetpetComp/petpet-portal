@@ -111,7 +111,7 @@ describe("listEventRecords", () => {
     ).toEqual(["Surabaya Paw Race 2026"]);
     expect(
       listEventRecords(query({ q: "senayan" }), NOW).items.map((e) => e.name),
-    ).toEqual(["Jakarta Cat Show 2026"]);
+    ).toEqual(["Jakarta Glider Show 2026"]);
     const org = store.organizations[0].name.toLowerCase();
     expect(listEventRecords(query({ q: org }), NOW).meta.total).toBeGreaterThan(
       0,

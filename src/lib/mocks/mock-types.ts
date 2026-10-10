@@ -120,7 +120,8 @@ export interface MockEventSponsor {
   display_order?: number;
   start_at?: string;
   end_at?: string;
-  status: "pending" | "approved" | "rejected";
+  /** Backend `EventSponsorConstant::STATUS_ACTIVE`: satu-satunya nilai yang ada. */
+  status: string;
 }
 
 /** Stored columns only; names and `actions` are added when serialized (mock-records.ts). */
