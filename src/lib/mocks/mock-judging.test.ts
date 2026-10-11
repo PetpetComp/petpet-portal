@@ -189,7 +189,7 @@ describe("seed and reading", () => {
       "GET",
       `/rounds/${ROUND}/scorecards`,
     );
-    expect(cards).toHaveLength(3);
+    expect(cards).toHaveLength(5); // 3 milik Farhan + 2 milik juri kedua (seed)
     const one = await call<ApiScorecard>("GET", `/scorecards/${cards[0].uuid}`);
     expect(one.criterion_scores).toHaveLength(3);
   });
@@ -670,7 +670,7 @@ describe("access", () => {
     await asStranger();
     expect(
       await call<ApiScorecard[]>("GET", `/rounds/${ROUND}/scorecards`),
-    ).toHaveLength(3);
+    ).toHaveLength(5);
     const own = await createCard(QUEUE[3]);
     expect(own.staff_assignment_uuid).toBe("sa-head-judge");
     await expect(
@@ -705,12 +705,14 @@ describe("reset", () => {
     await asJudge();
     const card = await createCard(QUEUE[3]);
     await putScores(card.uuid, [{ criterion_id: APPEARANCE, score: 5 }]);
-    expect(judgingStore.scorecards).toHaveLength(4);
+    expect(judgingStore.scorecards).toHaveLength(6);
     resetJudgingStore();
     expect(judgingStore.scorecards.map((c) => c.status)).toEqual([
       "LOCKED",
       "LOCKED",
       "DRAFT",
+      "LOCKED",
+      "LOCKED",
     ]);
     expect(rowOf(await judging(), QUEUE[3]).status).toBe("NOT_SCORED");
   });

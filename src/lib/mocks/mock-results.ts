@@ -1,10 +1,12 @@
 import { ApiError } from "@/lib/api-client";
 import { PERMISSION } from "@/lib/auth/permissions";
+import { combineJudges, rankContest } from "@/domains/results/contest";
 import type {
   ApiCompetitionResults,
   ApiResultActions,
   ApiResultRow,
   ResultStatus,
+  ResultVariant,
 } from "@/domains/results/types";
 import {
   callerFor,
@@ -13,13 +15,18 @@ import {
   hasPermission,
   iso,
 } from "./mock-records";
+import { contestScores, isContestCompetition } from "./mock-judging";
 import { confirmedRows } from "./mock-matches";
+import { timeTrialStandings } from "./mock-timetrial";
 import { UNRESTRICTED, type MockCaller } from "./mock-rules";
 import { findOrThrow, store } from "./mock-store";
-import type { MockUser } from "./mock-types";
+import type { MockCompetition, MockUser } from "./mock-types";
 
 /**
- * Backend palsu untuk hasil akhir kompetisi Race (draf kontrak petpet-docs/_draft-results.md).
+ * Backend palsu untuk hasil akhir kompetisi (draf kontrak petpet-docs/_draft-results.md).
+ * Tiga jenis klasemen (`variant`): RACE (match yang di-Confirm), TIME_TRIAL (waktu valid terbaik
+ * dari antrean) dan CONTEST (rata-rata total juri dari scorecard LOCKED, aturan 1A di
+ * `@/domains/results/contest`).
  * Backend asli belum punya endpoint ini; bentuknya diturunkan dari tabel `results`,
  * `timer_results`, dan `result_verifications`. Aturan (urutan peringkat, siapa boleh
  * verifikasi) hidup di sini, layar hanya membaca `rank` dan `actions`.
@@ -131,9 +138,11 @@ export function resultActions(
   rowCount: number,
   verified: boolean,
   caller: MockCaller,
+  blocked = false,
 ): ApiResultActions {
   return {
     verify:
+      !blocked &&
       caller.managesEvent &&
       hasPermission(caller, PERMISSION.SCORING_VERIFY) &&
       VERIFIABLE_STATUSES.includes(competitionStatus) &&
@@ -145,23 +154,108 @@ export function resultActions(
 const fullName = (user: MockUser) =>
   [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username;
 
-/** Hanya tipe RACE punya hasil; tipe lain 422 (keputusan D13). */
-function requireRace(competitionTypeUuid: string) {
+/** Jenis klasemen menurut tipe kompetisi; tipe lain (mis. Checkpoint) 422 (keputusan D13). */
+function variantOf(competition: MockCompetition): ResultVariant {
   const type = store.competitionTypes.find(
-    (t) => t.uuid === competitionTypeUuid,
+    (t) => t.uuid === competition.competition_type_uuid,
   );
-  if (type?.code !== "RACE")
-    throw new ApiError(
-      422,
-      "Results are not available for this competition type.",
-    );
+  if (type?.code === "RACE") return "RACE";
+  if (type?.code === "TIME_TRIAL") return "TIME_TRIAL";
+  if (isContestCompetition(competition)) return "CONTEST";
+  throw new ApiError(
+    422,
+    "Results are not available for this competition type.",
+  );
+}
+
+/** Uuid hewan dari entry; entry yang masuk klasemen selalu punya hewan. */
+function petOfEntry(entryUuid: string): string {
+  const entry = findOrThrow(store.entries, entryUuid, "Entry");
+  if (!entry.pet_uuid) throw new ApiError(422, "The entry has no pet.");
+  return entry.pet_uuid;
+}
+
+/** Satu baris klasemen sebelum diberi nama: hasil mentah, peringkat, dan keterangan per jenis. */
+type Standing = StoredResult & {
+  rank: number;
+  score?: number | null;
+  judges?: number | null;
+  attempts?: number | null;
+};
+
+/** Hasil kompetisi Time trial: waktu valid terbaik; urutan awal dari peringkat antrean (pemutus seri). */
+function timeTrialRows(competition: MockCompetition): Standing[] {
+  const standings = timeTrialStandings(competition).sort(
+    (a, b) =>
+      (a.bestRank ?? Number.MAX_SAFE_INTEGER) -
+      (b.bestRank ?? Number.MAX_SAFE_INTEGER),
+  );
+  const attempts = new Map<string, number>();
+  const stored = standings.map((row): StoredResult => {
+    const petUuid = petOfEntry(row.entryUuid);
+    attempts.set(petUuid, row.attemptsCounted);
+    return {
+      pet_uuid: petUuid,
+      status: row.status,
+      finish_time_ms: row.bestTimeMs,
+    };
+  });
+  return rankResults(stored).map((row) => ({
+    ...row,
+    attempts: attempts.get(row.pet_uuid) ?? null,
+  }));
+}
+
+/**
+ * Hasil kompetisi Contest. Peserta berhak yang punya scorecard LOCKED diberi peringkat menurut
+ * `rankContest` (seri berbagi peringkat); yang belum punya menjadi DNS ("Not scored") di bawah.
+ * `openCards` > 0 (masih ada scorecard DRAFT/SUBMITTED) menahan verifikasi.
+ */
+function contestRows(competition: MockCompetition): {
+  rows: Standing[];
+  openCards: number;
+} {
+  const { criteria, entries } = contestScores(competition);
+  const combined = entries.map((entry) => ({
+    entry,
+    ...combineJudges(criteria, entry.lockedCards),
+  }));
+  const ranks = rankContest(
+    combined.map((c) => ({ entryId: c.entry.entryUuid, ...c })),
+  );
+  const scored = combined
+    .filter((c) => c.score !== null)
+    .sort(
+      (a, b) =>
+        (ranks.get(a.entry.entryUuid) as number) -
+        (ranks.get(b.entry.entryUuid) as number),
+    )
+    .map((c): Standing => ({
+      pet_uuid: petOfEntry(c.entry.entryUuid),
+      status: "FINISHED",
+      finish_time_ms: null,
+      rank: ranks.get(c.entry.entryUuid) as number,
+      score: c.score,
+      judges: c.judges,
+    }));
+  const unscored = combined
+    .filter((c) => c.score === null)
+    .map((c, index): Standing => ({
+      pet_uuid: petOfEntry(c.entry.entryUuid),
+      status: "DNS",
+      finish_time_ms: null,
+      rank: scored.length + index + 1,
+      score: null,
+      judges: 0,
+    }));
+  return {
+    rows: [...scored, ...unscored],
+    openCards: entries.reduce((sum, e) => sum + e.openCards, 0),
+  };
 }
 
 /** Satu baris klasemen: nama hewan, pemilik, dan bib diambil dari entry/pet/user yang sudah ada. */
-function rowRecord(
-  competitionUuid: string,
-  row: StoredResult & { rank: number },
-): ApiResultRow {
+function rowRecord(competitionUuid: string, row: Standing): ApiResultRow {
   const pet = findOrThrow(store.pets, row.pet_uuid, "Pet");
   const owner = findOrThrow(store.users, pet.owner_uuid, "User");
   const entry = store.entries.find(
@@ -176,43 +270,70 @@ function rowRecord(
     bib_number: entry?.bib_number ?? null,
     finish_time_ms: row.status === "FINISHED" ? row.finish_time_ms : null,
     status: row.status,
+    score: row.score ?? null,
+    judges_scored: row.judges ?? null,
+    attempts_used: row.attempts ?? null,
   };
+}
+
+/** Baris klasemen, jenisnya, dan apakah ada hal yang menahan verifikasi, menurut jenis kompetisi. */
+function standingsOf(competition: MockCompetition): {
+  variant: ResultVariant;
+  rows: Standing[];
+  /** Jumlah baris yang benar-benar punya hasil (Contest: tanpa yang "Not scored"). */
+  count: number;
+  blocked: boolean;
+} {
+  const variant = variantOf(competition);
+  if (variant === "TIME_TRIAL") {
+    const rows = timeTrialRows(competition);
+    return { variant, rows, count: rows.length, blocked: false };
+  }
+  if (variant === "CONTEST") {
+    const { rows, openCards } = contestRows(competition);
+    return {
+      variant,
+      rows,
+      count: rows.filter((row) => row.status === "FINISHED").length,
+      blocked: openCards > 0,
+    };
+  }
+  const rows = rankResults(storedResultsOf(competition.uuid));
+  return { variant, rows, count: rows.length, blocked: false };
 }
 
 /** Bentuk respons `data` untuk satu kompetisi. Dipakai GET dan POST verify. */
 function resultsRecord(
-  competitionUuid: string,
+  competition: MockCompetition,
   caller: MockCaller,
 ): ApiCompetitionResults {
-  const competition = findOrThrow(
-    store.competitions,
-    competitionUuid,
-    "Competition",
-  );
-  const ranked = rankResults(storedResultsOf(competitionUuid));
+  const competitionUuid = competition.uuid;
+  const { variant, rows, count, blocked } = standingsOf(competition);
   const verification = resultStore.verifications[competitionUuid] ?? null;
   const verifier = verification
     ? store.users.find((u) => u.uuid === verification.verified_by_uuid)
     : undefined;
   return {
     competition_uuid: competitionUuid,
+    variant,
     verification_status: verification ? "VERIFIED" : "PENDING",
     verified_at: verification?.verified_at ?? null,
     verified_by_uuid: verification?.verified_by_uuid ?? null,
     verified_by_name: verifier ? fullName(verifier) : null,
-    items: ranked.map((row) => rowRecord(competitionUuid, row)),
+    items: rows.map((row) => rowRecord(competitionUuid, row)),
     actions: resultActions(
       competition.status,
-      ranked.length,
+      count,
       verification !== null,
       caller,
+      blocked,
     ),
   };
 }
 
 /**
  * `GET /competitions/{uuid}/results`. Butuh login, terkait event, dan `scoring.view`.
- * Tipe selain Race 422. Kompetisi tanpa hasil mengembalikan `items: []`.
+ * Tipe selain Race, Time trial, dan Contest 422. Kompetisi tanpa hasil mengembalikan `items: []`.
  */
 export function getResultsRecord(
   user: MockUser,
@@ -227,8 +348,7 @@ export function getResultsRecord(
   forbidUnless(
     caller.relatedToEvent && hasPermission(caller, PERMISSION.SCORING_VIEW),
   );
-  requireRace(competition.competition_type_uuid);
-  return resultsRecord(competitionUuid, caller);
+  return resultsRecord(competition, caller);
 }
 
 /**
@@ -248,18 +368,21 @@ export function verifyResultsRecord(
   forbidUnless(
     caller.relatedToEvent && hasPermission(caller, PERMISSION.SCORING_VIEW),
   );
-  requireRace(competition.competition_type_uuid);
-  const rows = storedResultsOf(competitionUuid);
+  const { count, blocked } = standingsOf(competition);
+  if (blocked)
+    throw new ApiError(
+      422,
+      "Results can be verified once every scorecard is locked.",
+    );
   const verified = competitionUuid in resultStore.verifications;
   guard(
-    resultActions(competition.status, rows.length, verified, caller).verify,
-    resultActions(competition.status, rows.length, verified, UNRESTRICTED)
-      .verify,
+    resultActions(competition.status, count, verified, caller).verify,
+    resultActions(competition.status, count, verified, UNRESTRICTED).verify,
     "Only results of a started competition that are not yet verified can be verified.",
   );
   resultStore.verifications[competitionUuid] = {
     verified_at: iso(new Date()),
     verified_by_uuid: user.uuid,
   };
-  return resultsRecord(competitionUuid, caller);
+  return resultsRecord(competition, caller);
 }

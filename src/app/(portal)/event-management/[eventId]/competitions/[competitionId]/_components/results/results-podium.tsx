@@ -1,5 +1,5 @@
-import { timeLabel } from "@/domains/results/format";
-import type { ResultRow } from "@/domains/results/types";
+import { detailLabel, timeLabel } from "@/domains/results/format";
+import type { ResultRow, ResultVariant } from "@/domains/results/types";
 import { cn } from "@/lib/utils";
 
 /** Gaya per peringkat: juara 1 gelap dan lebih tinggi, angka emas (desain Comp-Results). */
@@ -27,19 +27,36 @@ const PLACE_STYLE: Record<
   },
 };
 
+/** Lebar kolom podium menurut jumlah peserta di podium, supaya 1 atau 2 peserta tetap di tengah. */
+const PODIUM_COLUMNS: Record<number, string> = {
+  1: "sm:mx-auto sm:max-w-xs sm:grid-cols-1",
+  2: "sm:mx-auto sm:max-w-2xl sm:grid-cols-2",
+  3: "sm:grid-cols-3",
+};
+
 /**
  * Podium juara 1 sampai 3. Di layar lebar urutannya 2-1-3 dengan juara 1 menjulang;
  * di HP menumpuk dari juara 1 ke bawah. Nama hewan, pemilik, dan waktu (font mono) dibaca
  * dari baris API; status selain FINISHED tampil sebagai teks (DNF, DQ, DNS).
- * Dipanggil dari `CompetitionResults`. Input: tiga baris pertama klasemen.
+ * Contest menampilkan nilai juri (mis. "73.0") dan jumlah juri; Time trial jumlah attempt.
+ * Dipanggil dari `CompetitionResults`. Input: tiga baris pertama klasemen dan jenisnya.
  */
-export function ResultsPodium({ rows }: { rows: ResultRow[] }) {
+export function ResultsPodium({
+  rows,
+  variant,
+}: {
+  rows: ResultRow[];
+  variant: ResultVariant;
+}) {
   const top = rows.slice(0, 3);
   if (!top.length) return null;
   return (
     <ol
       aria-label="Podium"
-      className="grid grid-cols-1 items-end gap-4 sm:grid-cols-3"
+      className={cn(
+        "grid grid-cols-1 items-end gap-4",
+        PODIUM_COLUMNS[top.length],
+      )}
     >
       {top.map((row, index) => {
         const place = (index + 1) as 1 | 2 | 3;
@@ -75,8 +92,13 @@ export function ResultsPodium({ rows }: { rows: ResultRow[] }) {
               {row.ownerName}
             </span>
             <span className="mt-1 font-mono text-base font-bold">
-              {timeLabel(row)}
+              {timeLabel(row, variant)}
             </span>
+            {detailLabel(row, variant) && (
+              <span className={cn("text-xs", style.text)}>
+                {detailLabel(row, variant)}
+              </span>
+            )}
           </li>
         );
       })}

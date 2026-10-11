@@ -4,10 +4,11 @@
  * Add a route here when its page is migrated. When every route is listed,
  * delete the provider.
  */
-const EVENT_LEGACY_PAGES = "doorprize-drawing|event-participant";
+const EVENT_LEGACY_PAGES = "doorprize-drawing";
 
 const MIGRATED: RegExp[] = [
   /^\/home\/?$/, // Home
+  /^\/report\/?$/, // Reports
   /^\/assignments\/?$/, // My assignments
   /^\/event-management\/?$/, // Events list
   /^\/event-management\/create\/?$/, // New event wizard
@@ -17,7 +18,7 @@ const MIGRATED: RegExp[] = [
   /^\/event-management\/[^/]+\/registrations\/?$/, // Registrations tab
   /^\/event-management\/[^/]+\/participants\/?$/, // Participants & check-in tab
   /^\/event-management\/[^/]+\/committee\/?$/, // Committee tab
-  /^\/event-management\/[^/]+\/(sponsors|doorprize)\/?$/, // Tabs that are still "coming soon"
+  /^\/event-management\/[^/]+\/(sponsors|doorprize|reports)\/?$/, // Reports tab; Sponsors and Doorprize are still "coming soon"
   /^\/event-management\/[^/]+\/edit\/?$/, // Edit event
   /^\/pet-management(\/[^/]+(\/edit)?)?\/?$/, // Pets: list, New pet, detail, Edit pet
   /^\/sponsorship-brand(\/[^/]+(\/edit)?)?\/?$/, // Brands: list, New brand, detail, Edit brand

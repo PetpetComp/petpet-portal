@@ -8,7 +8,7 @@ describe("eventTabs", () => {
     sponsors: 8,
   });
 
-  it("has the seven tabs of the design, in order", () => {
+  it("has the eight tabs, in order", () => {
     expect(tabs.map((t) => t.label)).toEqual([
       "Overview",
       "Competitions",
@@ -17,6 +17,7 @@ describe("eventTabs", () => {
       "Committee",
       "Sponsors",
       "Doorprize",
+      "Reports",
     ]);
   });
 
@@ -29,6 +30,7 @@ describe("eventTabs", () => {
       "/event-management/e1/committee",
       "/event-management/e1/sponsors",
       "/event-management/e1/doorprize",
+      "/event-management/e1/reports",
     ]);
     expect(tabs[0].exact).toBe(true);
   });

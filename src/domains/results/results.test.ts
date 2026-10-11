@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { formatFinishTime, resultsCsvRows, timeLabel } from "./format";
+import {
+  detailLabel,
+  formatFinishTime,
+  resultsCsvRows,
+  timeLabel,
+  valueHeading,
+} from "./format";
 import { fromApi, type ApiCompetitionResults } from "./types";
 
 const api: ApiCompetitionResults = {
   competition_uuid: "c1",
+  variant: "RACE",
   verification_status: "VERIFIED",
   verified_at: "2026-10-10T10:00:00+00:00",
   verified_by_uuid: "u1",
@@ -44,6 +51,7 @@ const api: ApiCompetitionResults = {
 describe("results fromApi", () => {
   it("maps camelCase fields, orders by rank and fills blanks", () => {
     const results = fromApi(api);
+    expect(results.variant).toBe("RACE");
     expect(results.verified).toBe(true);
     expect(results.verifiedByName).toBe("Organizer Demo");
     expect(results.actions).toEqual({ verify: false });
@@ -56,6 +64,9 @@ describe("results fromApi", () => {
       bibNumber: "101",
       finishTimeMs: 38412,
       status: "FINISHED",
+      score: null,
+      judgesScored: null,
+      attemptsUsed: null,
     });
     expect(results.rows[1].petName).toBe("Unnamed pet");
     expect(results.rows[1].bibNumber).toBe("");
@@ -109,5 +120,38 @@ describe("timeLabel and CSV rows", () => {
       Status: "DNF",
     });
     expect(resultsCsvRows(rows)).toHaveLength(3);
+  });
+});
+
+describe("variant labels", () => {
+  const row = {
+    ...fromApi(api).rows[0],
+    score: 73,
+    judgesScored: 2,
+    attemptsUsed: 3,
+  };
+  it("shows the judge score for Contest and 'Not scored' without one", () => {
+    expect(timeLabel(row, "CONTEST")).toBe("73.0");
+    expect(timeLabel({ ...row, score: null }, "CONTEST")).toBe("Not scored");
+  });
+  it("names the value column and the small detail per variant", () => {
+    expect(valueHeading("CONTEST")).toBe("Score");
+    expect(valueHeading("TIME_TRIAL")).toBe("Time");
+    expect(detailLabel(row, "TIME_TRIAL")).toBe("3 attempts");
+    expect(detailLabel({ ...row, attemptsUsed: 1 }, "TIME_TRIAL")).toBe(
+      "1 attempt",
+    );
+    expect(detailLabel(row, "CONTEST")).toBe("2 judges");
+    expect(detailLabel(row, "RACE")).toBe("");
+  });
+  it("adds Attempts or Judges columns to the CSV", () => {
+    expect(resultsCsvRows([row], "TIME_TRIAL")[0]).toMatchObject({
+      Time: "00:38.412",
+      Attempts: 3,
+    });
+    expect(resultsCsvRows([row], "CONTEST")[0]).toMatchObject({
+      Score: "73.0",
+      Judges: 2,
+    });
   });
 });

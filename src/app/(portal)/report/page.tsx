@@ -1,4 +1,5 @@
-import { ReportWorkspace } from "./_components/report-workspace";
+import { ReportsOverview } from "./_components/reports-overview";
+
 export default function Page() {
-  return <ReportWorkspace />;
+  return <ReportsOverview />;
 }

@@ -56,10 +56,12 @@ describe("needsLegacyData", () => {
     expect(needsLegacyData(`${base}/other/deep`)).toBe(true);
   });
   it("still loads for old pages that read the shared store", () => {
-    expect(needsLegacyData("/event-management/event-participant")).toBe(true);
     expect(needsLegacyData("/event-management/doorprize-drawing")).toBe(true);
-    expect(needsLegacyData("/report")).toBe(true);
     expect(needsLegacyData("/my-competitions")).toBe(true);
+  });
+  it("skips the migrated Reports pages", () => {
+    expect(needsLegacyData("/report")).toBe(false);
+    expect(needsLegacyData("/event-management/7f3a-uuid/reports")).toBe(false);
   });
   it("skips the migrated Users and Roles pages", () => {
     expect(needsLegacyData("/user-management")).toBe(false);

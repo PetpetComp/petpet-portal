@@ -22,7 +22,7 @@ import { EventAvatar } from "../../_components/event-avatar";
 import { EventPhaseBadge } from "../../_components/event-phase-badge";
 
 /**
- * Tujuh tab event sesuai desain EventHeader. Hitungan `null` berarti belum ada atau gagal dimuat
+ * Delapan tab event (tujuh dari desain EventHeader, ditambah Reports). Hitungan `null` berarti belum ada atau gagal dimuat
  * (mis. akun tidak boleh melihat peserta) dan tab tampil tanpa angka.
  * Committee, Sponsors, dan Doorprize masih halaman "coming soon" yang rapi, bukan 404.
  */
@@ -51,6 +51,7 @@ export function eventTabs(
     { label: "Committee", href: base + "/committee" },
     { label: "Sponsors", href: base + "/sponsors", count: counts.sponsors },
     { label: "Doorprize", href: base + "/doorprize" },
+    { label: "Reports", href: base + "/reports" },
   ];
 }
 

@@ -16,6 +16,13 @@ export const RESULT_STATUS_LABEL: Record<ResultStatus, string> = {
   DNS: "DNS",
 };
 
+/**
+ * Jenis klasemen: Race dan Time trial diurut menurut waktu, Contest menurut nilai juri
+ * (rata-rata total 0-100 dari scorecard LOCKED). Dikirim API; layar memilih kolom nilai dari sini.
+ */
+export const RESULT_VARIANTS = ["RACE", "TIME_TRIAL", "CONTEST"] as const;
+export type ResultVariant = (typeof RESULT_VARIANTS)[number];
+
 /** Keadaan verifikasi hasil satu kompetisi. */
 export const VERIFICATION_STATUSES = ["PENDING", "VERIFIED"] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
@@ -31,6 +38,12 @@ export type ApiResultRow = {
   /** Milidetik, sudah termasuk penalti (`timer_results.final_duration_ms`). Null bila tidak finish. */
   finish_time_ms: number | null;
   status: ResultStatus;
+  /** Contest: rata-rata total juri 0-100 (1 desimal). Null untuk Race dan Time trial. */
+  score?: number | null;
+  /** Contest: jumlah juri yang scorecard-nya LOCKED dan ikut dihitung. */
+  judges_scored?: number | null;
+  /** Time trial: jumlah attempt yang dihitung ke jatah peserta. */
+  attempts_used?: number | null;
 };
 
 /** Apa yang boleh dilakukan pemanggil (aturan dipegang backend). */
@@ -39,6 +52,7 @@ export type ApiResultActions = { verify: boolean };
 /** `data` dari `GET /competitions/{uuid}/results` dan `POST .../results/verify`. */
 export type ApiCompetitionResults = {
   competition_uuid: string;
+  variant: ResultVariant;
   verification_status: VerificationStatus;
   verified_at: string | null;
   verified_by_uuid: string | null;
@@ -57,10 +71,14 @@ export type ResultRow = {
   bibNumber: string;
   finishTimeMs: number | null;
   status: ResultStatus;
+  score: number | null;
+  judgesScored: number | null;
+  attemptsUsed: number | null;
 };
 
 export type CompetitionResults = {
   competitionId: string;
+  variant: ResultVariant;
   verified: boolean;
   verifiedAt: string | null;
   verifiedByName: string | null;
@@ -78,6 +96,9 @@ export function rowFromApi(row: ApiResultRow): ResultRow {
     bibNumber: row.bib_number ?? "",
     finishTimeMs: row.finish_time_ms,
     status: row.status,
+    score: row.score ?? null,
+    judgesScored: row.judges_scored ?? null,
+    attemptsUsed: row.attempts_used ?? null,
   };
 }
 
@@ -85,6 +106,7 @@ export function rowFromApi(row: ApiResultRow): ResultRow {
 export function fromApi(data: ApiCompetitionResults): CompetitionResults {
   return {
     competitionId: data.competition_uuid,
+    variant: data.variant,
     verified: data.verification_status === "VERIFIED",
     verifiedAt: data.verified_at,
     verifiedByName: data.verified_by_name,

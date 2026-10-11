@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompetitionResults, ResultRow } from "@/domains/results/types";
 import { CompetitionResults as ResultsTab } from "./competition-results";
 
-const state = vi.hoisted(() => ({ typeId: "race", empty: false }));
+const state = vi.hoisted(() => ({
+  typeId: "race",
+  empty: false,
+  variant: "RACE" as "RACE" | "TIME_TRIAL" | "CONTEST",
+}));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/domains/competitions/api", async () => {
@@ -16,6 +20,8 @@ vi.mock("@/domains/competitions/api", async () => {
     listCompetitionTypes: vi.fn().mockResolvedValue([
       { id: "race", code: "RACE", name: "Race", resultMode: "POSITION" },
       { id: "tt", code: "TIME_TRIAL", name: "Time trial", resultMode: "TIME" },
+      { id: "cp", code: "CHECKPOINT", name: "Checkpoint", resultMode: "TIME" },
+      { id: "beauty", code: "BEAUTY", name: "Beauty", resultMode: "SCORE" },
     ]),
   };
 });
@@ -32,10 +38,14 @@ vi.mock("@/domains/results/api", () => {
     bibNumber: "",
     finishTimeMs: 38000 + rank * 1000,
     status: "FINISHED",
+    score: null,
+    judgesScored: null,
+    attemptsUsed: null,
     ...over,
   });
   const make = (): CompetitionResults => ({
     competitionId: "c1",
+    variant: state.variant,
     verified: false,
     verifiedAt: null,
     verifiedByName: null,
@@ -70,6 +80,7 @@ function renderTab() {
 beforeEach(() => {
   state.typeId = "race";
   state.empty = false;
+  state.variant = "RACE";
 });
 
 describe("CompetitionResults (Race)", () => {
@@ -114,9 +125,43 @@ describe("CompetitionResults (Race)", () => {
   });
 });
 
+describe("CompetitionResults (Time trial and Contest)", () => {
+  it("shows attempts under the time for a Time trial", async () => {
+    state.typeId = "tt";
+    state.variant = "TIME_TRIAL";
+    renderTab();
+    const podium = await screen.findByRole("list", { name: "Podium" });
+    expect(within(podium).getAllByText("00:39.000")).toHaveLength(1);
+  });
+
+  it("shows judge scores and a Score column for a Contest", async () => {
+    state.typeId = "beauty";
+    state.variant = "CONTEST";
+    renderTab();
+    const podium = await screen.findByRole("list", { name: "Podium" });
+    // Baris uji tidak punya nilai: terbaca "Not scored" di setiap tempat nilai.
+    expect(within(podium).getAllByText("Not scored")).toHaveLength(3);
+    expect(
+      within(screen.getByRole("table")).getByRole("columnheader", {
+        name: "Score",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("uses the Contest empty message", async () => {
+    state.typeId = "beauty";
+    state.variant = "CONTEST";
+    state.empty = true;
+    renderTab();
+    expect(
+      await screen.findByText(/locked their scorecards/),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("CompetitionResults (other types)", () => {
   it("shows the not-available message and no banner or podium", async () => {
-    state.typeId = "tt";
+    state.typeId = "cp";
     renderTab();
     expect(
       await screen.findByText("Results for this type are not available yet"),

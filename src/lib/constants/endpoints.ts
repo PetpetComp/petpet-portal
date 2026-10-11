@@ -47,6 +47,11 @@ export const ENDPOINTS = {
     entries: (uuid: string) => `/competitions/${id(uuid)}/entries`,
     staff: (uuid: string) => `/competitions/${id(uuid)}/staff`,
   },
+  /** MOCK ONLY: no such endpoints in the backend yet (contract 13, Reports). */
+  reports: {
+    overview: "/reports/overview",
+    event: (uuid: string) => `/events/${id(uuid)}/report`,
+  },
   /** MOCK ONLY: no such endpoints in the backend yet (draft contract results). */
   results: {
     list: (uuid: string) => `/competitions/${id(uuid)}/results`,

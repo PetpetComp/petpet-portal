@@ -651,6 +651,46 @@ export function getQueueRecord(
   return queueRecord(competition, user);
 }
 
+/** Satu peserta Time trial untuk klasemen akhir (diturunkan dari antrean). */
+export type TimeTrialStanding = {
+  entryUuid: string;
+  /** FINISHED = punya waktu sah, DQ/DNS dari status peserta, DNF = sudah memakai attempt tanpa waktu sah. */
+  status: "FINISHED" | "DNF" | "DQ" | "DNS";
+  bestTimeMs: number | null;
+  /** Peringkat waktu terbaik dari antrean; urutan ini yang dipakai klasemen. */
+  bestRank: number | null;
+  attemptsCounted: number;
+};
+
+/**
+ * Klasemen Time trial untuk Results. Memakai snapshot antrean yang sama dengan layar Run supaya
+ * peringkat tidak pernah berbeda. Peserta yang belum mulai (belum ada attempt yang dihitung)
+ * belum masuk klasemen. Dipanggil dari `mock-results.ts`.
+ */
+export function timeTrialStandings(
+  competition: MockCompetition,
+): TimeTrialStanding[] {
+  const snapshot = snapshotOf(competition);
+  const standings: TimeTrialStanding[] = [];
+  for (const row of snapshot.rows) {
+    const bestTimeMs = row.disqualified ? null : (row.best?.timeMs ?? null);
+    let status: TimeTrialStanding["status"] | null = null;
+    if (row.state === "DQ") status = "DQ";
+    else if (row.state === "DNS") status = "DNS";
+    else if (bestTimeMs !== null) status = "FINISHED";
+    else if (row.counted > 0) status = "DNF";
+    if (status === null) continue;
+    standings.push({
+      entryUuid: row.entryUuid,
+      status,
+      bestTimeMs,
+      bestRank: snapshot.ranks.get(row.entryUuid) ?? null,
+      attemptsCounted: row.counted,
+    });
+  }
+  return standings;
+}
+
 /**
  * `POST /competitions/{uuid}/queue/{entryUuid}/skip` ("Skip to next"). Urutan cek: 404, 403, 422
  * (bukan Time trial), 404 (peserta bukan di antrean), 409 (aturan `actions.skip`). Sukses: peserta

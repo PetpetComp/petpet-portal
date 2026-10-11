@@ -4,7 +4,12 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { formatDayTime } from "@/domains/competitions/format";
-import { resultsCsvRows, timeLabel } from "@/domains/results/format";
+import {
+  detailLabel,
+  resultsCsvRows,
+  timeLabel,
+  valueHeading,
+} from "@/domains/results/format";
 import type { CompetitionResults } from "@/domains/results/types";
 import { exportCsv } from "@/lib/export-csv";
 
@@ -52,7 +57,9 @@ export function ResultsRanking({
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="secondary"
-            onClick={() => exportCsv(fileName, resultsCsvRows(results.rows))}
+            onClick={() =>
+              exportCsv(fileName, resultsCsvRows(results.rows, results.variant))
+            }
           >
             Export
           </Button>
@@ -76,7 +83,7 @@ export function ResultsRanking({
               <th scope="col">Rank</th>
               <th scope="col">Pet</th>
               <th scope="col">Owner</th>
-              <th scope="col">Time</th>
+              <th scope="col">{valueHeading(results.variant)}</th>
             </tr>
           </thead>
           <tbody>
@@ -99,8 +106,15 @@ export function ResultsRanking({
                 <td className="text-muted-foreground hidden truncate py-3 pr-3 sm:table-cell">
                   {row.ownerName}
                 </td>
-                <td className="w-28 px-5 py-3 text-right font-mono font-semibold">
-                  {timeLabel(row)}
+                <td className="w-28 px-5 py-3 text-right">
+                  <span className="block font-mono font-semibold">
+                    {timeLabel(row, results.variant)}
+                  </span>
+                  {detailLabel(row, results.variant) && (
+                    <span className="text-muted-foreground block text-xs">
+                      {detailLabel(row, results.variant)}
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

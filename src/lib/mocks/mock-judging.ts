@@ -93,6 +93,8 @@ const nextScorecardUuid = () => `sc-${++scorecardCounter}`;
 
 const SEED_COMPETITION_UUID = "comp-beauty-class-open";
 const SEED_JUDGE_USER_UUID = "u-competitor-5"; // farhan.hidayat@petpet.dev
+/** Juri kedua pada seed, supaya hasil gabungan beberapa juri bisa dilihat di Results. */
+const SEED_SECOND_JUDGE_USER_UUID = "u-competitor-4";
 
 /** Membuat satu scorecard seed lengkap. */
 function seedCard(
@@ -100,6 +102,7 @@ function seedCard(
   status: ScorecardStatus,
   scoreRows: [number, string | null][],
   judgeNote: string | null,
+  judgeUserUuid: string = SEED_JUDGE_USER_UUID,
 ): StoredScorecard {
   const uuid = nextScorecardUuid();
   const criteria = criteriaOf(SEED_COMPETITION_UUID);
@@ -118,7 +121,7 @@ function seedCard(
     uuid,
     competition_uuid: SEED_COMPETITION_UUID,
     entry_uuid: entryUuid,
-    judge_user_uuid: SEED_JUDGE_USER_UUID,
+    judge_user_uuid: judgeUserUuid,
     status,
     judge_note: judgeNote,
     submitted_at: status === "DRAFT" ? null : "2026-10-10T09:30:00+00:00",
@@ -167,6 +170,29 @@ function seedJudgingState() {
         [6, null],
       ],
       null,
+    ),
+    // Juri kedua menilai dua peserta pertama (LOCKED): hasil gabungan dua juri tampil di Results.
+    seedCard(
+      first.uuid,
+      "LOCKED",
+      [
+        [7, null],
+        [8, null],
+        [8, "Good energy."],
+      ],
+      null,
+      SEED_SECOND_JUDGE_USER_UUID,
+    ),
+    seedCard(
+      second.uuid,
+      "LOCKED",
+      [
+        [8, null],
+        [7, null],
+        [7, "Steady and calm."],
+      ],
+      null,
+      SEED_SECOND_JUDGE_USER_UUID,
     ),
   );
 }
@@ -395,6 +421,46 @@ function toNumber(value: unknown): number | null {
     return Number(value);
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Data untuk Results (dipakai mock-results.ts)
+// ---------------------------------------------------------------------------
+
+/** Nilai satu peserta Contest: scorecard LOCKED yang dihitung dan jumlah scorecard yang belum LOCKED. */
+export type ContestEntryScores = {
+  entryUuid: string;
+  lockedCards: { scores: ScoreMap }[];
+  openCards: number;
+};
+
+/**
+ * Bahan klasemen Contest: kriteria aktif dan, per peserta berhak (urutan check-in), scorecard LOCKED
+ * serta jumlah scorecard yang masih DRAFT/SUBMITTED. Hasil verifikasi menunggu `openCards` semua 0.
+ * Dipanggil dari `mock-results.ts`.
+ */
+export function contestScores(competition: MockCompetition): {
+  criteria: CriterionRule[];
+  entries: ContestEntryScores[];
+} {
+  const criteria = criteriaOf(competition.uuid).map(ruleOf);
+  const entries = queueEntries(competition.uuid).map((entry) => {
+    const cards = judgingStore.scorecards.filter(
+      (c) =>
+        c.competition_uuid === competition.uuid && c.entry_uuid === entry.uuid,
+    );
+    return {
+      entryUuid: entry.uuid,
+      lockedCards: cards
+        .filter((c) => c.status === "LOCKED")
+        .map((c) => ({ scores: scoreMapOf(c) })),
+      openCards: cards.filter((c) => c.status !== "LOCKED").length,
+    };
+  });
+  return { criteria, entries };
+}
+
+/** True bila kompetisi bertipe Contest (BEAUTY atau BEST_IN_SHOW). */
+export const isContestCompetition = isContest;
 
 // ---------------------------------------------------------------------------
 // Route: antrean juri (mock)

@@ -25,7 +25,6 @@ export const ROUTES = {
     competitionEdit: (eventId: string, competitionId: string) =>
       `/event-management/${encodeURIComponent(eventId)}/competitions/${encodeURIComponent(competitionId)}/edit`,
     doorprizeDrawing: "/event-management/doorprize-drawing",
-    eventParticipant: "/event-management/event-participant",
   },
   /** Live Mode (layar penuh per kompetisi): Drawing -> Matches -> Results. */
   live: (competitionId: string) => `/live/${encodeURIComponent(competitionId)}`,

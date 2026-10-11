@@ -125,6 +125,7 @@ import {
   lockDrawingRecord,
   swapDrawingRecord,
 } from "./mock-drawing";
+import { getEventReportRecord, getReportsOverviewRecord } from "./mock-reports";
 import { getResultsRecord, verifyResultsRecord } from "./mock-results";
 import {
   assignFinishRecord,
@@ -735,6 +736,17 @@ const routes: Route[] = [
     pattern: "/competitions/:uuid/drawing/swap",
     handler: (params, body) =>
       swapDrawingRecord(requireSession(), params.uuid, body),
+  },
+  // Reports (kontrak 13, MOCK ONLY): aturannya ada di mock-reports.ts.
+  {
+    method: "GET",
+    pattern: "/reports/overview",
+    handler: () => getReportsOverviewRecord(requireSession()),
+  },
+  {
+    method: "GET",
+    pattern: "/events/:uuid/report",
+    handler: (params) => getEventReportRecord(requireSession(), params.uuid),
   },
   // Results (draf kontrak results, MOCK ONLY): aturannya ada di mock-results.ts.
   {
