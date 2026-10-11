@@ -1,9 +1,10 @@
-import { BrandWorkspace } from "@/app/(portal)/sponsorship-brand/_components/brand-workspace";
+import { BrandDetailPage } from "../_components/brand-detail-page";
+
 export default async function Page({
   params,
 }: {
   params: Promise<{ brandId: string }>;
 }) {
   const { brandId } = await params;
-  return <BrandWorkspace mode="detail" id={brandId} />;
+  return <BrandDetailPage brandId={brandId} />;
 }

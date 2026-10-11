@@ -1,4 +1,5 @@
-import { BrandWorkspace } from "@/app/(portal)/sponsorship-brand/_components/brand-workspace";
+import { BrandsPage } from "./_components/brands-page";
+
 export default function Page() {
-  return <BrandWorkspace />;
+  return <BrandsPage />;
 }
