@@ -9,8 +9,16 @@ export const COMPETITION_TYPES = [
 ] as const;
 
 export const REGISTRATION_CHANNELS = [
-  { key: "earlyBird", label: "Early Bird", description: "Early registration period" },
-  { key: "online", label: "Online", description: "Standard online registration" },
+  {
+    key: "earlyBird",
+    label: "Early Bird",
+    description: "Early registration period",
+  },
+  {
+    key: "online",
+    label: "Online",
+    description: "Standard online registration",
+  },
   { key: "ots", label: "OTS", description: "On-the-spot registration" },
 ] as const;
 
@@ -26,9 +34,12 @@ export function typeConfigFields(type: string): {
   };
 }
 
-export function runPathFor(type: string): "contest" | "time-trial" | "run-match" {
+export function runPathFor(
+  type: string,
+): "contest" | "time-trial" | "run-match" {
   if (type === "Contest") return "contest";
-  if (type === "Time Trial" || type === "Checkpoint Time Trial") return "time-trial";
+  if (type === "Time Trial" || type === "Checkpoint Time Trial")
+    return "time-trial";
   return "run-match";
 }
 
@@ -63,11 +74,15 @@ export const DEFAULT_CONTEST_CRITERIA: ContestCriterion[] = [
   { name: "Performance", maxPoints: 100 },
 ];
 
-export function parseContestCriteria(json: string | undefined): ContestCriterion[] {
+export function parseContestCriteria(
+  json: string | undefined,
+): ContestCriterion[] {
   if (!json) return DEFAULT_CONTEST_CRITERIA;
   try {
     const parsed = JSON.parse(json);
-    return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_CONTEST_CRITERIA;
+    return Array.isArray(parsed) && parsed.length
+      ? parsed
+      : DEFAULT_CONTEST_CRITERIA;
   } catch {
     return DEFAULT_CONTEST_CRITERIA;
   }

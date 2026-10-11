@@ -28,6 +28,7 @@ import type { ResultMode } from "@/domains/competitions/types";
 import { useEvent } from "@/domains/events/queries";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
+import { FieldError, Labeled, Section } from "./competition-form-parts";
 
 const MODE_HINT: Record<ResultMode, string> = {
   TIME: "Fastest time wins",
@@ -376,61 +377,5 @@ export function CompetitionCreatePage({ eventId }: { eventId: string }) {
         </Button>
       </div>
     </form>
-  );
-}
-
-function Section({
-  title,
-  wide = false,
-  children,
-}: {
-  title: string;
-  wide?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="border-border rounded-2xl border bg-white p-5">
-      <h2 className="mb-4">{title}</h2>
-      <div className={cn("grid gap-4", !wide && "md:grid-cols-2")}>
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function Labeled({
-  label,
-  required = false,
-  hint,
-  error,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  hint?: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="form-field">
-      <span>
-        {label}
-        {required && <span className="field-required">*</span>}
-      </span>
-      {children}
-      {hint && !error && (
-        <small className="text-muted-foreground">{hint}</small>
-      )}
-      <FieldError message={error} />
-    </label>
-  );
-}
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <small role="alert" className="col-span-full font-semibold text-[#b91c1c]">
-      {message}
-    </small>
   );
 }

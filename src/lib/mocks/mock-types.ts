@@ -172,3 +172,38 @@ export interface MockEntry {
   checked_in_at: string | null;
   registered_by_uuid: string;
 }
+
+/** Same columns as petpet-service `competition_rules`; one row per version. Lives in `mock-competitions.ts`. */
+export interface MockCompetitionRule {
+  uuid: string;
+  competition_uuid: string;
+  version: number;
+  countdown_enabled: boolean;
+  countdown_seconds: number;
+  concurrent_participant_limit: number | null;
+  time_limit_ms: number | null;
+  attempt_limit: number;
+  checkpoint_total: number | null;
+  lane_total: number | null;
+  qualifier_limit: number | null;
+  best_result_method: string | null;
+  ranking_rule: string[];
+  tie_break_rule: string[] | null;
+  timeout_result: string | null;
+  is_active: boolean;
+}
+
+/** Same columns as petpet-service `score_criteria`. Numbers are serialized as decimal strings. */
+export interface MockScoreCriterion {
+  uuid: string;
+  competition_uuid: string;
+  code: string;
+  name: string;
+  description: string | null;
+  weight: number;
+  min_score: number;
+  max_score: number;
+  note_required: boolean;
+  display_order: number;
+  status: "ACTIVE" | "INACTIVE";
+}

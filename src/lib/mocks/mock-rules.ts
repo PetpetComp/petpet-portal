@@ -102,7 +102,7 @@ export function competitionActions(
   competition: Pick<MockCompetition, "status" | "registration_closed_at">,
   eventStatus: string,
   caller: MockCaller,
-): ApiCompetitionActions {
+): Required<ApiCompetitionActions> {
   const update =
     caller.managesEvent && has(caller, PERMISSION.COMPETITION_UPDATE);
   const remove =
@@ -118,6 +118,11 @@ export function competitionActions(
       status === "SCHEDULED" &&
       competition.registration_closed_at === null,
     cancel: remove && !FINISHED.includes(status),
+    // MOCK ONLY (contract 13 section 9): the backend has no reopen endpoint yet.
+    reopen_registration:
+      update &&
+      status === "SCHEDULED" &&
+      competition.registration_closed_at !== null,
   };
 }
 

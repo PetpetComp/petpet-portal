@@ -19,6 +19,9 @@ export const ROUTES = {
       `/event-management/${encodeURIComponent(eventId)}/competitions/create`,
     competitionDetail: (eventId: string, competitionId: string) =>
       `/event-management/${encodeURIComponent(eventId)}/competitions/${encodeURIComponent(competitionId)}`,
+    /** Halaman Edit competition (di luar grup tab, seperti Edit event). */
+    competitionEdit: (eventId: string, competitionId: string) =>
+      `/event-management/${encodeURIComponent(eventId)}/competitions/${encodeURIComponent(competitionId)}/edit`,
     doorprizeDrawing: "/event-management/doorprize-drawing",
     eventRegistration: "/event-management/event-registration",
     eventParticipant: "/event-management/event-participant",

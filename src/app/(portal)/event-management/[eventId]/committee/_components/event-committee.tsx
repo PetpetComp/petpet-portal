@@ -52,9 +52,18 @@ function CommitteeSkeleton() {
  * Tab Committee event (F2.3): grup "Event team" lalu satu kartu per kompetisi, berisi anggota
  * dan undangan Pending. Tombol "Invite member" membuka drawer; Remove dan Revoke meminta
  * konfirmasi dan hanya muncul bila API mengirim `actions.revoke`.
- * Dipanggil dari `(workspace)/committee/page.tsx`. Data hanya lewat hook `domains/staff`.
+ * Dipanggil dari tab Committee event dan tab Committee halaman kompetisi. Data hanya lewat
+ * hook `domains/staff`.
+ * - `scopedCompetitionId`: bila diisi, hanya kartu kompetisi itu yang tampil (terbuka sejak
+ *   awal), dan drawer undang terkunci ke kompetisi tersebut. Bila kosong, perilaku tab event.
  */
-export function EventCommittee({ eventId }: { eventId: string }) {
+export function EventCommittee({
+  eventId,
+  scopedCompetitionId,
+}: {
+  eventId: string;
+  scopedCompetitionId?: string;
+}) {
   const event = useEvent(eventId);
   const competitions = useEventCompetitions(eventId);
   const types = useCompetitionTypes();
@@ -72,17 +81,25 @@ export function EventCommittee({ eventId }: { eventId: string }) {
   const [pending, setPending] = useState<Pending | null>(null);
 
   const roleList = roles.data ?? [];
-  const groups = buildCommitteeGroups({
-    competitions: competitions.data ?? [],
+  const scoped = !!scopedCompetitionId;
+  const allCompetitions = competitions.data ?? [];
+  /** Mode kompetisi: hanya kompetisi ini yang dipakai, kartu "Event team" dibuang. */
+  const shownCompetitions = scoped
+    ? allCompetitions.filter((c) => c.id === scopedCompetitionId)
+    : allCompetitions;
+  const builtGroups = buildCommitteeGroups({
+    competitions: shownCompetitions,
     types: types.data ?? [],
     roles: roleList,
     members: staff.data ?? [],
     invitations: invitations.data ?? [],
   });
-  const openByDefault = defaultOpenKeys(groups);
+  const groups = scoped ? builtGroups.slice(1) : builtGroups;
+  const openByDefault = defaultOpenKeys(builtGroups);
 
-  /** Terbuka bila pengguna pernah mengubahnya, selain itu ikut aturan awal. */
-  const isOpen = (key: string) => toggled[key] ?? openByDefault.includes(key);
+  /** Terbuka bila pengguna pernah mengubahnya, selain itu ikut aturan awal (mode kompetisi: selalu terbuka). */
+  const isOpen = (key: string) =>
+    toggled[key] ?? (scoped || openByDefault.includes(key));
 
   function openDrawer(target: string) {
     setDrawer((d) => ({ open: true, key: d.key + 1, target }));
@@ -121,12 +138,13 @@ export function EventCommittee({ eventId }: { eventId: string }) {
     <section className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground max-w-160">
-          Invite people by email and assign a role per competition. Assigned
-          staff see their competitions under My assignments.
+          {scoped
+            ? "Invite people by email and assign a role in this competition. Assigned staff see it under My assignments."
+            : "Invite people by email and assign a role per competition. Assigned staff see their competitions under My assignments."}
         </p>
         <Can permission={PERMISSION.STAFF_INVITE}>
           <Button
-            onClick={() => openDrawer("")}
+            onClick={() => openDrawer(scopedCompetitionId ?? "")}
             className="min-h-11"
             disabled={loading || !!failure}
           >
@@ -157,7 +175,7 @@ export function EventCommittee({ eventId }: { eventId: string }) {
         <CommitteeSkeleton />
       ) : (
         <>
-          {groups.length === 1 && (
+          {!scoped && groups.length === 1 && (
             <p className="text-muted-foreground text-sm">
               This event has no competitions yet. Add one in the Competitions
               tab to assign people to it.
@@ -192,7 +210,8 @@ export function EventCommittee({ eventId }: { eventId: string }) {
         key={drawer.key}
         eventId={eventId}
         organizationId={event.data?.organizationId}
-        competitions={competitions.data ?? []}
+        competitions={shownCompetitions}
+        lockTarget={scoped}
         roles={roleList}
         initialTarget={drawer.target}
         open={drawer.open}

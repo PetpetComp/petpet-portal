@@ -72,8 +72,12 @@ describe("isDuplicateCompetitionName", () => {
 
 describe("isValidChannelWindow", () => {
   it("requires close after open when both are set", () => {
-    expect(isValidChannelWindow("2026-01-01T10:00", "2026-01-02T10:00")).toBe(true);
-    expect(isValidChannelWindow("2026-01-02T10:00", "2026-01-01T10:00")).toBe(false);
+    expect(isValidChannelWindow("2026-01-01T10:00", "2026-01-02T10:00")).toBe(
+      true,
+    );
+    expect(isValidChannelWindow("2026-01-02T10:00", "2026-01-01T10:00")).toBe(
+      false,
+    );
     expect(isValidChannelWindow("", "")).toBe(true);
   });
 });

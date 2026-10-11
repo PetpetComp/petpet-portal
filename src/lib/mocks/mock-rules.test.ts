@@ -168,6 +168,28 @@ describe("competitionActions (CompetitionActions)", () => {
       ).close_registration,
     ).toBe(false);
   });
+  it("offers reopen only for a scheduled competition whose registration was closed (mock only)", () => {
+    const closed = { registration_closed_at: "2026-10-01" };
+    expect(
+      competitionActions({ ...closed, status: "SCHEDULED" }, "PUBLISHED", staff)
+        .reopen_registration,
+    ).toBe(true);
+    expect(
+      competitionActions({ ...open, status: "SCHEDULED" }, "PUBLISHED", staff)
+        .reopen_registration,
+    ).toBe(false);
+    expect(
+      competitionActions({ ...closed, status: "ONGOING" }, "PUBLISHED", staff)
+        .reopen_registration,
+    ).toBe(false);
+    expect(
+      competitionActions(
+        { ...closed, status: "SCHEDULED" },
+        "PUBLISHED",
+        outsider,
+      ).reopen_registration,
+    ).toBe(false);
+  });
   it("needs the permission and the event", () => {
     const updateOnly = {
       ...staff,

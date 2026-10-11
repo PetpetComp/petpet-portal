@@ -65,6 +65,11 @@ export type ApiCompetitionActions = {
   complete: boolean;
   cancel: boolean;
   close_registration: boolean;
+  /**
+   * MOCK ONLY: the real backend has no reopen endpoint yet, so the key is absent there and
+   * reads as false (draft contract, `POST /competitions/{uuid}/reopen-registration`).
+   */
+  reopen_registration?: boolean;
 };
 
 /** One competition exactly as the API sends it (petpet-service `CompetitionData::toArray`). */
@@ -113,6 +118,7 @@ export const COMPETITION_ACTIONS = [
   "start",
   "complete",
   "closeRegistration",
+  "reopenRegistration",
   "cancel",
 ] as const;
 export type CompetitionAction = (typeof COMPETITION_ACTIONS)[number];
@@ -122,6 +128,7 @@ export const COMPETITION_ACTION_LABEL: Record<CompetitionAction, string> = {
   start: "Start",
   complete: "Complete",
   closeRegistration: "Close registration",
+  reopenRegistration: "Reopen registration",
   cancel: "Cancel",
 };
 
@@ -137,12 +144,18 @@ export type Competition = {
   id: string;
   eventId: string;
   typeId: string;
+  /** Null = every animal is allowed. */
+  speciesId: string | null;
   name: string;
+  description: string;
   arenaName: string;
   capacity: number | null;
+  minimumJudges: number;
   startAt: string;
   endAt: string;
   registrationClosed: boolean;
+  /** When the organizer closed registration (ISO); null while it was never closed. */
+  registrationClosedAt: string | null;
   /** From the API (`registration_open`); the backend owns the rule. */
   registrationOpen: boolean;
   registrationClosedReason: RegistrationClosedReason | null;
@@ -166,12 +179,16 @@ export function fromApi(row: ApiCompetition): Competition {
     id: row.uuid,
     eventId: row.event_uuid,
     typeId: row.competition_type_uuid,
+    speciesId: row.species_uuid,
     name: row.name,
+    description: row.description ?? "",
     arenaName: row.arena_name ?? "",
     capacity: row.capacity,
+    minimumJudges: row.minimum_judges ?? 1,
     startAt: row.scheduled_start_at ?? "",
     endAt: row.scheduled_end_at ?? "",
     registrationClosed: row.registration_closed_at !== null,
+    registrationClosedAt: row.registration_closed_at,
     registrationOpen: row.registration_open,
     registrationClosedReason: row.registration_closed_reason,
     activeRegistrationPeriod: row.active_registration_period && {
@@ -186,6 +203,7 @@ export function fromApi(row: ApiCompetition): Competition {
       start: row.actions.start,
       complete: row.actions.complete,
       closeRegistration: row.actions.close_registration,
+      reopenRegistration: row.actions.reopen_registration === true,
       cancel: row.actions.cancel,
     },
   };
@@ -202,3 +220,167 @@ export const speciesFromApi = (row: ApiSpecies): Species => ({
   id: row.uuid,
   name: row.name,
 });
+
+/** Status of one registration period (backend `RegistrationPeriodConstant::STATUSES`). */
+export type PeriodStatus = "ACTIVE" | "CLOSED";
+
+/** `GET /competitions/{uuid}/registration-periods` item (petpet-service `RegistrationPeriodData`). */
+export type ApiRegistrationPeriod = {
+  uuid: string;
+  competition_uuid: string;
+  period_type: RegistrationPeriodType;
+  /** Decimal string, e.g. "70000.00". */
+  price: string;
+  quota: number | null;
+  registration_start_at: string;
+  registration_end_at: string;
+  status: PeriodStatus;
+};
+
+export type RegistrationPeriod = {
+  id: string;
+  competitionId: string;
+  type: RegistrationPeriodType;
+  price: number;
+  quota: number | null;
+  startAt: string;
+  endAt: string;
+  status: PeriodStatus;
+};
+
+/** Body of `PATCH /registration-periods/{uuid}` (backend `UpdateRegistrationPeriodRequest`). */
+export type ApiPeriodUpdate = {
+  price?: number;
+  quota?: number | null;
+  registration_start_at?: string;
+  registration_end_at?: string;
+};
+
+/** `GET /competitions/{uuid}/rules` item (petpet-service `CompetitionRuleData`). One row per version. */
+export type ApiCompetitionRule = {
+  uuid: string;
+  version: number;
+  countdown_enabled: boolean;
+  countdown_seconds: number;
+  concurrent_participant_limit: number | null;
+  time_limit_ms: number | null;
+  attempt_limit: number;
+  checkpoint_total: number | null;
+  lane_total: number | null;
+  qualifier_limit: number | null;
+  best_result_method: string | null;
+  ranking_rule: string[];
+  tie_break_rule: string[] | null;
+  timeout_result: string | null;
+  /** Only the latest version is active. */
+  is_active: boolean;
+};
+
+/** Body of `POST /competitions/{uuid}/rules` (backend `CreateRuleRequest`); only `ranking_rule` is required. */
+export type ApiRuleBody = Partial<
+  Omit<ApiCompetitionRule, "uuid" | "version" | "is_active">
+> & { ranking_rule: string[] };
+
+export type CompetitionRule = {
+  id: string;
+  version: number;
+  countdownEnabled: boolean;
+  countdownSeconds: number;
+  concurrentParticipantLimit: number | null;
+  /** Cut-off time in milliseconds; null = no cut-off. */
+  timeLimitMs: number | null;
+  attemptLimit: number;
+  checkpointTotal: number | null;
+  laneTotal: number | null;
+  qualifierLimit: number | null;
+  bestResultMethod: string | null;
+  rankingRule: string[];
+  tieBreakRule: string[] | null;
+  timeoutResult: string | null;
+  isActive: boolean;
+};
+
+/** `GET /competitions/{uuid}/score-criteria` item (petpet-service `ScoreCriterionData`). */
+export type ApiScoreCriterion = {
+  uuid: string;
+  competition_uuid: string;
+  code: string;
+  name: string;
+  description: string | null;
+  /** Decimal strings, e.g. "40.00". */
+  weight: string;
+  min_score: string;
+  max_score: string;
+  note_required: boolean;
+  display_order: number;
+  status: "ACTIVE" | "INACTIVE";
+};
+
+export type ScoreCriterion = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  weight: number;
+  min: number;
+  max: number;
+  noteRequired: boolean;
+  displayOrder: number;
+  active: boolean;
+};
+
+/** Period API -> screen. `price` arrives as a decimal string. */
+export const periodFromApi = (
+  row: ApiRegistrationPeriod,
+): RegistrationPeriod => ({
+  id: row.uuid,
+  competitionId: row.competition_uuid,
+  type: row.period_type,
+  price: Number(row.price),
+  quota: row.quota,
+  startAt: row.registration_start_at,
+  endAt: row.registration_end_at,
+  status: row.status,
+});
+
+export const ruleFromApi = (row: ApiCompetitionRule): CompetitionRule => ({
+  id: row.uuid,
+  version: row.version,
+  countdownEnabled: row.countdown_enabled,
+  countdownSeconds: row.countdown_seconds,
+  concurrentParticipantLimit: row.concurrent_participant_limit,
+  timeLimitMs: row.time_limit_ms,
+  attemptLimit: row.attempt_limit,
+  checkpointTotal: row.checkpoint_total,
+  laneTotal: row.lane_total,
+  qualifierLimit: row.qualifier_limit,
+  bestResultMethod: row.best_result_method,
+  rankingRule: row.ranking_rule,
+  tieBreakRule: row.tie_break_rule,
+  timeoutResult: row.timeout_result,
+  isActive: row.is_active,
+});
+
+export const criterionFromApi = (row: ApiScoreCriterion): ScoreCriterion => ({
+  id: row.uuid,
+  code: row.code,
+  name: row.name,
+  description: row.description ?? "",
+  weight: Number(row.weight),
+  min: Number(row.min_score),
+  max: Number(row.max_score),
+  noteRequired: row.note_required,
+  displayOrder: row.display_order,
+  active: row.status === "ACTIVE",
+});
+
+/**
+ * Rule in force: the one the API marks active, else the highest version.
+ * Called from the shell (lanes, cut-off), Overview and Settings. Null when no rule exists yet.
+ */
+export function currentRule(rules: CompetitionRule[]): CompetitionRule | null {
+  if (rules.length === 0) return null;
+  const active = rules.find((r) => r.isActive);
+  if (active) return active;
+  return rules.reduce((best, r) => (r.version > best.version ? r : best));
+}

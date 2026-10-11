@@ -9,6 +9,7 @@ import type {
   MockEntry,
   MockPetMorph,
   MockRegistrationPeriod,
+  MockScoreCriterion,
 } from "./mock-types";
 
 export function nextUuid(): string {
@@ -1235,7 +1236,28 @@ export const store = {
       name: "Platinum",
     },
   ] as MockPetMorph[],
-  scoreCriteria: [] as Record<string, unknown>[],
+  /** The two judged competitions of the event-day dataset carry three criteria that add up to 100. */
+  scoreCriteria: [BEAUTY_UUID, OBEDIENCE_UUID].flatMap((competitionUuid) =>
+    (
+      [
+        ["APPEARANCE", "Appearance", 40],
+        ["BEHAVIOR", "Behavior", 30],
+        ["PRESENTATION", "Presentation", 30],
+      ] as const
+    ).map(([code, name, weight], index): MockScoreCriterion => ({
+      uuid: `crit-${competitionUuid}-${code.toLowerCase()}`,
+      competition_uuid: competitionUuid,
+      code,
+      name,
+      description: null,
+      weight,
+      min_score: 0,
+      max_score: 10,
+      note_required: false,
+      display_order: index + 1,
+      status: "ACTIVE",
+    })),
+  ),
 };
 
 export const SUPERADMIN_EMAILS = (

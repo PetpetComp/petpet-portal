@@ -114,13 +114,13 @@ vi.mock("@/domains/users/api", () => ({
   countUsers: vi.fn(),
 }));
 
-function renderTab() {
+function renderTab(scopedCompetitionId?: string) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={client}>
-      <EventCommittee eventId="e1" />
+      <EventCommittee eventId="e1" scopedCompetitionId={scopedCompetitionId} />
     </QueryClientProvider>,
   );
 }
@@ -316,5 +316,54 @@ describe("EventCommittee", () => {
     expect(
       await screen.findByText(/Pending invitations could not be loaded/),
     ).toBeInTheDocument();
+  });
+
+  describe("scoped to one competition", () => {
+    it("shows only that competition, open from the start", async () => {
+      renderTab("c1");
+      expect(await screen.findByText("Sari Wulandari")).toBeInTheDocument();
+      const groups = screen
+        .getAllByRole("region")
+        .map((r) => r.getAttribute("aria-label"));
+      expect(groups).toEqual(["Paw Sprint 100M"]);
+      expect(screen.queryByText("Bima Saputra")).toBeNull();
+      expect(screen.getByText("new.judge@x.dev")).toBeInTheDocument();
+      expect(
+        screen.queryByText(/This event has no competitions yet/),
+      ).toBeNull();
+    });
+
+    it("locks the invite drawer to this competition", async () => {
+      const user = userEvent.setup();
+      renderTab("c1");
+      await screen.findByText("Sari Wulandari");
+      await user.click(screen.getByRole("button", { name: "Invite member" }));
+      const drawer = await screen.findByRole("dialog");
+      const where = within(drawer).getByLabelText(/1. Where/);
+      expect(where).toHaveValue("c1");
+      expect(where).toBeDisabled();
+      expect(
+        within(where).queryByRole("option", { name: "Event team" }),
+      ).toBeNull();
+      await user.selectOptions(
+        within(drawer).getByLabelText(/2. Role/),
+        "JUDGE",
+      );
+      await user.click(
+        within(drawer).getByRole("button", { name: "Invite by email" }),
+      );
+      await user.type(within(drawer).getByLabelText(/Email/), "j2@x.dev");
+      await user.click(
+        within(drawer).getByRole("button", { name: "Send invitation" }),
+      );
+      await waitFor(() =>
+        expect(inviteStaff).toHaveBeenCalledWith({
+          event_id: "e1",
+          competition_id: "c1",
+          email: "j2@x.dev",
+          assignment_role: "JUDGE",
+        }),
+      );
+    });
   });
 });

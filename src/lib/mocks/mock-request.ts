@@ -22,6 +22,18 @@ import {
 } from "./mock-records";
 import { UNRESTRICTED, competitionActions, entryActions } from "./mock-rules";
 import {
+  closePeriodRecord,
+  createCriterionRecord,
+  createPeriodRecord,
+  createRuleRecord,
+  getCompetitionRecord,
+  listCriterionRecords,
+  listPeriodRecords,
+  listRuleRecords,
+  updateCompetitionRecord,
+  updatePeriodRecord,
+} from "./mock-competitions";
+import {
   cancelEventRecord,
   createEventRecord,
   eventRecord,
@@ -101,6 +113,8 @@ import {
   listPetRecords,
   updatePetRecord,
 } from "./mock-pets";
+
+import { getResultsRecord, verifyResultsRecord } from "./mock-results";
 
 function matchPath(
   pattern: string,
@@ -566,33 +580,13 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/competitions/:uuid",
-    handler: (params) => {
-      const competition = findOrThrow(
-        store.competitions,
-        params.uuid,
-        "Competition",
-      );
-      return competitionRecord(
-        competition,
-        callerFor(currentMockUser(), competition.event_uuid),
-      );
-    },
+    handler: (params) => getCompetitionRecord(currentMockUser(), params.uuid),
   },
   {
     method: "PATCH",
     pattern: "/competitions/:uuid",
-    handler: (params, body) => {
-      const competition = findOrThrow(
-        store.competitions,
-        params.uuid,
-        "Competition",
-      );
-      Object.assign(competition, body);
-      return competitionRecord(
-        competition,
-        callerFor(currentMockUser(), competition.event_uuid),
-      );
-    },
+    handler: (params, body) =>
+      updateCompetitionRecord(requireSession(), params.uuid, body),
   },
   {
     method: "POST",
@@ -639,6 +633,19 @@ const routes: Route[] = [
       ),
   },
   {
+    // MOCK ONLY (contract 13 section 9): the real backend has no reopen endpoint yet.
+    // A drawing would be invalidated here too; there is no drawing in the mock yet.
+    method: "POST",
+    pattern: "/competitions/:uuid/reopen-registration",
+    handler: (params) =>
+      competitionAction(
+        params.uuid,
+        "reopen_registration",
+        (c) => (c.registration_closed_at = null),
+        "Registration can only be reopened for a scheduled competition that was closed.",
+      ),
+  },
+  {
     method: "DELETE",
     pattern: "/competitions/:uuid",
     // Cancels: the row stays so the list can show it as Cancelled.
@@ -651,6 +658,17 @@ const routes: Route[] = [
       );
       return null;
     },
+  },
+  // Results (draf kontrak results, MOCK ONLY): aturannya ada di mock-results.ts.
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid/results",
+    handler: (params) => getResultsRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/results/verify",
+    handler: (params) => verifyResultsRecord(requireSession(), params.uuid),
   },
   // Committee (kontrak 13 bagian 3): aturannya ada di mock-staff.ts.
   {
@@ -727,55 +745,46 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/competitions/:uuid/registration-periods",
-    handler: (params, _body, query) =>
-      paginate(
-        store.registrationPeriods.filter(
-          (p) => p.competition_uuid === params.uuid,
-        ),
-        query,
-      ),
+    handler: (params) => listPeriodRecords(params.uuid),
   },
   {
     method: "POST",
     pattern: "/competitions/:uuid/registration-periods",
-    handler: (params, body) => {
-      const period = {
-        uuid: nextUuid(),
-        competition_uuid: params.uuid,
-        period_type: String(
-          body?.period_type ?? "ONLINE",
-        ) as (typeof store.registrationPeriods)[number]["period_type"],
-        price: Number(body?.price ?? 0),
-        quota: body?.quota == null ? null : Number(body.quota),
-        registration_start_at: String(body?.registration_start_at ?? ""),
-        registration_end_at: String(body?.registration_end_at ?? ""),
-        status: "ACTIVE" as const,
-      };
-      store.registrationPeriods.push(period);
-      return period;
-    },
+    handler: (params, body) =>
+      createPeriodRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "PATCH",
+    pattern: "/registration-periods/:uuid",
+    handler: (params, body) =>
+      updatePeriodRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "DELETE",
+    pattern: "/registration-periods/:uuid",
+    handler: (params) => closePeriodRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid/rules",
+    handler: (params) => listRuleRecords(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/rules",
+    handler: (params, body) =>
+      createRuleRecord(requireSession(), params.uuid, body),
   },
   {
     method: "GET",
     pattern: "/competitions/:uuid/score-criteria",
-    handler: (params, _body, query) =>
-      paginate(
-        store.scoreCriteria.filter((c) => c.competition_uuid === params.uuid),
-        query,
-      ),
+    handler: (params) => listCriterionRecords(params.uuid),
   },
   {
     method: "POST",
     pattern: "/competitions/:uuid/score-criteria",
-    handler: (params, body) => {
-      const criterion = {
-        uuid: nextUuid(),
-        competition_uuid: params.uuid,
-        ...body,
-      };
-      store.scoreCriteria.push(criterion);
-      return criterion;
-    },
+    handler: (params, body) =>
+      createCriterionRecord(requireSession(), params.uuid, body),
   },
   {
     method: "GET",

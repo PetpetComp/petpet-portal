@@ -37,10 +37,21 @@ const errorText = (cause: unknown, fallback: string) =>
 /**
  * F2.2 check-in desk: approved participants of one competition as cards.
  * A QR scanner types the participant code and presses Enter.
+ * Dipanggil dari tab Participants event (pilih kompetisi lewat dropdown) dan dari tab
+ * Participants halaman kompetisi.
+ * - `lockedCompetitionId`: bila diisi, desk terkunci ke kompetisi itu: dropdown kompetisi
+ *   disembunyikan dan daftar kompetisi event tidak dimuat. Bila kosong, perilaku tab event.
  */
-export function EventParticipants({ eventId }: { eventId: string }) {
+export function EventParticipants({
+  eventId,
+  lockedCompetitionId,
+}: {
+  eventId: string;
+  lockedCompetitionId?: string;
+}) {
   const client = useQueryClient();
-  const competitions = useEventCompetitions(eventId);
+  const locked = !!lockedCompetitionId;
+  const competitions = useEventCompetitions(eventId, !locked);
   const [chosen, setChosen] = useState("");
   const [search, setSearch] = useState("");
   /** Set on Enter so the list filters at once instead of after the debounce. */
@@ -54,7 +65,9 @@ export function EventParticipants({ eventId }: { eventId: string }) {
   const undo = useUndoCheckIn(eventId);
   const markPaid = useMarkPaid(eventId);
 
-  const competitionId = chosen || defaultCompetitionId(competitions.data ?? []);
+  const competitionId =
+    lockedCompetitionId ??
+    (chosen || defaultCompetitionId(competitions.data ?? []));
   /** Contract 10 §4: approved, still registered, by pet name. */
   const queryFor = (q: string, atPage: number): EntryListQuery => ({
     competitionId,
@@ -123,7 +136,10 @@ export function EventParticipants({ eventId }: { eventId: string }) {
           setSearch("");
           setEntered(null);
         });
-      else if (result.items.length === 1 && result.items[0].payment === "UNPAID")
+      else if (
+        result.items.length === 1 &&
+        result.items[0].payment === "UNPAID"
+      )
         // Satu peserta cocok tapi belum lunas: beri tahu kenapa tidak di-check-in.
         setNotice({
           tone: "error",
@@ -146,13 +162,13 @@ export function EventParticipants({ eventId }: { eventId: string }) {
     });
   }
 
-  if (competitions.isError)
+  if (!locked && competitions.isError)
     return (
       <p role="alert" className="form-error">
         {errorText(competitions.error, "Unable to load competitions.")}
       </p>
     );
-  if (competitions.isSuccess && competitions.data.length === 0)
+  if (!locked && competitions.isSuccess && competitions.data.length === 0)
     return (
       <EmptyState
         icon={UserRoundSearch}
@@ -183,22 +199,24 @@ export function EventParticipants({ eventId }: { eventId: string }) {
             className="min-w-0 flex-1 bg-transparent text-base font-semibold outline-none"
           />
         </label>
-        <Select
-          aria-label="Competition"
-          value={competitionId}
-          onChange={(e) => {
-            setChosen(e.target.value);
-            setPage(1);
-            setNotice(null);
-          }}
-          className="min-h-14 min-w-0 flex-[1_1_220px] rounded-2xl font-semibold"
-        >
-          {(competitions.data ?? []).map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} · {COMPETITION_STATUS_LABEL[c.status]}
-            </option>
-          ))}
-        </Select>
+        {!locked && (
+          <Select
+            aria-label="Competition"
+            value={competitionId}
+            onChange={(e) => {
+              setChosen(e.target.value);
+              setPage(1);
+              setNotice(null);
+            }}
+            className="min-h-14 min-w-0 flex-[1_1_220px] rounded-2xl font-semibold"
+          >
+            {(competitions.data ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} · {COMPETITION_STATUS_LABEL[c.status]}
+              </option>
+            ))}
+          </Select>
+        )}
         <span className="px-2 font-bold" aria-live="polite">
           {data ? checkedInText(data.summary) : ""}
         </span>

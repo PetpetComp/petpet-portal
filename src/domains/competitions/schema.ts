@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { ResultMode } from "./types";
+import { toDatetimeLocal, toIsoString } from "@/domains/events/schema";
+import type { Competition, ResultMode } from "./types";
 
 export const PERIOD_TYPES = ["EARLY_BIRD", "ONLINE", "ON_SITE"] as const;
 export const PERIOD_LABEL: Record<(typeof PERIOD_TYPES)[number], string> = {
@@ -8,7 +9,7 @@ export const PERIOD_LABEL: Record<(typeof PERIOD_TYPES)[number], string> = {
   ON_SITE: "On the spot",
 };
 
-const optionalNumber = z.preprocess(
+export const optionalNumber = z.preprocess(
   (v) => (v === "" || v == null || Number.isNaN(v) ? undefined : Number(v)),
   z.number().int().min(1).optional(),
 );
@@ -123,4 +124,76 @@ export function criterionCode(name: string, index: number): string {
     .replace(/^_|_$/g, "")
     .slice(0, 40);
   return `${slug || "CRITERION"}_${index + 1}`;
+}
+
+// ---------------------------------------------------------------------------
+// Edit competition (halaman Edit, field dasar saja)
+// ---------------------------------------------------------------------------
+
+/**
+ * Form Edit competition: hanya isi dasar yang boleh diubah lewat `PATCH /competitions/{uuid}`
+ * (backend `UpdateRequest`). Tipe, hewan, channel, dan kriteria tidak ikut: backend tidak
+ * menerimanya di endpoint ini. Tanggal memakai format `datetime-local`.
+ */
+export const editCompetitionSchema = z
+  .object({
+    name: z.string().trim().min(1, "Give the competition a name").max(200),
+    description: z.string(),
+    arenaName: z.string().max(200),
+    capacity: optionalNumber,
+    startAt: z.string().min(1, "Required"),
+    endAt: z.string().min(1, "Required"),
+  })
+  .superRefine((v, ctx) => {
+    if (v.startAt && v.endAt && v.endAt <= v.startAt)
+      ctx.addIssue({
+        code: "custom",
+        path: ["endAt"],
+        message: "Must be after the start",
+      });
+  });
+
+export type EditCompetitionValues = z.input<typeof editCompetitionSchema>;
+export type EditCompetition = z.output<typeof editCompetitionSchema>;
+
+/** Body `PATCH /competitions/{uuid}` (backend `UpdateRequest`). */
+export type ApiCompetitionUpdate = {
+  name: string;
+  description: string | null;
+  arena_name: string | null;
+  capacity: number | null;
+  scheduled_start_at: string;
+  scheduled_end_at: string;
+};
+
+/**
+ * Competition di layar -> nilai awal form Edit. Dipanggil saat halaman Edit selesai memuat.
+ * Tanggal ISO diubah ke zona waktu browser (`datetime-local`).
+ */
+export function editValuesFromCompetition(
+  competition: Competition,
+): EditCompetitionValues {
+  return {
+    name: competition.name,
+    description: competition.description,
+    arenaName: competition.arenaName,
+    capacity: competition.capacity ?? "",
+    startAt: toDatetimeLocal(competition.startAt),
+    endAt: toDatetimeLocal(competition.endAt),
+  };
+}
+
+/**
+ * Isi form -> body PATCH. Teks opsional kosong dikirim `null` supaya bisa dikosongkan,
+ * tanggal dikirim ISO UTC (lihat `toIsoString`).
+ */
+export function editToApi(v: EditCompetition): ApiCompetitionUpdate {
+  return {
+    name: v.name,
+    description: v.description.trim() || null,
+    arena_name: v.arenaName.trim() || null,
+    capacity: v.capacity ?? null,
+    scheduled_start_at: toIsoString(v.startAt),
+    scheduled_end_at: toIsoString(v.endAt),
+  };
 }

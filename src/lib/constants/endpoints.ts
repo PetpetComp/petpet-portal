@@ -38,11 +38,19 @@ export const ENDPOINTS = {
     complete: (uuid: string) => `/competitions/${id(uuid)}/complete`,
     closeRegistration: (uuid: string) =>
       `/competitions/${id(uuid)}/close-registration`,
+    /** MOCK ONLY: no such endpoint in the backend yet (contract 13 section 9). */
+    reopenRegistration: (uuid: string) =>
+      `/competitions/${id(uuid)}/reopen-registration`,
     rules: (uuid: string) => `/competitions/${id(uuid)}/rules`,
     periods: (uuid: string) => `/competitions/${id(uuid)}/registration-periods`,
     criteria: (uuid: string) => `/competitions/${id(uuid)}/score-criteria`,
     entries: (uuid: string) => `/competitions/${id(uuid)}/entries`,
     staff: (uuid: string) => `/competitions/${id(uuid)}/staff`,
+  },
+  /** MOCK ONLY: no such endpoints in the backend yet (draft contract results). */
+  results: {
+    list: (uuid: string) => `/competitions/${id(uuid)}/results`,
+    verify: (uuid: string) => `/competitions/${id(uuid)}/results/verify`,
   },
   periods: { detail: (uuid: string) => `/registration-periods/${id(uuid)}` },
   criteria: { detail: (uuid: string) => `/score-criteria/${id(uuid)}` },

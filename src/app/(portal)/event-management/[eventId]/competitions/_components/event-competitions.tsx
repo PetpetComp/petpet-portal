@@ -39,6 +39,12 @@ const CONFIRM: Partial<
     text: (name) =>
       `Mark "${name}" as completed? Check-in and registration stop for it.`,
   },
+  reopenRegistration: {
+    title: "Reopen registration",
+    confirm: "Reopen",
+    text: (name) =>
+      `Reopen registration for "${name}"? Reopening invalidates the current drawing.`,
+  },
   cancel: {
     title: "Cancel competition",
     confirm: "Cancel competition",
@@ -52,6 +58,7 @@ const DONE: Record<CompetitionAction, string> = {
   start: "Competition started",
   complete: "Competition completed",
   closeRegistration: "Registration closed",
+  reopenRegistration: "Registration reopened",
   cancel: "Competition cancelled",
 };
 

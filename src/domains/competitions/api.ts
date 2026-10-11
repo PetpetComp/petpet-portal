@@ -9,19 +9,31 @@ import type {
   MutationResponse,
   PeriodPayload,
 } from "@/types/api";
-import type { NewCompetition } from "./schema";
-import { criterionCode, usesCriteria } from "./schema";
+import type { ApiCompetitionUpdate, NewCompetition } from "./schema";
+import { PERIOD_LABEL, criterionCode, usesCriteria } from "./schema";
+import type { SettingsChanges } from "./settings";
 import {
+  criterionFromApi,
   fromApi,
+  periodFromApi,
+  ruleFromApi,
   speciesFromApi,
   typeFromApi,
   type ApiCompetition,
+  type ApiCompetitionRule,
   type ApiCompetitionType,
+  type ApiPeriodUpdate,
+  type ApiRegistrationPeriod,
+  type ApiRuleBody,
+  type ApiScoreCriterion,
   type ApiSpecies,
   type Competition,
   type CompetitionAction,
+  type CompetitionRule,
   type CompetitionType,
+  type RegistrationPeriod,
   type ResultMode,
+  type ScoreCriterion,
   type Species,
 } from "./types";
 
@@ -35,6 +47,141 @@ export async function listEventCompetitions(
     ),
   );
   return rows.map(fromApi);
+}
+
+/** One competition (`GET /competitions/{uuid}`). Header and every tab of the workspace read it. */
+export async function getCompetition(id: string): Promise<Competition> {
+  const response = await apiClient.get<ApiResponse<ApiCompetition>>(
+    ENDPOINTS.competitions.detail(id),
+  );
+  return fromApi(response.data);
+}
+
+/** Saves the basics of a competition (`PATCH /competitions/{uuid}`, backend `UpdateRequest`). */
+export async function updateCompetition(
+  id: string,
+  body: ApiCompetitionUpdate,
+): Promise<Competition> {
+  const response = await apiClient.patch<ApiResponse<ApiCompetition>>(
+    ENDPOINTS.competitions.detail(id),
+    body,
+  );
+  return fromApi(response.data);
+}
+
+/** Every rule version of a competition, oldest first (`GET /competitions/{uuid}/rules`, needs login). */
+export async function listCompetitionRules(
+  id: string,
+): Promise<CompetitionRule[]> {
+  const rows = await collectRows((p) =>
+    apiClient.get<ListResponse<ApiCompetitionRule>>(
+      buildUrl(ENDPOINTS.competitions.rules(id), p),
+    ),
+  );
+  return rows.map(ruleFromApi);
+}
+
+/** Creates the next rule version; the backend deactivates the older ones (`POST /competitions/{uuid}/rules`). */
+export async function createCompetitionRule(
+  id: string,
+  body: ApiRuleBody,
+): Promise<CompetitionRule> {
+  const response = await apiClient.post<ApiResponse<ApiCompetitionRule>>(
+    ENDPOINTS.competitions.rules(id),
+    body,
+  );
+  return ruleFromApi(response.data);
+}
+
+/** All registration periods of a competition, closed ones included. */
+export async function listRegistrationPeriods(
+  id: string,
+): Promise<RegistrationPeriod[]> {
+  const rows = await collectRows((p) =>
+    apiClient.get<ListResponse<ApiRegistrationPeriod>>(
+      buildUrl(ENDPOINTS.competitions.periods(id), p),
+    ),
+  );
+  return rows.map(periodFromApi);
+}
+
+/** Adds a channel. The backend answers 422 when the competition already has one of that type. */
+export async function createRegistrationPeriod(
+  id: string,
+  body: PeriodPayload,
+): Promise<RegistrationPeriod> {
+  const response = await apiClient.post<ApiResponse<ApiRegistrationPeriod>>(
+    ENDPOINTS.competitions.periods(id),
+    body,
+  );
+  return periodFromApi(response.data);
+}
+
+export async function updateRegistrationPeriod(
+  periodId: string,
+  body: ApiPeriodUpdate,
+): Promise<RegistrationPeriod> {
+  const response = await apiClient.patch<ApiResponse<ApiRegistrationPeriod>>(
+    ENDPOINTS.periods.detail(periodId),
+    body,
+  );
+  return periodFromApi(response.data);
+}
+
+/** DELETE does not remove the row: the backend sets its status to CLOSED and returns it. */
+export async function closeRegistrationPeriod(
+  periodId: string,
+): Promise<RegistrationPeriod> {
+  const response = await apiClient.delete<ApiResponse<ApiRegistrationPeriod>>(
+    ENDPOINTS.periods.detail(periodId),
+  );
+  return periodFromApi(response.data);
+}
+
+/**
+ * Saves what changed on the Settings tab: the new rule version first, then channel edits,
+ * then new channels. One call per change (the API has no batch). A failed step does not stop
+ * the next ones; the error lists every step that failed so the organizer sees what is left.
+ * Called from `useSaveCompetitionSettings`.
+ */
+export async function saveCompetitionSettings(
+  id: string,
+  changes: SettingsChanges,
+): Promise<void> {
+  const failures: string[] = [];
+  const attempt = async (what: string, run: () => Promise<unknown>) => {
+    try {
+      await run();
+    } catch (cause) {
+      const reason = cause instanceof Error ? cause.message : "unknown error";
+      failures.push(`${what}: ${reason}`);
+    }
+  };
+  if (changes.rule) {
+    const body = changes.rule;
+    await attempt("Rules", () => createCompetitionRule(id, body));
+  }
+  for (const update of changes.periodUpdates)
+    await attempt(PERIOD_LABEL[update.type], () =>
+      updateRegistrationPeriod(update.id, update.body),
+    );
+  for (const body of changes.periodCreates)
+    await attempt(
+      PERIOD_LABEL[body.period_type as keyof typeof PERIOD_LABEL] ?? "Channel",
+      () => createRegistrationPeriod(id, body),
+    );
+  if (failures.length > 0)
+    throw new Error(`Some changes were not saved. ${failures.join(" ")}`);
+}
+
+/** Judging criteria of a competition, in display order (`GET /competitions/{uuid}/score-criteria`). */
+export async function listScoreCriteria(id: string): Promise<ScoreCriterion[]> {
+  const rows = await collectRows((p) =>
+    apiClient.get<ListResponse<ApiScoreCriterion>>(
+      buildUrl(ENDPOINTS.competitions.criteria(id), p),
+    ),
+  );
+  return rows.map(criterionFromApi);
 }
 
 /** Lifecycle actions. The server applies the same rules as `actions` (contract 10 §3). */
@@ -55,6 +202,11 @@ export function runCompetitionAction(id: string, action: CompetitionAction) {
     case "closeRegistration":
       return apiClient.post<ApiResponse<ApiCompetition>>(
         ENDPOINTS.competitions.closeRegistration(id),
+      );
+    case "reopenRegistration":
+      // Mock only: the backend has no such endpoint yet (contract 13 section 9).
+      return apiClient.post<ApiResponse<ApiCompetition>>(
+        ENDPOINTS.competitions.reopenRegistration(id),
       );
     case "cancel":
       return apiClient.delete<MutationResponse>(

@@ -55,6 +55,7 @@ export function InviteMemberDrawer({
   eventId,
   organizationId,
   competitions,
+  lockTarget = false,
   roles,
   initialTarget,
   open,
@@ -63,6 +64,8 @@ export function InviteMemberDrawer({
   eventId: string;
   organizationId: string | undefined;
   competitions: Competition[];
+  /** Tab Committee kompetisi: target dikunci ke `initialTarget` (tanpa "Event team", dropdown nonaktif). */
+  lockTarget?: boolean;
   roles: AssignmentRole[];
   initialTarget: string;
   open: boolean;
@@ -172,11 +175,14 @@ export function InviteMemberDrawer({
           <select
             className={fieldClass}
             value={target}
+            disabled={lockTarget}
             aria-invalid={!!errors.target}
             onChange={(e) => changeTarget(e.target.value)}
           >
             <option value="">Choose event team or a competition</option>
-            <option value={EVENT_TARGET_VALUE}>Event team</option>
+            {!lockTarget && (
+              <option value={EVENT_TARGET_VALUE}>Event team</option>
+            )}
             {competitions.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}

@@ -9,6 +9,7 @@ import {
 } from "@/domains/entries/api";
 import type { EntryListQuery } from "@/domains/entries/types";
 import { entriesPage, entryFixture } from "@/test/fixtures";
+import { listEventCompetitions } from "@/domains/competitions/api";
 import { EventParticipants } from "./event-participants";
 
 vi.mock("@/domains/competitions/api", async () => {
@@ -77,13 +78,16 @@ beforeEach(() => {
   );
 });
 
-function renderPage() {
+function renderPage(lockedCompetitionId?: string) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={client}>
-      <EventParticipants eventId="e1" />
+      <EventParticipants
+        eventId="e1"
+        lockedCompetitionId={lockedCompetitionId}
+      />
     </QueryClientProvider>,
   );
 }
@@ -163,5 +167,18 @@ describe("EventParticipants", () => {
     const kiwi = screen.getByText("Kiwi").closest("li")!;
     expect(within(kiwi).getByText("Checked in")).toBeInTheDocument();
     expect(within(kiwi).queryByRole("button")).toBeNull();
+  });
+
+  it("is locked to one competition: no picker, no competitions request", async () => {
+    vi.mocked(listEventCompetitions).mockClear();
+    vi.mocked(listEventEntries).mockClear();
+    renderPage("c0");
+    expect(await screen.findByText("Bolt")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Competition")).toBeNull();
+    expect(listEventCompetitions).not.toHaveBeenCalled();
+    expect(listEventEntries).toHaveBeenCalledWith(
+      "e1",
+      expect.objectContaining({ competitionId: "c0", eligibility: "APPROVED" }),
+    );
   });
 });
