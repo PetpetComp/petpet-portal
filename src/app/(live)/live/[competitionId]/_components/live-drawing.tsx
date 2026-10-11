@@ -49,6 +49,7 @@ import {
 } from "./drawing-participants-panel";
 import { useDrawReveal } from "./use-draw-reveal";
 import { useOnlineStatus } from "./live-connection";
+import { isJudgingTypeCode } from "./live-family";
 
 /** Banner kuning selama API drawing masih mock; dimatikan lewat satu konstanta di domain drawing. */
 function MockBanner() {
@@ -76,11 +77,18 @@ function Stat({ value, label }: { value: number; label: string }) {
 }
 
 /** Pemberitahuan kosong/informasi dengan ikon, tanpa bergantung pada portal.css. */
-function LiveNotice({ message }: { message: string }) {
+function LiveNotice({
+  message,
+  children,
+}: {
+  message: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="border-border bg-card grid justify-items-center gap-3 rounded-2xl border p-8 text-center">
       <Users size={28} className="text-primary-dark" aria-hidden />
       <p className="text-muted-foreground max-w-md">{message}</p>
+      {children}
     </div>
   );
 }
@@ -730,7 +738,16 @@ export function LiveDrawing({ competitionId }: { competitionId: string }) {
       <div className="p-4 md:p-7">
         <LiveNotice
           message={`${DRAWING_UNSUPPORTED_MESSAGE}. This competition uses another format.`}
-        />
+        >
+          {isJudgingTypeCode(type.code) && (
+            <Link
+              href={ROUTES.liveJudging(competitionId)}
+              className={cn(buttonVariants(), "min-h-11")}
+            >
+              Go to Judging
+            </Link>
+          )}
+        </LiveNotice>
       </div>
     );
 

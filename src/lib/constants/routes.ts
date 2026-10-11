@@ -46,6 +46,8 @@ export const ROUTES = {
   /** Layar Run Match satu match (tab Matches tetap aktif). */
   liveMatch: (competitionId: string, matchId: string) =>
     `/live/${encodeURIComponent(competitionId)}/matches/${encodeURIComponent(matchId)}`,
+  liveJudging: (competitionId: string) =>
+    `/live/${encodeURIComponent(competitionId)}/judging`,
   liveResults: (competitionId: string) =>
     `/live/${encodeURIComponent(competitionId)}/results`,
   organizationManagement: "/organization-management",

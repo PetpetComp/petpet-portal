@@ -395,9 +395,12 @@ function seedEntries(
       checkin_status: seed.checkin_status,
       status: seed.withdrawn ? "WITHDRAWN" : "REGISTERED",
       registered_at: registered.toISOString().replace(".000Z", "+00:00"),
+      // Check-in berurutan satu menit per entry, supaya urutan check-in (antrean juri) stabil.
       checked_in_at:
         seed.checkin_status === "CHECKED_IN"
-          ? "2026-10-10T07:15:00+00:00"
+          ? new Date(Date.UTC(2026, 9, 10, 7, 15 + i))
+              .toISOString()
+              .replace(".000Z", "+00:00")
           : null,
       registered_by_uuid: pet.owner_uuid,
     };
@@ -1546,7 +1549,8 @@ export const store = {
       weight,
       min_score: 0,
       max_score: 10,
-      note_required: false,
+      // Beauty Class Open: catatan wajib untuk Presentation (demo aturan note_required di Judging).
+      note_required: competitionUuid === BEAUTY_UUID && code === "PRESENTATION",
       display_order: index + 1,
       status: "ACTIVE",
     })),

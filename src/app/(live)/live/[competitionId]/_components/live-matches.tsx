@@ -20,6 +20,7 @@ import { TIMETRIAL_TYPE_CODE } from "@/domains/timetrial/constants";
 import { ApiError } from "@/lib/api-client";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
+import { isJudgingTypeCode } from "./live-family";
 import { MatchesMockBanner } from "./run/run-match";
 import { TimeTrialRun } from "./time-trial/time-trial-run";
 
@@ -192,7 +193,16 @@ export function LiveMatches({ competitionId }: { competitionId: string }) {
         <Notice
           icon="flag"
           message={`${MATCHES_UNSUPPORTED_MESSAGE}. This competition uses another format.`}
-        />
+        >
+          {isJudgingTypeCode(type.code) && (
+            <Link
+              href={ROUTES.liveJudging(competitionId)}
+              className={cn(buttonVariants(), "min-h-11")}
+            >
+              Go to Judging
+            </Link>
+          )}
+        </Notice>
       </div>
     );
 

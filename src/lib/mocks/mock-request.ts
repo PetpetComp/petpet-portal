@@ -155,6 +155,15 @@ import {
   updateAttemptStatusRecord,
   updateRoundEntryRecord,
 } from "./mock-timetrial";
+import {
+  createScorecardRecord,
+  getJudgingRecord,
+  getScorecardRecord,
+  listRoundScorecardsRecord,
+  lockScorecardRecord,
+  putCriterionScoresRecord,
+  updateScorecardRecord,
+} from "./mock-judging";
 
 function matchPath(
   pattern: string,
@@ -862,6 +871,46 @@ const routes: Route[] = [
     pattern: "/round-entries/:uuid",
     handler: (params, body) =>
       updateRoundEntryRecord(requireSession(), params.uuid, body),
+  },
+  // Judging Contest (kontrak 15, MOCK ONLY sebagian): aturannya ada di mock-judging.ts.
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid/judging",
+    handler: (params) => getJudgingRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/rounds/:uuid/scorecards",
+    handler: (params, body) =>
+      createScorecardRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "GET",
+    pattern: "/rounds/:uuid/scorecards",
+    handler: (params) =>
+      listRoundScorecardsRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "GET",
+    pattern: "/scorecards/:uuid",
+    handler: (params) => getScorecardRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "PUT",
+    pattern: "/scorecards/:uuid/criterion-scores",
+    handler: (params, body) =>
+      putCriterionScoresRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "PATCH",
+    pattern: "/scorecards/:uuid",
+    handler: (params, body) =>
+      updateScorecardRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "POST",
+    pattern: "/scorecards/:uuid/lock",
+    handler: (params) => lockScorecardRecord(requireSession(), params.uuid),
   },
   // Committee (kontrak 13 bagian 3): aturannya ada di mock-staff.ts.
   {

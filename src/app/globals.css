@@ -50,6 +50,12 @@
   --color-time-trial-soft: #cffafe;
   --color-time-trial-ink: #155e75;
   --color-contest: #a21caf;
+  /* Aksen layar Live Judging (magenta). Teks di atas judging-soft memakai judging-ink (kontras > 7:1). */
+  --color-judging: #c026d3;
+  --color-judging-accent: #e879f9;
+  --color-judging-soft: #fae8ff;
+  --color-judging-ink: #86198f;
+  --color-judging-border: #a21caf;
 
   --radius-sm: 0.5rem;
   --radius: 0.75rem;
@@ -150,4 +156,80 @@ body {
   to {
     opacity: 1;
   }
+}
+
+/*
+ * Slider skor Live Judging (`.score-slider`). Bagian terisi magenta lewat variabel CSS `--fill`
+ * (persen, diisi komponen), sisanya lilac muda (bukan hitam, temuan D2). Jempol 30px, tinggi
+ * area sentuh 44px. Firefox memakai ::-moz-range-progress untuk bagian terisi.
+ */
+.score-slider {
+  --fill: 0%;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.score-slider:focus-visible {
+  outline: none;
+}
+.score-slider::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    #c026d3 var(--fill),
+    #e9d5ff var(--fill)
+  );
+}
+.score-slider::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background: #e9d5ff;
+}
+.score-slider::-moz-range-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: #c026d3;
+}
+.score-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  margin-top: -10px;
+  border-radius: 50%;
+  border: 4px solid #a21caf;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(58, 48, 85, 0.3);
+}
+.score-slider::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 4px solid #a21caf;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(58, 48, 85, 0.3);
+}
+.score-slider[data-unset="true"]::-webkit-slider-thumb {
+  border-color: #b5a2dc;
+}
+.score-slider[data-unset="true"]::-moz-range-thumb {
+  border-color: #b5a2dc;
+}
+.score-slider:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid #8c75bb;
+  outline-offset: 2px;
+}
+.score-slider:focus-visible::-moz-range-thumb {
+  outline: 3px solid #8c75bb;
+  outline-offset: 2px;
+}
+.score-slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }

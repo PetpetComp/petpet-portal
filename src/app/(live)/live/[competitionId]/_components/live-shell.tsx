@@ -11,21 +11,32 @@ import {
   useCompetitionTypes,
 } from "@/domains/competitions/queries";
 import { useEvent } from "@/domains/events/queries";
-import { TIMETRIAL_TYPE_CODE } from "@/domains/timetrial/constants";
 import { useQueue } from "@/domains/timetrial/queries";
 import { ApiError } from "@/lib/api-client";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
 import { ConnectionBadge } from "./live-connection";
+import { liveVariantOf, type LiveVariant } from "./live-family";
+import { JudgingProgressPill } from "./judging/judging-progress-pill";
 import { LiveSponsorStrip } from "./live-sponsor-strip";
 
 /**
- * Tiga langkah Live Mode, urut. Race: Drawing, Matches, Results. Time trial (`timeTrial = true`):
- * Running order, Run, Results. Rutenya sama untuk keduanya (/drawing, /matches, /results); hanya
- * labelnya yang berubah. Tab Matches/Run tetap aktif di layar Run Match (`/matches/[matchId]`)
- * karena dicocokkan per awalan rute.
+ * Langkah Live Mode, urut. Race: Drawing, Matches, Results. Time trial: Running order, Run,
+ * Results (rute sama dengan Race, hanya label berbeda). Contest: Judging, Results (tanpa Drawing
+ * dan Matches). Tab Matches/Run tetap aktif di layar Run Match (`/matches/[matchId]`) karena
+ * dicocokkan per awalan rute.
  */
-export function liveTabs(competitionId: string, timeTrial = false) {
+export function liveTabs(competitionId: string, variant: LiveVariant = "race") {
+  if (variant === "contest")
+    return [
+      {
+        label: "Judging",
+        number: 1,
+        href: ROUTES.liveJudging(competitionId),
+      },
+      { label: "Results", number: 2, href: ROUTES.liveResults(competitionId) },
+    ];
+  const timeTrial = variant === "timetrial";
   return [
     {
       label: timeTrial ? "Running order" : "Drawing",
@@ -116,7 +127,7 @@ function LoadFailure({
 /**
  * Kerangka layar penuh Live Mode (tanpa sidebar portal). Dipanggil dari layout
  * `(live)/live/[competitionId]`. Berisi: tombol kembali ke workspace kompetisi, judul + subjudul,
- * tiga tab langkah (rute asli), badge koneksi (D5), isi halaman, dan strip sponsor.
+ * tab langkah menurut tipe (rute asli), badge koneksi (D5), isi halaman, dan strip sponsor.
  * Status muat, error, 403, dan 404 kompetisi ditangani di sini sehingga halaman anak
  * hanya dirender saat kompetisi sudah ada.
  */
@@ -132,9 +143,11 @@ export function LiveShell({
   const pathname = usePathname();
   const c = competition.data;
   // Jenis belum dimuat (atau gagal) -> tampilan Race; berganti begitu jenisnya diketahui.
-  const timeTrial =
-    types.data?.find((t) => t.id === c?.typeId)?.code === TIMETRIAL_TYPE_CODE;
-  const tabs = liveTabs(competitionId, timeTrial);
+  const variant = liveVariantOf(
+    types.data?.find((t) => t.id === c?.typeId)?.code,
+  );
+  const timeTrial = variant === "timetrial";
+  const tabs = liveTabs(competitionId, variant);
   const onDrawing = pathname.startsWith(ROUTES.liveDrawing(competitionId));
   const backHref = c
     ? ROUTES.eventManagement.competitionDetail(c.eventId, c.id)
@@ -161,7 +174,9 @@ export function LiveShell({
             )}
             {c ? (
               <p className="text-muted-foreground min-h-5 text-[13px]">
-                {timeTrial ? (
+                {variant === "contest" ? (
+                  <>Judging - your scorecard</>
+                ) : timeTrial ? (
                   <TimeTrialSubtitle
                     competitionId={competitionId}
                     onDrawing={onDrawing}
@@ -176,6 +191,9 @@ export function LiveShell({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {variant === "contest" && (
+            <JudgingProgressPill competitionId={competitionId} />
+          )}
           <ConnectionBadge />
           <nav
             aria-label="Live steps"

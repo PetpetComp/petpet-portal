@@ -125,6 +125,26 @@ export const ENDPOINTS = {
     roundEntry: (roundEntryUuid: string) =>
       `/round-entries/${id(roundEntryUuid)}`,
   },
+  /**
+   * Judging (Live Mode, Contest competitions: BEAUTY and BEST_IN_SHOW). Paths marked "backend"
+   * exist in petpet-service already (routes/api/scorecards.php). The judge queue read is
+   * MOCK ONLY (contract 15).
+   */
+  judging: {
+    /** MOCK ONLY: GET criteria, participants in check-in order and the caller's scorecards. */
+    judging: (competitionUuid: string) =>
+      `/competitions/${id(competitionUuid)}/judging`,
+    /** Backend: POST creates a DRAFT scorecard; GET lists the scorecards of a round. */
+    roundScorecards: (roundUuid: string) =>
+      `/rounds/${id(roundUuid)}/scorecards`,
+    /** Backend: GET one scorecard; PATCH sets the judge note or status SUBMITTED. */
+    scorecard: (scorecardUuid: string) => `/scorecards/${id(scorecardUuid)}`,
+    /** Backend: PUT saves criterion scores (upsert per criterion). */
+    criterionScores: (scorecardUuid: string) =>
+      `/scorecards/${id(scorecardUuid)}/criterion-scores`,
+    /** Backend: POST locks a SUBMITTED scorecard. */
+    lock: (scorecardUuid: string) => `/scorecards/${id(scorecardUuid)}/lock`,
+  },
   periods: { detail: (uuid: string) => `/registration-periods/${id(uuid)}` },
   criteria: { detail: (uuid: string) => `/score-criteria/${id(uuid)}` },
   sponsors: {

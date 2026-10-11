@@ -3,10 +3,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-client";
 import { getCompetition } from "@/domains/competitions/api";
+import { getJudging } from "@/domains/judging/api";
 import { getQueue } from "@/domains/timetrial/api";
 import type { Queue } from "@/domains/timetrial/types";
 import { listEventSponsorLinks } from "@/domains/sponsors/api";
 import { competitionFixture } from "@/test/fixtures";
+import { judgingFixture } from "./judging/test-fixtures";
 import { LiveShell, liveTabs } from "./live-shell";
 
 const nav = vi.hoisted(() => ({ pathname: "/live/c1/drawing" }));
@@ -32,10 +34,17 @@ vi.mock("@/domains/competitions/api", async () => {
     listCompetitionTypes: vi.fn().mockResolvedValue([
       { id: "race", code: "RACE", name: "Race", resultMode: "POSITION" },
       { id: "tt", code: "TIME_TRIAL", name: "Time trial", resultMode: "TIME" },
+      {
+        id: "beauty",
+        code: "BEAUTY",
+        name: "Beauty",
+        resultMode: "JUDGED_SCORE",
+      },
     ]),
   };
 });
 vi.mock("@/domains/timetrial/api", () => ({ getQueue: vi.fn() }));
+vi.mock("@/domains/judging/api", () => ({ getJudging: vi.fn() }));
 vi.mock("@/domains/sponsors/api", () => ({
   listEventSponsorLinks: vi.fn().mockResolvedValue([
     {
@@ -98,7 +107,7 @@ describe("liveTabs", () => {
   });
 
   it("renames the steps for a Time trial and keeps the same routes", () => {
-    expect(liveTabs("c1", true).map((t) => [t.label, t.href])).toEqual([
+    expect(liveTabs("c1", "timetrial").map((t) => [t.label, t.href])).toEqual([
       ["Running order", "/live/c1/drawing"],
       ["Run", "/live/c1/matches"],
       ["Results", "/live/c1/results"],
@@ -124,6 +133,47 @@ function queueWithLimit(attemptLimit: number): Queue {
     finished: false,
   };
 }
+
+describe("liveTabs: Contest", () => {
+  it("lists Judging and Results only, without Drawing or Matches", () => {
+    expect(liveTabs("c1", "contest").map((t) => [t.label, t.href])).toEqual([
+      ["Judging", "/live/c1/judging"],
+      ["Results", "/live/c1/results"],
+    ]);
+  });
+});
+
+describe("LiveShell: Contest", () => {
+  beforeEach(() => {
+    nav.pathname = "/live/c1/judging";
+    vi.mocked(getCompetition).mockResolvedValueOnce(
+      competitionFixture({
+        id: "c1",
+        eventId: "e1",
+        name: "Best Costume",
+        typeId: "beauty",
+      }),
+    );
+    vi.mocked(getJudging)
+      .mockReset()
+      .mockResolvedValue(judgingFixture({ scoredCount: 1, totalCount: 4 }));
+  });
+
+  it("shows the Judging and Results tabs, the judging subtitle and the progress pill", async () => {
+    renderShell();
+    expect(
+      await screen.findByRole("link", { name: "1 Judging" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "2 Results" })).toHaveAttribute(
+      "href",
+      "/live/c1/results",
+    );
+    expect(screen.queryByRole("link", { name: /Drawing/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Matches/ })).toBeNull();
+    expect(screen.getByText("Judging - your scorecard")).toBeInTheDocument();
+    expect(await screen.findByText("1 of 4 scored")).toBeInTheDocument();
+  });
+});
 
 describe("LiveShell: Time trial", () => {
   beforeEach(() => {

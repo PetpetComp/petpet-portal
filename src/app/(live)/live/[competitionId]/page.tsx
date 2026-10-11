@@ -1,12 +1,11 @@
-import { redirect } from "next/navigation";
-import { ROUTES } from "@/lib/constants/routes";
+import { LiveEntry } from "./_components/live-entry";
 
-/** /live/[competitionId] langsung membuka langkah pertama: Drawing. */
+/** /live/[competitionId] membuka langkah pertama menurut tipe: Judging (Contest) atau Drawing. */
 export default async function LiveIndexPage({
   params,
 }: {
   params: Promise<{ competitionId: string }>;
 }) {
   const { competitionId } = await params;
-  redirect(ROUTES.liveDrawing(competitionId));
+  return <LiveEntry competitionId={competitionId} />;
 }
