@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { ConnectionBadge } from "./live-connection";
 import { LiveSponsorStrip } from "./live-sponsor-strip";
 
-/** Tiga langkah Live Mode, urut. Matches dan Results masih halaman placeholder. */
+/** Tiga langkah Live Mode, urut. Tab Matches tetap aktif di layar Run Match (`/matches/[matchId]`) karena dicocokkan per awalan rute. */
 export function liveTabs(competitionId: string) {
   return [
     { label: "Drawing", number: 1, href: ROUTES.liveDrawing(competitionId) },

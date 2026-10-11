@@ -16,7 +16,7 @@ import type {
 } from "@/domains/drawing/types";
 import { competitionRuleStore } from "./mock-competitions";
 import { callerFor, forbidUnless, hasPermission, iso } from "./mock-records";
-import type { MockCaller } from "./mock-rules";
+import { registerDrawnEntryLookup, type MockCaller } from "./mock-rules";
 import { findOrThrow, store } from "./mock-store";
 import type { MockCompetition, MockEntry, MockUser } from "./mock-types";
 
@@ -29,7 +29,7 @@ import type { MockCompetition, MockEntry, MockUser } from "./mock-types";
  */
 
 /** Satu match tersimpan. Indeks `entry_uuids` + 1 = nomor lane (`heat_entries.lane_number`). */
-type StoredMatch = {
+export type StoredMatch = {
   uuid: string;
   match_number: number;
   status: MatchStatus;
@@ -37,7 +37,7 @@ type StoredMatch = {
 };
 
 /** Satu drawing terkunci (= satu ronde dengan `drawing_confirmed_at` terisi). */
-type StoredDrawing = {
+export type StoredDrawing = {
   locked_at: string;
   locked_by_uuid: string;
   matches: StoredMatch[];
@@ -74,16 +74,54 @@ export const drawingStore: { drawings: Record<string, StoredDrawing> } = {
   drawings: {},
 };
 
+/**
+ * Pendengar perubahan drawing. Modul Run Match (mock-matches.ts) mendaftar di sini supaya sesi,
+ * finish, dan penalti match ikut dibuang saat drawing dihapus (`null` = semua, saat reset).
+ * Dipanggil SEBELUM data drawing dihapus supaya pendengar masih bisa membaca heat-nya.
+ */
+export const drawingChangeListeners: ((
+  competitionUuid: string | null,
+) => void)[] = [];
+
 /** Mengembalikan data drawing ke seed. Dipanggil dari tes. */
 export function resetDrawingStore() {
+  drawingChangeListeners.forEach((listener) => listener(null));
   drawingStore.drawings = seedDrawings();
 }
+
+/**
+ * Mencari satu match (= heat) menurut uuid-nya di semua drawing terkunci. Dipakai mock-matches.ts.
+ * Mengembalikan null bila tidak ada.
+ */
+export function findStoredMatch(heatUuid: string): {
+  competitionUuid: string;
+  drawing: StoredDrawing;
+  match: StoredMatch;
+} | null {
+  for (const [competitionUuid, drawing] of Object.entries(
+    drawingStore.drawings,
+  )) {
+    const match = drawing.matches.find((m) => m.uuid === heatUuid);
+    if (match) return { competitionUuid, drawing, match };
+  }
+  return null;
+}
+
+/** True bila entry berada di salah satu match drawing terkunci (keputusan 0A, lihat mock-rules.ts). */
+export function isEntryInLockedDrawing(entryUuid: string): boolean {
+  return Object.values(drawingStore.drawings).some((d) =>
+    d.matches.some((m) => m.entry_uuids.includes(entryUuid)),
+  );
+}
+
+registerDrawnEntryLookup(isEntryInLockedDrawing);
 
 /**
  * Menghapus drawing terkunci satu kompetisi. Dipanggil dari route `reopen-registration`
  * (temuan D6): peserta bisa berubah lagi, jadi undian lama tidak berlaku.
  */
 export function invalidateDrawing(competitionUuid: string) {
+  drawingChangeListeners.forEach((listener) => listener(competitionUuid));
   delete drawingStore.drawings[competitionUuid];
 }
 

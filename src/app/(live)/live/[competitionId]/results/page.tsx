@@ -1,5 +1,10 @@
-import { LivePlaceholder } from "../_components/live-placeholder";
+import { LiveResults } from "../_components/live-results";
 
-export default function LiveResultsPage() {
-  return <LivePlaceholder step="Results" />;
+export default async function LiveResultsPage({
+  params,
+}: {
+  params: Promise<{ competitionId: string }>;
+}) {
+  const { competitionId } = await params;
+  return <LiveResults competitionId={competitionId} />;
 }

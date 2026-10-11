@@ -18,6 +18,7 @@ import {
   competitionActions,
   entryActions,
   entrySummary,
+  isEntryDrawn,
   REGISTRATION_CLOSED_MESSAGE,
   registrationClosedReason,
   type MockCaller,
@@ -190,7 +191,12 @@ export function entryRecord(entry: MockEntry, caller: MockCaller): ApiEntry {
     status: entry.status,
     registered_at: entry.registered_at,
     checked_in_at: entry.checked_in_at,
-    actions: entryActions(entry, competition.status, caller),
+    actions: entryActions(
+      entry,
+      competition.status,
+      caller,
+      isEntryDrawn(entry.uuid),
+    ),
   };
 }
 

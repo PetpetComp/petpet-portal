@@ -125,6 +125,19 @@ describe("LiveShell", () => {
     );
   });
 
+  it("keeps the Matches tab active on the Run match screen", async () => {
+    nav.pathname = "/live/c1/matches/heat-1";
+    renderShell();
+    await screen.findByRole("heading", { name: "Paw Sprint 100M" });
+    expect(screen.getByRole("link", { name: "2 Matches" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("link", { name: "1 Drawing" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
   it("shows a quiet Connected state, then a clear Offline state and back", async () => {
     renderShell();
     expect(await screen.findByText("Connected")).toBeInTheDocument();

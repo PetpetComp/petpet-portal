@@ -104,6 +104,27 @@ describe("entryActions (EntryActions)", () => {
         .withdraw,
     ).toBe(false);
   });
+  it("decision 0A: an entry in a locked drawing cannot undo check-in or withdraw", () => {
+    const checkedIn = entry({
+      eligibility_status: "APPROVED",
+      checkin_status: "CHECKED_IN",
+    });
+    expect(
+      entryActions(checkedIn, "SCHEDULED", staff, false).undo_check_in,
+    ).toBe(true);
+    expect(
+      entryActions(checkedIn, "SCHEDULED", staff, true).undo_check_in,
+    ).toBe(false);
+    // Aksi lain tidak ikut berubah: late check-in tetap boleh, tetapi tidak masuk drawing.
+    const late = entry({ eligibility_status: "APPROVED" });
+    expect(entryActions(late, "SCHEDULED", staff, true).check_in).toBe(true);
+    expect(entryActions(entry(), "SCHEDULED", owner, false).withdraw).toBe(
+      true,
+    );
+    expect(entryActions(entry(), "SCHEDULED", owner, true).withdraw).toBe(
+      false,
+    );
+  });
   it("nothing for withdrawn entries, finished competitions, outsiders or anonymous", () => {
     const none = {
       approve: false,

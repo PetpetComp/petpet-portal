@@ -20,7 +20,12 @@ import {
   listEventEntries,
   searchOwners,
 } from "./mock-records";
-import { UNRESTRICTED, competitionActions, entryActions } from "./mock-rules";
+import {
+  UNRESTRICTED,
+  competitionActions,
+  entryActions,
+  isEntryDrawn,
+} from "./mock-rules";
 import {
   closePeriodRecord,
   createCriterionRecord,
@@ -121,6 +126,20 @@ import {
   swapDrawingRecord,
 } from "./mock-drawing";
 import { getResultsRecord, verifyResultsRecord } from "./mock-results";
+import {
+  assignFinishRecord,
+  captureFinishRecord,
+  confirmMatchRecord,
+  createPenaltyRecord,
+  createSessionRecord,
+  getMatchRecord,
+  listMatchesRecord,
+  revokePenaltyRecord,
+  startSessionRecord,
+  stopSessionRecord,
+  updateHeatEntryRecord,
+  voidFinishRecord,
+} from "./mock-matches";
 
 function matchPath(
   pattern: string,
@@ -198,8 +217,15 @@ function entryAction(
   );
   const caller = callerFor(user, competition.event_uuid);
   guard(
-    entryActions(entry, competition.status, caller)[action],
-    entryActions(entry, competition.status, UNRESTRICTED)[action],
+    entryActions(entry, competition.status, caller, isEntryDrawn(entry.uuid))[
+      action
+    ],
+    entryActions(
+      entry,
+      competition.status,
+      UNRESTRICTED,
+      isEntryDrawn(entry.uuid),
+    )[action],
     message,
   );
   apply(entry);
@@ -697,6 +723,74 @@ const routes: Route[] = [
     pattern: "/competitions/:uuid/results/verify",
     handler: (params) => verifyResultsRecord(requireSession(), params.uuid),
   },
+  // Run Match (kontrak 13 bagian 13, MOCK ONLY sebagian): aturannya ada di mock-matches.ts.
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid/matches",
+    handler: (params) => listMatchesRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "GET",
+    pattern: "/matches/:uuid",
+    handler: (params) => getMatchRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/heats/:uuid/sessions",
+    handler: (params, body) =>
+      createSessionRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "POST",
+    pattern: "/heats/:uuid/confirm",
+    handler: (params, body) =>
+      confirmMatchRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "POST",
+    pattern: "/sessions/:uuid/start",
+    handler: (params) => startSessionRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/sessions/:uuid/stop",
+    handler: (params, body) =>
+      stopSessionRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "POST",
+    pattern: "/sessions/:uuid/finishes",
+    handler: (params, body) =>
+      captureFinishRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "PATCH",
+    pattern: "/finishes/:uuid/assign",
+    handler: (params, body) =>
+      assignFinishRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "POST",
+    pattern: "/finishes/:uuid/void",
+    handler: (params) => voidFinishRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "PATCH",
+    pattern: "/heat-entries/:uuid",
+    handler: (params, body) =>
+      updateHeatEntryRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "POST",
+    pattern: "/entries/:uuid/penalties",
+    handler: (params, body) =>
+      createPenaltyRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "POST",
+    pattern: "/penalties/:uuid/revoke",
+    handler: (params) => revokePenaltyRecord(requireSession(), params.uuid),
+  },
   // Committee (kontrak 13 bagian 3): aturannya ada di mock-staff.ts.
   {
     method: "GET",
@@ -917,6 +1011,12 @@ const routes: Route[] = [
     method: "DELETE",
     pattern: "/entries/:uuid",
     handler: (params) => {
+      // Keputusan 0A: entry di drawing terkunci tidak boleh dihapus; tandai DNS di match-nya.
+      if (isEntryDrawn(params.uuid))
+        throw new ApiError(
+          422,
+          "This participant is in a locked drawing; mark it as did not start in its match instead.",
+        );
       store.entries = store.entries.filter((item) => item.uuid !== params.uuid);
       return null;
     },
@@ -979,7 +1079,7 @@ const routes: Route[] = [
           e.checkin_status = "NOT_CHECKED_IN";
           e.checked_in_at = null;
         },
-        "Check-in can only be undone before the competition starts.",
+        "Check-in can only be undone before the competition starts and before the drawing is locked.",
       ),
   },
 ];

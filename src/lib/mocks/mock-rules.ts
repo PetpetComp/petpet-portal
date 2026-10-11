@@ -48,9 +48,32 @@ const has = (caller: MockCaller, permission: Permission) =>
 const FINISHED: CompetitionStatus[] = ["COMPLETED", "CANCELLED"];
 
 /**
+ * Pencarian "entry ini sudah masuk drawing yang terkunci?" (keputusan 0A, Live Mode P5a).
+ * Pencarian itu hidup di mock-drawing.ts; modul itu mendaftarkannya lewat
+ * `registerDrawnEntryLookup` saat dimuat. Dengan begini mock-rules.ts tidak mengimpor
+ * mock-drawing.ts (yang sendiri mengimpor mock-records dan mock-rules), jadi tidak ada impor melingkar.
+ */
+let drawnEntryLookup: (entryUuid: string) => boolean = () => false;
+
+/** Dipanggil sekali dari mock-drawing.ts saat dimuat. */
+export function registerDrawnEntryLookup(
+  lookup: (entryUuid: string) => boolean,
+) {
+  drawnEntryLookup = lookup;
+}
+
+/** True bila entry berada di match drawing yang sudah di-lock. Dipanggil dari mock-records dan mock-request. */
+export function isEntryDrawn(entryUuid: string): boolean {
+  return drawnEntryLookup(entryUuid);
+}
+
+/**
  * Backend `EntryActions` (contract 10 §1 table).
  * Keputusan 10 Okt 2026 (kontrak 13 bagian 2): check-in wajib lunas, dan karena belum ada
  * sistem pembayaran, lunas disimulasikan lewat aksi `mark_paid`.
+ * Keputusan 0A (11 Okt 2026, Live Mode): entry yang sudah masuk drawing terkunci (`inLockedDrawing`)
+ * tidak boleh undo check-in dan tidak boleh mundur. Peserta yang tidak muncul ditandai DNS di
+ * match-nya (kontrak 13 bagian 13), bukan dihapus dari drawing.
  */
 export function entryActions(
   entry: Pick<
@@ -63,6 +86,7 @@ export function entryActions(
   >,
   competitionStatus: CompetitionStatus,
   caller: MockCaller,
+  inLockedDrawing = false,
 ): ApiEntryActions {
   const live =
     entry.status === "REGISTERED" && !FINISHED.includes(competitionStatus);
@@ -88,12 +112,17 @@ export function entryActions(
       !checkedIn &&
       (competitionStatus === "SCHEDULED" || competitionStatus === "ONGOING"),
     undo_check_in:
-      live && approver && checkedIn && competitionStatus === "SCHEDULED",
+      live &&
+      approver &&
+      checkedIn &&
+      competitionStatus === "SCHEDULED" &&
+      !inLockedDrawing,
     withdraw:
       live &&
       caller.userUuid !== null &&
       caller.userUuid === entry.owner_uuid &&
-      !checkedIn,
+      !checkedIn &&
+      !inLockedDrawing,
   };
 }
 

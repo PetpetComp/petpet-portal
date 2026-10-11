@@ -13,6 +13,7 @@ import {
   hasPermission,
   iso,
 } from "./mock-records";
+import { confirmedRows } from "./mock-matches";
 import { UNRESTRICTED, type MockCaller } from "./mock-rules";
 import { findOrThrow, store } from "./mock-store";
 import type { MockUser } from "./mock-types";
@@ -99,6 +100,24 @@ export function rankResults(rows: StoredResult[]): (StoredResult & {
     .map(({ row }, position) => ({ ...row, rank: position + 1 }));
 }
 
+/**
+ * Hasil mentah satu kompetisi. Bila ada minimal satu match yang sudah di-Confirm (Run Match,
+ * kontrak 13 bagian 13), klasemen dibangun dari peserta match-match itu saja: SATU ronde GENERAL,
+ * semua match digabung lalu diurut oleh `rankResults` (FINISHED menurut `completed_time_ms`
+ * tercepat lintas match, lalu DNF, DQ, DNS). Waktu sama diputus oleh nomor match lalu posisi di
+ * match-nya (urutan masukan). Peserta di match yang belum selesai belum masuk klasemen.
+ * Tanpa match terkonfirmasi, data seed tetap berlaku. Dipanggil dari `resultsRecord` dan verify.
+ */
+function storedResultsOf(competitionUuid: string): StoredResult[] {
+  const confirmed = confirmedRows(competitionUuid);
+  if (confirmed === null) return resultStore.results[competitionUuid] ?? [];
+  return confirmed.map((row) => ({
+    pet_uuid: row.pet_uuid,
+    status: row.status,
+    finish_time_ms: row.finish_time_ms,
+  }));
+}
+
 /** Kompetisi yang sudah (atau sedang) menghasilkan hasil boleh diverifikasi. */
 const VERIFIABLE_STATUSES = ["ONGOING", "COMPLETED"];
 
@@ -170,7 +189,7 @@ function resultsRecord(
     competitionUuid,
     "Competition",
   );
-  const ranked = rankResults(resultStore.results[competitionUuid] ?? []);
+  const ranked = rankResults(storedResultsOf(competitionUuid));
   const verification = resultStore.verifications[competitionUuid] ?? null;
   const verifier = verification
     ? store.users.find((u) => u.uuid === verification.verified_by_uuid)
@@ -230,7 +249,7 @@ export function verifyResultsRecord(
     caller.relatedToEvent && hasPermission(caller, PERMISSION.SCORING_VIEW),
   );
   requireRace(competition.competition_type_uuid);
-  const rows = resultStore.results[competitionUuid] ?? [];
+  const rows = storedResultsOf(competitionUuid);
   const verified = competitionUuid in resultStore.verifications;
   guard(
     resultActions(competition.status, rows.length, verified, caller).verify,

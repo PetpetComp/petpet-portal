@@ -58,6 +58,42 @@ export const ENDPOINTS = {
     detail: (uuid: string) => `/competitions/${id(uuid)}/drawing`,
     swap: (uuid: string) => `/competitions/${id(uuid)}/drawing/swap`,
   },
+  /**
+   * Run Match (Live Mode, Race). Paths marked "backend" exist in petpet-service already (routes/api
+   * heats, race-sessions, finish-captures, penalties, heat-entries, entries). The rest is MOCK ONLY
+   * (contract 13 section 13): the match list and detail (joins), and the atomic confirm.
+   */
+  matches: {
+    /** MOCK ONLY: GET match list of a competition. */
+    list: (competitionUuid: string) =>
+      `/competitions/${id(competitionUuid)}/matches`,
+    /** MOCK ONLY: GET one match (heat) with lanes, sessions and flags. */
+    detail: (heatUuid: string) => `/matches/${id(heatUuid)}`,
+    /** MOCK ONLY: POST atomic confirm of the match result. */
+    confirm: (heatUuid: string) => `/heats/${id(heatUuid)}/confirm`,
+    /** Backend: POST creates a race session (also used for rematch). */
+    sessions: (heatUuid: string) => `/heats/${id(heatUuid)}/sessions`,
+    /** Backend: PATCH `call_status` (did not start). */
+    heatEntry: (heatEntryUuid: string) => `/heat-entries/${id(heatEntryUuid)}`,
+  },
+  race: {
+    /** Backend: POST starts a READY session. */
+    startSession: (sessionUuid: string) => `/sessions/${id(sessionUuid)}/start`,
+    /** Backend: POST stops a RUNNING session (body `stop_reason`). */
+    stopSession: (sessionUuid: string) => `/sessions/${id(sessionUuid)}/stop`,
+    /** Backend: POST captures one finish tap. */
+    finishes: (sessionUuid: string) => `/sessions/${id(sessionUuid)}/finishes`,
+    /** Backend: PATCH assigns a capture to an entry. */
+    assignFinish: (captureUuid: string) =>
+      `/finishes/${id(captureUuid)}/assign`,
+    /** Backend: POST voids a capture (undo). */
+    voidFinish: (captureUuid: string) => `/finishes/${id(captureUuid)}/void`,
+    /** Backend: POST issues a penalty to an entry (Disqualify = unit DISQUALIFICATION). */
+    penalties: (entryUuid: string) => `/entries/${id(entryUuid)}/penalties`,
+    /** Backend: POST revokes a penalty. */
+    revokePenalty: (penaltyUuid: string) =>
+      `/penalties/${id(penaltyUuid)}/revoke`,
+  },
   periods: { detail: (uuid: string) => `/registration-periods/${id(uuid)}` },
   criteria: { detail: (uuid: string) => `/score-criteria/${id(uuid)}` },
   sponsors: {
