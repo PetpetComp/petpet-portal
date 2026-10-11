@@ -107,8 +107,12 @@ export function useSaveCompetitionSettings(id: string) {
   return useMutation({
     mutationFn: (changes: SettingsChanges) =>
       saveCompetitionSettings(id, changes),
+    // Jumlah lane (rule) memengaruhi pembagian match, jadi drawing ikut disegarkan.
     onSettled: () =>
-      client.invalidateQueries({ queryKey: competitionKeys.all }),
+      Promise.all([
+        client.invalidateQueries({ queryKey: competitionKeys.all }),
+        client.invalidateQueries({ queryKey: drawingKeys.all }),
+      ]),
   });
 }
 

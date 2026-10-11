@@ -104,3 +104,50 @@ body {
 .table-scroll {
   position: relative;
 }
+
+/*
+ * Animasi layar Live Drawing (reveal shuffle, konfirmasi swap, badge Locked).
+ * Dipakai lewat kelas `motion-safe:animate-[nama_durasi_easing]` di komponen drawing,
+ * jadi otomatis mati bila pengguna memilih prefers-reduced-motion.
+ */
+@keyframes draw-pop {
+  0% {
+    transform: scale(0.96);
+    background-color: var(--color-primary-soft);
+  }
+  45% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+    background-color: transparent;
+  }
+}
+@keyframes draw-glow {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes draw-flash {
+  0%,
+  60% {
+    background-color: var(--color-primary-soft);
+    box-shadow: 0 0 0 2px var(--color-primary);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@keyframes draw-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

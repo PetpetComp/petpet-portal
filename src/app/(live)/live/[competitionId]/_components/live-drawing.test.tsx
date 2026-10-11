@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -6,10 +7,11 @@ import {
   within,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { getDrawing, lockDrawing, swapDrawing } from "@/domains/drawing/api";
 import { buildDrawing } from "@/domains/drawing/draw";
+import { drawingKeys } from "@/domains/drawing/keys";
 import type {
   CompetitionDrawing,
   DrawingMatch,
@@ -120,16 +122,42 @@ function renderScreen() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  const result = render(
     <QueryClientProvider client={client}>
       <LiveDrawing competitionId="c1" />
     </QueryClientProvider>,
   );
+  return { ...result, client };
+}
+
+/** Menekan "Start drawing" (undian pertama). */
+function startDrawing() {
+  fireEvent.click(screen.getByRole("button", { name: "Start drawing" }));
 }
 
 const match = (n: number) => screen.getByRole("region", { name: `Match ${n}` });
 
+/** Mengatur window.matchMedia: `reduced` = true berarti pengguna memilih prefers-reduced-motion. */
+function mockReducedMotion(reduced: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: (query: string) => ({
+      matches: reduced,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }),
+  });
+}
+
 beforeEach(() => {
+  // Bawaan: reduced motion, supaya Shuffle langsung menampilkan hasil (deterministik).
+  mockReducedMotion(true);
   state.typeId = "race";
   state.push.mockReset();
   vi.mocked(getDrawing).mockReset().mockResolvedValue(drawing());
@@ -138,10 +166,91 @@ beforeEach(() => {
   vi.mocked(buildDrawing).mockReset().mockReturnValue(FIRST_DRAW);
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("LiveDrawing: not drawn yet (draft)", () => {
+  it("starts in a pending state: structure only, no names, no chips, Lock disabled", async () => {
+    renderScreen();
+    await screen.findByRole("region", { name: "Match 1" });
+    expect(buildDrawing).not.toHaveBeenCalled();
+    // Kerangka: 5 peserta / 3 lane -> 2 match berukuran 3 dan 2, tanpa nama.
+    expect(match(1)).toHaveTextContent("?");
+    expect(match(1)).not.toHaveTextContent("Pet1");
+    expect(within(match(1)).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(match(2)).getAllByRole("listitem")).toHaveLength(2);
+    expect(
+      screen.getByText("matches").previousElementSibling,
+    ).toHaveTextContent("2");
+    // Panel Participants: nama ada, chip posisi belum ada.
+    const panel = screen.getByRole("region", { name: "Participants" });
+    expect(within(panel).getByText("Pet1")).toBeInTheDocument();
+    expect(within(panel).queryByText(/Match \d+ - Lane/)).toBeNull();
+    // Arena: jalur kosong menunggu undian.
+    const arena = screen.getByRole("region", { name: "Arena preview" });
+    expect(within(arena).getByText("Waiting for the draw")).toBeInTheDocument();
+    expect(within(arena).queryByText("Pet1")).toBeNull();
+    expect(
+      within(arena)
+        .getAllByRole("listitem")
+        .every((li) => li.dataset.laneState === "pending"),
+    ).toBe(true);
+    // Aksi: Start drawing menggantikan Shuffle again, Lock nonaktif dengan petunjuk.
+    expect(screen.getByRole("button", { name: "Start drawing" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Shuffle again" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /Lock drawing & go to matches/ }),
+    ).toBeDisabled();
+    expect(screen.getByText("Start the drawing first")).toBeInTheDocument();
+  });
+
+  it("draws on Start drawing, then offers Shuffle again and an enabled Lock", async () => {
+    renderScreen();
+    await screen.findByRole("region", { name: "Match 1" });
+    startDrawing();
+    expect(buildDrawing).toHaveBeenCalledWith(
+      ["e1", "e2", "e3", "e4", "e5"],
+      3,
+    );
+    await waitFor(() => expect(match(1)).toHaveTextContent(/Pet1.*Pet2.*Pet3/));
+    expect(screen.getByRole("button", { name: "Shuffle again" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Start drawing" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /Lock drawing & go to matches/ }),
+    ).toBeEnabled();
+    expect(screen.queryByText("Start the drawing first")).toBeNull();
+    const panel = screen.getByRole("region", { name: "Participants" });
+    expect(within(panel).getByText("Match 1 - Lane 1")).toBeInTheDocument();
+  });
+
+  it("goes back to pending when the eligible participants change", async () => {
+    const { client } = renderScreen();
+    await screen.findByRole("region", { name: "Match 1" });
+    startDrawing();
+    await waitFor(() => expect(match(1)).toHaveTextContent(/Pet1/));
+    vi.mocked(getDrawing).mockResolvedValue(
+      drawing({ participants: participants(4) }),
+    );
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: drawingKeys.all });
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByText("checked in").previousElementSibling,
+      ).toHaveTextContent("4"),
+    );
+    expect(screen.getByRole("button", { name: "Start drawing" })).toBeEnabled();
+    expect(match(1)).not.toHaveTextContent("Pet1");
+    expect(
+      screen.getByRole("button", { name: /Lock drawing & go to matches/ }),
+    ).toBeDisabled();
+  });
+
   it("shows a draft built from the eligible participants with the stats", async () => {
     renderScreen();
     await screen.findByRole("region", { name: "Match 1" });
+    startDrawing();
     expect(buildDrawing).toHaveBeenCalledWith(
       ["e1", "e2", "e3", "e4", "e5"],
       3,
@@ -164,6 +273,8 @@ describe("LiveDrawing: not drawn yet (draft)", () => {
   it("re-draws on Shuffle again", async () => {
     renderScreen();
     await screen.findByRole("region", { name: "Match 1" });
+    startDrawing();
+    await waitFor(() => expect(match(1)).toHaveTextContent(/Pet1.*Pet2.*Pet3/));
     vi.mocked(buildDrawing).mockReturnValueOnce(SECOND_DRAW);
     fireEvent.click(screen.getByRole("button", { name: "Shuffle again" }));
     await waitFor(() => expect(match(1)).toHaveTextContent(/Pet5.*Pet4.*Pet3/));
@@ -191,6 +302,8 @@ describe("LiveDrawing: not drawn yet (draft)", () => {
   it("locks the draft order through the API and goes to Matches", async () => {
     vi.mocked(lockDrawing).mockResolvedValue(lockedDrawing());
     renderScreen();
+    await screen.findByRole("region", { name: "Match 1" });
+    startDrawing();
     fireEvent.click(
       await screen.findByRole("button", {
         name: /Lock drawing & go to matches/,
@@ -210,6 +323,7 @@ describe("LiveDrawing: not drawn yet (draft)", () => {
     const lock = await screen.findByRole("button", {
       name: /Lock drawing & go to matches/,
     });
+    startDrawing();
     fireEvent.click(lock);
     expect(
       await screen.findByText(/Registration is still open\./),
@@ -346,5 +460,92 @@ describe("LiveDrawing: other cases", () => {
     expect(
       screen.getByRole("button", { name: "Try again" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("LiveDrawing: shuffle reveal animation", () => {
+  const lockButton = () =>
+    screen.getByRole("button", { name: /Lock drawing & go to matches/ });
+  const slots = (n: number) => Array.from(match(n).querySelectorAll("li"));
+  const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
+
+  /** Render, tunggu draf awal, lalu pakai fake timers dan tekan Shuffle again. */
+  async function startShuffle() {
+    mockReducedMotion(false);
+    renderScreen();
+    await screen.findByRole("region", { name: "Match 1" });
+    // Sebelum Start drawing tidak ada slot yang berputar (kerangka "?").
+    expect(document.querySelector('[data-slot-state="spinning"]')).toBeNull();
+    vi.mocked(buildDrawing).mockReturnValueOnce(SECOND_DRAW);
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Start drawing" }));
+  }
+
+  it("spins with cycling names, blocks Lock and Shuffle, and marks the grid busy", async () => {
+    await startShuffle();
+    expect(slots(1).every((li) => li.dataset.slotState === "spinning")).toBe(
+      true,
+    );
+    expect(lockButton()).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Shuffle again" }),
+    ).toBeDisabled();
+    expect(match(1).parentElement).toHaveAttribute("aria-busy", "true");
+
+    const seen = new Set<string>();
+    for (let tick = 0; tick < 7; tick += 1) {
+      advance(70);
+      seen.add(slots(1)[0].textContent ?? "");
+    }
+    expect(seen.size).toBeGreaterThan(1);
+    // Nama yang berputar tidak boleh terbaca pembaca layar.
+    expect(slots(1)[0].querySelector("[aria-hidden]")).not.toBeNull();
+  });
+
+  it("settles slots one by one in reading order, then announces completion", async () => {
+    await startShuffle();
+    advance(700);
+    expect(slots(1)[0].dataset.slotState).toBe("settled");
+    expect(slots(1)[0]).toHaveTextContent("Pet5");
+    expect(slots(1)[1].dataset.slotState).toBe("spinning");
+    expect(slots(2)[0].dataset.slotState).toBe("spinning");
+
+    advance(1500);
+    expect(document.querySelector('[data-slot-state="spinning"]')).toBeNull();
+    expect(match(1)).toHaveTextContent(/Pet5.*Pet4.*Pet3/);
+    expect(match(2)).toHaveTextContent(/Pet2.*Pet1/);
+    expect(lockButton()).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Skip animation" })).toBeNull();
+    expect(screen.getByText("Drawing complete, 2 matches")).toBeInTheDocument();
+    expect(match(1).parentElement).toHaveAttribute("aria-busy", "false");
+  });
+
+  it("jumps straight to the final result on Skip animation", async () => {
+    await startShuffle();
+    fireEvent.click(screen.getByRole("button", { name: "Skip animation" }));
+    expect(document.querySelector('[data-slot-state="spinning"]')).toBeNull();
+    expect(match(1)).toHaveTextContent(/Pet5.*Pet4.*Pet3/);
+    expect(lockButton()).toBeEnabled();
+    expect(screen.getByText("Drawing complete, 2 matches")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Skip animation" })).toBeNull();
+  });
+
+  it("shows the result at once without Skip when reduced motion is on", async () => {
+    renderScreen();
+    await screen.findByRole("region", { name: "Match 1" });
+    vi.mocked(buildDrawing).mockReturnValueOnce(SECOND_DRAW);
+    startDrawing();
+    expect(document.querySelector('[data-slot-state="spinning"]')).toBeNull();
+    expect(screen.queryByRole("button", { name: "Skip animation" })).toBeNull();
+    expect(match(1)).toHaveTextContent(/Pet5.*Pet4.*Pet3/);
+  });
+
+  it("shows each participant's Match and Lane in the Participants panel after the draw", async () => {
+    renderScreen();
+    await screen.findByRole("region", { name: "Match 1" });
+    startDrawing();
+    const panel = screen.getByRole("region", { name: "Participants" });
+    expect(within(panel).getByText("Match 1 - Lane 1")).toBeInTheDocument();
+    expect(within(panel).getByText("Match 2 - Lane 2")).toBeInTheDocument();
   });
 });
