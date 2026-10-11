@@ -9,6 +9,11 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { ErrorState } from "@/components/common/error-state";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/form-field";
+import {
+  InfoList,
+  PageColumns,
+  SectionCard,
+} from "@/components/common/page-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useAssignRole,
@@ -32,8 +37,8 @@ const messageOf = (cause: unknown, fallback: string) =>
 
 /**
  * Halaman detail user (`/user-management/[userId]`). Tidak ada di desain: dibuat mengikuti
- * pola header + kartu halaman lain (penyimpangan dicatat). Berisi profil, role platform
- * (beri/cabut), dan tombol Edit serta Deactivate. Dipanggil dari `[userId]/page.tsx`.
+ * pola header + PageColumns halaman lain (penyimpangan dicatat). Kolom utama: profil dan role
+ * platform (beri/cabut); kolom samping: ringkasan dan aksi Edit serta Deactivate. Dipanggil dari `[userId]/page.tsx`.
  */
 export function UserDetailPage({ userId }: { userId: string }) {
   const user = useUser(userId);
@@ -47,7 +52,7 @@ export function UserDetailPage({ userId }: { userId: string }) {
     );
   if (!user.data)
     return (
-      <div className="grid max-w-3xl gap-4" aria-busy>
+      <div className="grid gap-4" aria-busy>
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-24 w-full rounded-2xl" />
         <Skeleton className="h-64 w-full rounded-2xl" />
@@ -76,7 +81,7 @@ function UserDetail({ user }: { user: User }) {
   }
 
   return (
-    <div className="grid max-w-3xl gap-5">
+    <div className="grid min-w-0 gap-5">
       <nav
         aria-label="Breadcrumb"
         className="text-muted-foreground flex flex-wrap items-center gap-2"
@@ -91,70 +96,100 @@ function UserDetail({ user }: { user: User }) {
         <span className="text-foreground font-semibold">{user.name}</span>
       </nav>
 
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <UserAvatar initials={user.initials} size="lg" />
-          <div className="grid min-w-0 gap-1">
-            <h1 className="font-display truncate text-[30px] leading-9 font-bold">
-              {user.name}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-muted-foreground">@{user.username}</span>
-              <UserStatusBadge status={user.status} />
-            </div>
+      <header className="flex min-w-0 items-center gap-4">
+        <UserAvatar initials={user.initials} size="lg" />
+        <div className="grid min-w-0 gap-1">
+          <h1 className="font-display truncate text-[30px] leading-9 font-bold">
+            {user.name}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground">@{user.username}</span>
+            <UserStatusBadge status={user.status} />
           </div>
         </div>
-        <Can permission={PERMISSION.USER_MANAGE}>
-          <div className="flex gap-2">
-            <Link
-              href={ROUTES.users.edit(user.id)}
-              className={cn(
-                buttonVariants({ variant: "secondary" }),
-                "min-h-11 rounded-xl font-bold",
-              )}
-            >
-              Edit
-            </Link>
-            {user.status !== "SUSPENDED" && !isSelf && (
-              <Button
-                variant="destructive"
-                className="min-h-11 rounded-xl"
-                disabled={deactivate.isPending}
-                onClick={() => setConfirming(true)}
-              >
-                Deactivate
-              </Button>
-            )}
-          </div>
-        </Can>
       </header>
 
-      <section
-        aria-label="Profile"
-        className="border-border rounded-2xl border bg-white p-6"
-      >
-        <h2 className="mb-4 text-[17px] font-extrabold">Profile</h2>
-        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-          <Fact label="Email">
-            {user.email}
-            {!user.emailVerified && (
-              <span className="text-muted-foreground ml-2 text-xs">
-                (not verified)
-              </span>
-            )}
-          </Fact>
-          <Fact label="Phone" mono>
-            {user.phone || "-"}
-          </Fact>
-          <Fact label="Gender">
-            {user.gender ? GENDER_LABEL[user.gender] : "-"}
-          </Fact>
-          <Fact label="City">{user.city || "-"}</Fact>
-          <Fact label="Province">{user.province || "-"}</Fact>
-        </dl>
-      </section>
-
-      <RolesCard user={user} />
+      <PageColumns
+        main={
+          <>
+            <SectionCard title="Profile">
+              <InfoList
+                items={[
+                  {
+                    label: "Email",
+                    value: (
+                      <>
+                        {user.email}
+                        {!user.emailVerified && (
+                          <span className="text-muted-foreground ml-2 text-xs">
+                            (not verified)
+                          </span>
+                        )}
+                      </>
+                    ),
+                  },
+                  { label: "Phone", value: user.phone },
+                  {
+                    label: "Gender",
+                    value: user.gender ? GENDER_LABEL[user.gender] : "",
+                  },
+                  { label: "City", value: user.city },
+                  { label: "Province", value: user.province },
+                ]}
+              />
+            </SectionCard>
+            <RolesCard user={user} />
+          </>
+        }
+        aside={
+          <>
+            <SectionCard title="Summary">
+              <InfoList
+                items={[
+                  { label: "Username", value: `@${user.username}` },
+                  {
+                    label: "Status",
+                    value: <UserStatusBadge status={user.status} />,
+                  },
+                  {
+                    label: "Email",
+                    value: user.emailVerified ? "Verified" : "Not verified",
+                  },
+                  { label: "Roles", value: String(user.roles.length) },
+                ]}
+              />
+            </SectionCard>
+            <Can permission={PERMISSION.USER_MANAGE}>
+              <SectionCard title="Actions">
+                <Link
+                  href={ROUTES.users.edit(user.id)}
+                  className={cn(
+                    buttonVariants({ variant: "secondary" }),
+                    "min-h-11 w-full rounded-xl font-bold",
+                  )}
+                >
+                  Edit
+                </Link>
+                {user.status !== "SUSPENDED" && !isSelf && (
+                  <div className="border-border grid gap-2 border-t pt-4">
+                    <p className="text-muted-foreground text-[13px]">
+                      Suspends the account. It can no longer sign in.
+                    </p>
+                    <Button
+                      variant="destructive"
+                      className="min-h-11 w-full rounded-xl"
+                      disabled={deactivate.isPending}
+                      onClick={() => setConfirming(true)}
+                    >
+                      Deactivate
+                    </Button>
+                  </div>
+                )}
+              </SectionCard>
+            </Can>
+          </>
+        }
+      />
 
       <ConfirmDialog
         open={confirming}
@@ -164,28 +199,6 @@ function UserDetail({ user }: { user: User }) {
         confirmLabel="Deactivate"
         onConfirm={confirmDeactivate}
       />
-    </div>
-  );
-}
-
-/** Satu pasang label dan nilai di kartu profil. */
-function Fact({
-  label,
-  mono = false,
-  children,
-}: {
-  label: string;
-  mono?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid gap-0.5">
-      <dt className="text-muted-foreground text-xs font-bold tracking-[0.06em] uppercase">
-        {label}
-      </dt>
-      <dd className={cn("min-w-0 break-words", mono && "font-mono text-sm")}>
-        {children}
-      </dd>
     </div>
   );
 }
@@ -233,21 +246,17 @@ function RolesCard({ user }: { user: User }) {
   }
 
   return (
-    <section
-      aria-label="Platform roles"
-      className="border-border grid gap-4 rounded-2xl border bg-white p-6"
+    <SectionCard
+      title="Platform roles"
+      description="Global permissions. Org roles are set on the organization; event duties come from assignments."
     >
-      <div className="grid gap-1">
-        <h2 className="text-[17px] font-extrabold">Platform roles</h2>
-        <p className="text-muted-foreground text-[13px]">
-          Global permissions (see{" "}
-          <Link href={ROUTES.rolesAccess} className="text-primary font-bold">
-            Roles &amp; access
-          </Link>
-          ). Org roles are set on the organization; event duties come from
-          assignments.
-        </p>
-      </div>
+      <p className="text-muted-foreground text-[13px]">
+        See{" "}
+        <Link href={ROUTES.rolesAccess} className="text-primary font-bold">
+          Roles &amp; access
+        </Link>{" "}
+        for what each role can do.
+      </p>
 
       {user.roles.length === 0 ? (
         <p className="text-muted-foreground">This user has no platform role.</p>
@@ -309,6 +318,6 @@ function RolesCard({ user }: { user: User }) {
         confirmLabel="Remove role"
         onConfirm={revokeRole}
       />
-    </section>
+    </SectionCard>
   );
 }

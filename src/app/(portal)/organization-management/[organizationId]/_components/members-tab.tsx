@@ -153,7 +153,7 @@ export function MembersTab({ organizationId }: { organizationId: string }) {
 
   return (
     <section className="grid gap-4">
-      <p className="text-muted-foreground max-w-190 leading-[21px]">
+      <p className="text-muted-foreground leading-[21px]">
         Members are existing users. One user can belong to several
         organizations, with a different role in each. Owner manages members and
         payouts; Admin runs events; Staff can be assigned to competitions.

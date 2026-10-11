@@ -11,10 +11,13 @@ import {
   invitationFromApi,
   memberFromApi,
   organizationFromApi,
+  listItemFromApi,
   organizationListParams,
   organizationPageFromApi,
   verificationFromApi,
   type ApiOrganization,
+  type ApiOrganizationCreateBody,
+  type OrganizationListItem,
   type ApiOrganizationInvitation,
   type ApiOrganizationInvitationBody,
   type ApiOrganizationList,
@@ -70,6 +73,35 @@ export async function listOrganizations(): Promise<Organization[]> {
     ),
   );
   return rows.map(fromApi);
+}
+
+/**
+ * Seluruh organisasi dengan kontaknya, dimuat sekaligus untuk pencarian dan filter di browser
+ * (server belum punya filter). Dipanggil dari `useOrganizationDirectory`.
+ */
+export async function listOrganizationDirectory(): Promise<
+  OrganizationListItem[]
+> {
+  const rows = await collectRows((page) =>
+    apiClient.get<ListResponse<ApiOrganization>>(
+      buildUrl(ENDPOINTS.organizations.list, page),
+    ),
+  );
+  return rows.map(listItemFromApi);
+}
+
+/**
+ * `POST /organizations` (USULAN, admin saja): buat organisasi langsung tanpa pengajuan.
+ * Error 422 membawa pesan per field di `ApiError.errors`.
+ */
+export async function createOrganization(
+  body: ApiOrganizationCreateBody,
+): Promise<OrganizationDetail> {
+  const response = await apiClient.post<ApiResponse<ApiOrganization>>(
+    ENDPOINTS.organizations.list,
+    body,
+  );
+  return organizationFromApi(response.data);
 }
 
 /** Satu halaman organisasi untuk layar daftar (`GET /organizations`, paging server). */

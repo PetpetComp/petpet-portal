@@ -73,8 +73,11 @@ describe("PetsPage", () => {
     expect(screen.getByText(/of 11 pets/)).toBeInTheDocument();
   });
 
-  it("builds the species chips from the master, not from a fixed list", async () => {
+  it("builds the species chips in the Filter panel from the master, not from a fixed list", async () => {
+    const user = userEvent.setup();
     renderPage();
+    await screen.findByRole("link", { name: /Mochi/ });
+    await user.click(screen.getByRole("button", { name: /Filter/ }));
     expect(
       await screen.findByRole("button", { name: "Sugar Glider" }),
     ).toBeInTheDocument();
@@ -86,12 +89,19 @@ describe("PetsPage", () => {
     expect(screen.queryByRole("button", { name: "Cat" })).toBeNull();
   });
 
-  it("sends the species chip and the search to the server", async () => {
+  it("sends the species only after Apply, and the search to the server", async () => {
     const user = userEvent.setup();
     renderPage();
+    await screen.findByRole("link", { name: /Mochi/ });
+    await user.click(screen.getByRole("button", { name: /Filter/ }));
     await user.click(
       await screen.findByRole("button", { name: "Sugar Glider" }),
     );
+    // Draft saja: belum dikirim sebelum Apply.
+    expect(listPets).not.toHaveBeenCalledWith(
+      expect.objectContaining({ speciesId: "sp-sugar-glider" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Apply" }));
     await waitFor(() =>
       expect(listPets).toHaveBeenLastCalledWith(
         expect.objectContaining({ speciesId: "sp-sugar-glider", page: 1 }),
@@ -105,12 +115,12 @@ describe("PetsPage", () => {
     );
   });
 
-  it("hides search and chips on the real backend, which cannot filter yet", async () => {
+  it("hides search and the Filter button on the real backend, which cannot filter yet", async () => {
     mode.mock = false;
     renderPage();
     await screen.findByRole("link", { name: /Mochi/ });
     expect(screen.queryByLabelText("Search pet or owner")).toBeNull();
-    expect(screen.queryByRole("button", { name: "All" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Filter/ })).toBeNull();
     expect(screen.getByRole("link", { name: "New pet" })).toBeInTheDocument();
   });
 

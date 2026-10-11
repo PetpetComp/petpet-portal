@@ -1,6 +1,11 @@
 "use client";
 import { useState } from "react";
 import { ErrorState } from "@/components/common/error-state";
+import {
+  InfoList,
+  PageColumns,
+  SectionCard,
+} from "@/components/common/page-layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganization } from "@/domains/organizations/queries";
@@ -8,16 +13,6 @@ import { useOrganizationRights } from "@/domains/organizations/use-organization-
 import { VerifiedBadge } from "../../_components/organization-avatar";
 import { EditProfileDrawer } from "./edit-profile-drawer";
 import { VerificationCard } from "./verification-card";
-
-/** Satu baris "label: nilai" di kartu profil; nilai kosong tampil "-". */
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-muted grid gap-1 border-t py-3 sm:grid-cols-[160px_minmax(0,1fr)]">
-      <dt className="text-muted-foreground text-sm font-bold">{label}</dt>
-      <dd className="break-words whitespace-pre-line">{value || "-"}</dd>
-    </div>
-  );
-}
 
 /**
  * Tab Profile: data organisasi (nama, email, telepon, alamat, deskripsi, status), tombol Edit
@@ -40,35 +35,66 @@ export function ProfileTab({ organizationId }: { organizationId: string }) {
   const org = organization.data;
   if (!org) return <Skeleton className="h-60 rounded-2xl" />;
 
+  const contact = [org.email, org.phone].filter(Boolean);
   return (
-    <section className="grid max-w-190 gap-5">
-      <div className="border-border rounded-2xl border bg-white p-5">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-bold">Organization profile</h2>
-          {rights.canEditProfile && (
-            <Button
-              variant="secondary"
-              className="min-h-10"
-              onClick={() => setDrawer((d) => ({ open: true, key: d.key + 1 }))}
+    <>
+      <PageColumns
+        main={
+          <>
+            <SectionCard
+              title="Organization profile"
+              action={
+                rights.canEditProfile && (
+                  <Button
+                    variant="secondary"
+                    className="min-h-10"
+                    onClick={() =>
+                      setDrawer((d) => ({ open: true, key: d.key + 1 }))
+                    }
+                  >
+                    Edit profile
+                  </Button>
+                )
+              }
             >
-              Edit profile
-            </Button>
-          )}
-        </div>
-        <dl>
-          <Row label="Name" value={org.name} />
-          <Row label="Email" value={org.email} />
-          <Row label="Phone" value={org.phone} />
-          <Row label="Address" value={org.address} />
-          <Row label="Description" value={org.description} />
-          <div className="border-muted grid gap-1 border-t py-3 sm:grid-cols-[160px_minmax(0,1fr)]">
-            <dt className="text-muted-foreground text-sm font-bold">Status</dt>
-            <dd>{org.isVerified ? <VerifiedBadge /> : org.status}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <VerificationCard organizationId={organizationId} />
+              <InfoList
+                items={[
+                  { label: "Name", value: org.name },
+                  { label: "Email", value: org.email },
+                  { label: "Phone", value: org.phone },
+                  { label: "Address", value: org.address },
+                ]}
+              />
+            </SectionCard>
+            <SectionCard title="About">
+              <p className="text-sm break-words whitespace-pre-line">
+                {org.description || "-"}
+              </p>
+            </SectionCard>
+            <VerificationCard organizationId={organizationId} />
+          </>
+        }
+        aside={
+          <SectionCard title="Summary">
+            <dl className="grid gap-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground font-semibold">Status</dt>
+                <dd>{org.isVerified ? <VerifiedBadge /> : org.status}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground font-semibold">Slug</dt>
+                <dd className="font-medium break-all">{org.slug || "-"}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground font-semibold">
+                  Contact channels
+                </dt>
+                <dd className="font-medium">{contact.length} of 2</dd>
+              </div>
+            </dl>
+          </SectionCard>
+        }
+      />
 
       <EditProfileDrawer
         key={drawer.key}
@@ -76,6 +102,6 @@ export function ProfileTab({ organizationId }: { organizationId: string }) {
         open={drawer.open}
         onOpenChange={(open) => setDrawer((d) => ({ ...d, open }))}
       />
-    </section>
+    </>
   );
 }

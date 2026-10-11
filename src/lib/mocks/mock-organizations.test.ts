@@ -8,6 +8,7 @@ import {
   cancelApplicationRecord,
   changeMemberRoleRecord,
   createOrganizationInvitationRecord,
+  createOrganizationRecord,
   listApplicationRecords,
   listMemberRecords,
   listMyApplicationRecords,
@@ -504,5 +505,39 @@ describe("organization verifications", () => {
       status: "REJECTED",
       rejection_reason: "Blurry",
     });
+  });
+});
+
+describe("create organization (admin)", () => {
+  it("lets a super admin create an active organization without members", () => {
+    const before = store.organizations.length;
+    const created = createOrganizationRecord(admin, {
+      name: " Brand New Club ",
+      email: "hi@brandnew.id",
+      phone: "",
+    });
+    expect(created).toMatchObject({
+      name: "Brand New Club",
+      slug: "brand-new-club",
+      email: "hi@brandnew.id",
+      phone: null,
+      status: "ACTIVE",
+    });
+    expect(store.organizations).toHaveLength(before + 1);
+    expect(
+      listOrganizationRecords(query({ q: "brand new" })).items,
+    ).toHaveLength(1);
+    store.organizations.pop();
+  });
+  it("rejects non-admins with 403 and bad bodies with 422", () => {
+    expect(
+      apiErrorOf(() => createOrganizationRecord(owner, { name: "X" })).status,
+    ).toBe(403);
+    const error = apiErrorOf(() =>
+      createOrganizationRecord(outsider, { name: "", email: "bad" }),
+    );
+    expect(error.status).toBe(422);
+    expect(error.errors).toHaveProperty("name");
+    expect(error.errors).toHaveProperty("email");
   });
 });

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorState } from "@/components/common/error-state";
+import { PageColumns, SectionCard } from "@/components/common/page-layout";
 import { Button } from "@/components/ui/button";
 import { FormField, fieldClass } from "@/components/ui/form-field";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -109,88 +110,114 @@ function BrandForm({
         e.preventDefault();
         void submit();
       }}
-      className="border-border grid gap-4.5 rounded-2xl border bg-white p-6 sm:grid-cols-2"
     >
-      <FormField
-        label="Brand name"
-        required
-        error={errors.brandName?.message}
-        className="sm:col-span-2"
-      >
-        <input
-          {...form.register("brandName")}
-          type="text"
-          maxLength={200}
-          aria-invalid={!!errors.brandName}
-          className={fieldClass}
-        />
-      </FormField>
-      <FormField label="Phone" error={errors.phone?.message}>
-        <input
-          {...form.register("phone")}
-          type="tel"
-          maxLength={30}
-          placeholder="e.g. 081270000001"
-          aria-invalid={!!errors.phone}
-          className={fieldClass}
-        />
-      </FormField>
-      <FormField label="Email" error={errors.email?.message}>
-        <input
-          {...form.register("email")}
-          type="email"
-          maxLength={255}
-          placeholder="partnership@brand.com"
-          aria-invalid={!!errors.email}
-          className={fieldClass}
-        />
-      </FormField>
-      <FormField
-        label="Website"
-        error={errors.websiteUrl?.message}
-        className="sm:col-span-2"
-      >
-        <input
-          {...form.register("websiteUrl")}
-          type="url"
-          maxLength={2048}
-          placeholder="https://brand.com"
-          aria-invalid={!!errors.websiteUrl}
-          className={fieldClass}
-        />
-      </FormField>
-      <div className="border-lilac-300 flex items-center gap-4 rounded-[14px] border-[1.5px] border-dashed p-4 sm:col-span-2">
-        <BrandAvatar name={name || "Brand"} size="lg" />
-        <span className="flex flex-1 flex-col">
-          <b>Logo</b>
-          <span className="text-muted-foreground text-[13px]">
-            Logo upload is not available yet. Until then we show the initials.
-          </span>
-        </span>
-        <Button
-          variant="secondary"
-          disabled
-          title="Logo upload is not available yet"
-          className="min-h-11 rounded-xl"
-        >
-          Upload
-        </Button>
-      </div>
-      <div className="flex justify-between gap-3 pt-1.5 sm:col-span-2">
-        <Link
-          href={cancelHref}
-          className="text-primary-dark flex min-h-11 items-center rounded-xl px-4 font-bold"
-        >
-          Cancel
-        </Link>
-        <Button
-          type="submit"
-          disabled={isSaving}
-          className="min-h-11 rounded-xl px-5.5 font-bold"
-        >
-          {isSaving ? "Saving..." : saveLabel}
-        </Button>
-      </div>
+      <PageColumns
+        main={
+          <>
+            <SectionCard
+              title="Brand info"
+              description="Name and website shown across the portal."
+              className="sm:grid-cols-2"
+            >
+              <FormField
+                label="Brand name"
+                required
+                error={errors.brandName?.message}
+                className="sm:col-span-2"
+              >
+                <input
+                  {...form.register("brandName")}
+                  type="text"
+                  maxLength={200}
+                  aria-invalid={!!errors.brandName}
+                  className={fieldClass}
+                />
+              </FormField>
+              <FormField
+                label="Website"
+                error={errors.websiteUrl?.message}
+                className="sm:col-span-2"
+              >
+                <input
+                  {...form.register("websiteUrl")}
+                  type="url"
+                  maxLength={2048}
+                  placeholder="https://brand.com"
+                  aria-invalid={!!errors.websiteUrl}
+                  className={fieldClass}
+                />
+              </FormField>
+            </SectionCard>
+            <SectionCard
+              title="Contact"
+              description="How to reach the brand."
+              className="sm:grid-cols-2"
+            >
+              <FormField label="Phone" error={errors.phone?.message}>
+                <input
+                  {...form.register("phone")}
+                  type="tel"
+                  maxLength={30}
+                  placeholder="e.g. 081270000001"
+                  aria-invalid={!!errors.phone}
+                  className={fieldClass}
+                />
+              </FormField>
+              <FormField label="Email" error={errors.email?.message}>
+                <input
+                  {...form.register("email")}
+                  type="email"
+                  maxLength={255}
+                  placeholder="partnership@brand.com"
+                  aria-invalid={!!errors.email}
+                  className={fieldClass}
+                />
+              </FormField>
+            </SectionCard>
+          </>
+        }
+        aside={
+          <>
+            <SectionCard title="Logo">
+              <div className="border-lilac-300 flex flex-wrap items-center gap-4 rounded-[14px] border-[1.5px] border-dashed p-4">
+                <BrandAvatar name={name || "Brand"} size="lg" />
+                <span className="flex min-w-0 flex-1 basis-40 flex-col">
+                  <b>Logo</b>
+                  <span className="text-muted-foreground text-[13px]">
+                    Logo upload is not available yet. Until then we show the
+                    initials.
+                  </span>
+                </span>
+                <Button
+                  variant="secondary"
+                  disabled
+                  title="Logo upload is not available yet"
+                  className="min-h-11 rounded-xl"
+                >
+                  Upload
+                </Button>
+              </div>
+            </SectionCard>
+            <SectionCard>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Link
+                  href={cancelHref}
+                  className="text-primary-dark flex min-h-11 items-center rounded-xl px-4 font-bold"
+                >
+                  Cancel
+                </Link>
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="min-h-11 rounded-xl px-5.5 font-bold"
+                >
+                  {isSaving ? "Saving..." : saveLabel}
+                </Button>
+              </div>
+            </SectionCard>
+          </>
+        }
+      />
     </form>
   );
 }
@@ -204,7 +231,7 @@ export function BrandCreatePage() {
   const create = useCreateBrand();
 
   return (
-    <div className="grid max-w-3xl gap-5.5">
+    <div className="grid min-w-0 gap-5.5">
       <FormBreadcrumb brand={null} />
       <h1 className="font-display text-[32px] leading-10 font-bold">
         New brand
@@ -245,7 +272,7 @@ export function BrandEditPage({ brandId }: { brandId: string }) {
     );
   if (!brand.data)
     return (
-      <div className="grid max-w-3xl gap-4" aria-busy>
+      <div className="grid gap-4" aria-busy>
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
@@ -260,7 +287,7 @@ function BrandEditForm({ brand }: { brand: Brand }) {
   const back = ROUTES.brands.detail(brand.id);
 
   return (
-    <div className="grid max-w-3xl gap-5.5">
+    <div className="grid min-w-0 gap-5.5">
       <FormBreadcrumb brand={brand} />
       <h1 className="font-display text-[32px] leading-10 font-bold">
         Edit brand

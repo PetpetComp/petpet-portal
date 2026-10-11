@@ -4,6 +4,9 @@ import Link from "next/link";
 import { PawPrint } from "lucide-react";
 import { EmptyState } from "@/components/common/empty-state";
 import { ErrorState } from "@/components/common/error-state";
+import { FilterSheet } from "@/components/common/filter-sheet";
+import { ListPageHeader } from "@/components/common/list-page-header";
+import { ListToolbar } from "@/components/common/list-toolbar";
 import { buttonVariants } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,26 +25,26 @@ import { PERMISSION } from "@/lib/auth/permissions";
 import { USING_MOCK_BACKEND } from "@/lib/backend-mode";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
-import { PetCard } from "./pet-card";
-
-/** Kelas grid kartu: sebanyak mungkin kolom selebar minimal 250px (desain Pets). */
-const GRID_CLASS =
-  "grid grid-cols-[repeat(auto-fill,minmax(min(250px,100%),1fr))] gap-3.5";
+import { PetListHeader, PetRow } from "./pet-card";
 
 /**
- * Halaman list pet (`/pet-management`), sesuai desain Pets: judul + "New pet", pencarian,
- * chip spesies, grid kartu, dan pagination.
+ * Halaman list pet (`/pet-management`): judul + "New pet", pencarian + tombol Filter,
+ * daftar berkolom (kartu di HP), dan pagination.
  *
- * Chip spesies diambil dari `GET /master/species` (temuan D11: desain menulis Dog/Cat tetap,
- * padahal master hanya berisi Sugar Glider). Pencarian, chip, dan paging dikirim ke server lewat
- * `usePetList`. Di mode backend asli pencarian dan chip disembunyikan karena `GET /pets`
- * belum mendukungnya (`petFeatures`); paging tetap jalan (dipotong di sisi klien dari array penuh).
+ * Spesies dipilih di panel Filter (slide dari kanan) memakai pola DRAFT: panel mengedit
+ * `draftSpeciesId`; saat dibuka draft disalin dari filter berlaku, "Apply" menyalinnya ke
+ * `state.speciesId` (halaman kembali ke 1), "Reset" mengosongkan keduanya. Pilihan spesies diambil
+ * dari `GET /master/species` (temuan D11: desain menulis Dog/Cat tetap, padahal master hanya
+ * berisi Sugar Glider). Di mode backend asli pencarian dan filter disembunyikan karena
+ * `GET /pets` belum mendukungnya (`petFeatures`); paging tetap jalan (dipotong di klien).
  * Dipanggil dari `pet-management/page.tsx`.
  */
 export function PetsPage() {
   const { can } = useAuth();
   const features = petFeatures(USING_MOCK_BACKEND, can(PERMISSION.USER_MANAGE));
   const [state, setState] = useState<PetListState>(INITIAL_LIST_STATE);
+  // Draft spesies yang sedang diedit di panel Filter (belum berlaku sebelum "Apply").
+  const [draftSpeciesId, setDraftSpeciesId] = useState("");
 
   // Ketikan di-debounce supaya server tidak ditembak di tiap huruf.
   const search = useDebouncedValue(state.search);
@@ -52,51 +55,74 @@ export function PetsPage() {
   const loading = pets.isPending;
   const filtersActive = hasActiveFilters(state);
 
+  /** Dipanggil saat panel Filter dibuka: salin filter berlaku ke draft. */
+  function openFilters() {
+    setDraftSpeciesId(state.speciesId);
+  }
+
+  /** Dipanggil oleh "Apply": draft menjadi filter berlaku, kembali ke halaman 1. */
+  function applyFilters() {
+    setState((s) => ({ ...s, speciesId: draftSpeciesId, page: 1 }));
+  }
+
+  /** Dipanggil oleh "Reset": kosongkan draft dan filter berlaku. */
+  function resetFilters() {
+    setDraftSpeciesId("");
+    setState((s) => ({ ...s, speciesId: "", page: 1 }));
+  }
+
   return (
     <div className="grid min-w-0 grid-cols-1 gap-5">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-display text-[34px] leading-[38px] font-bold">
-          Pets
-        </h1>
-        <Link
-          href={ROUTES.pets.create}
-          className={cn(
-            buttonVariants(),
-            "min-h-11 rounded-xl px-[18px] text-[15px] font-bold",
-          )}
-        >
-          New pet
-        </Link>
-      </header>
+      <ListPageHeader
+        title="Pets"
+        description="Registered pets, their species, morph and owners."
+        action={
+          <Link
+            href={ROUTES.pets.create}
+            className={cn(
+              buttonVariants(),
+              "min-h-11 rounded-xl px-4.5 text-[15px] font-bold",
+            )}
+          >
+            New pet
+          </Link>
+        }
+      />
 
       {features.serverFilters && (
-        <div className="flex flex-wrap gap-2">
-          <input
-            type="search"
-            aria-label="Search pet or owner"
-            placeholder="Search pet or owner"
-            value={state.search}
-            onChange={(e) =>
-              setState((s) => ({ ...s, search: e.target.value, page: 1 }))
-            }
-            className="border-input focus:border-primary min-h-9 w-55 max-w-full rounded-full border bg-white px-3 text-[13px] font-medium outline-none"
-          />
-          <SpeciesChip
-            label="All"
-            selected={state.speciesId === ""}
-            onSelect={() => setState((s) => ({ ...s, speciesId: "", page: 1 }))}
-          />
-          {species.data?.map((item) => (
-            <SpeciesChip
-              key={item.id}
-              label={item.name}
-              selected={state.speciesId === item.id}
-              onSelect={() =>
-                setState((s) => ({ ...s, speciesId: item.id, page: 1 }))
-              }
-            />
-          ))}
-        </div>
+        <ListToolbar
+          searchLabel="Search pet or owner"
+          search={state.search}
+          onSearchChange={(value) =>
+            setState((s) => ({ ...s, search: value, page: 1 }))
+          }
+        >
+          <FilterSheet
+            activeCount={state.speciesId ? 1 : 0}
+            onOpen={openFilters}
+            onApply={applyFilters}
+            onReset={resetFilters}
+          >
+            <div className="grid gap-2">
+              <b className="text-sm">Species</b>
+              <div className="flex flex-wrap gap-2">
+                <SpeciesChip
+                  label="All"
+                  selected={draftSpeciesId === ""}
+                  onSelect={() => setDraftSpeciesId("")}
+                />
+                {species.data?.map((item) => (
+                  <SpeciesChip
+                    key={item.id}
+                    label={item.name}
+                    selected={draftSpeciesId === item.id}
+                    onSelect={() => setDraftSpeciesId(item.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          </FilterSheet>
+        </ListToolbar>
       )}
 
       {pets.isError ? (
@@ -106,9 +132,13 @@ export function PetsPage() {
           onRetry={() => pets.refetch()}
         />
       ) : loading ? (
-        <div className={GRID_CLASS} aria-busy aria-label="Loading pets">
+        <div
+          className="border-border grid gap-px overflow-hidden rounded-2xl border bg-white"
+          aria-busy
+          aria-label="Loading pets"
+        >
           {Array.from({ length: state.perPage }, (_, i) => (
-            <Skeleton key={i} className="h-[110px] rounded-2xl" />
+            <Skeleton key={i} className="h-19 rounded-none" />
           ))}
         </div>
       ) : items.length === 0 ? (
@@ -127,11 +157,15 @@ export function PetsPage() {
         />
       ) : (
         <div
-          className={cn(GRID_CLASS, pets.isPlaceholderData && "opacity-60")}
+          className={cn(
+            "border-border divide-border divide-y overflow-hidden rounded-2xl border bg-white",
+            pets.isPlaceholderData && "opacity-60",
+          )}
           aria-busy={pets.isPlaceholderData}
         >
+          <PetListHeader />
           {items.map((pet) => (
-            <PetCard key={pet.id} pet={pet} />
+            <PetRow key={pet.id} pet={pet} />
           ))}
         </div>
       )}
@@ -155,7 +189,7 @@ export function PetsPage() {
   );
 }
 
-/** Satu chip filter spesies. Yang terpilih gelap (desain), yang lain putih bergaris. */
+/** Satu chip pilihan spesies di panel Filter. Yang terpilih gelap, yang lain putih bergaris. */
 function SpeciesChip({
   label,
   selected,

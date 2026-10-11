@@ -6,6 +6,11 @@ import { ChevronRight, Pencil, Plus, Trash2, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { ErrorState } from "@/components/common/error-state";
+import {
+  InfoList,
+  PageColumns,
+  SectionCard,
+} from "@/components/common/page-layout";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,7 +35,8 @@ const errorText = (cause: unknown, fallback: string) =>
   cause instanceof Error && cause.message ? cause.message : fallback;
 
 /**
- * Halaman detail brand (`/sponsorship-brand/[brandId]`): header, kontak, dan daftar PIC.
+ * Halaman detail brand (`/sponsorship-brand/[brandId]`): kolom utama (info brand, PIC) dan
+ * kolom samping (ringkasan status, aksi).
  * Memuat brand lewat `useBrand`; PIC datang bersama response brand (backend belum punya
  * endpoint PIC sendiri). Dipanggil dari `[brandId]/page.tsx`.
  */
@@ -47,7 +53,7 @@ export function BrandDetailPage({ brandId }: { brandId: string }) {
     );
   if (!brand.data)
     return (
-      <div className="grid max-w-4xl gap-4" aria-busy>
+      <div className="grid gap-4" aria-busy>
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-20 w-full rounded-2xl" />
         <Skeleton className="h-64 w-full rounded-2xl" />
@@ -76,7 +82,7 @@ function BrandDetail({ brand }: { brand: Brand }) {
   }
 
   return (
-    <div className="grid max-w-4xl gap-5.5">
+    <div className="grid min-w-0 gap-5">
       <nav
         aria-label="Breadcrumb"
         className="text-muted-foreground flex flex-wrap items-center gap-2"
@@ -91,49 +97,16 @@ function BrandDetail({ brand }: { brand: Brand }) {
         <span className="text-foreground font-semibold">{brand.name}</span>
       </nav>
 
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <BrandAvatar name={brand.name} size="lg" />
-          <div className="grid min-w-0 gap-1">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="font-display text-[32px] leading-10 font-bold break-words">
-                {brand.name}
-              </h1>
-              {!active && (
-                <StatusBadge
-                  status={brand.status}
-                  label={brandStatusLabel(brand.status)}
-                />
-              )}
-            </div>
-            {brand.campaign && (
-              <span className="text-muted-foreground">
-                &ldquo;{brand.campaign}&rdquo;
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2.5">
-          <Link
-            href={ROUTES.brands.edit(brand.id)}
-            className={cn(
-              buttonVariants({ variant: "secondary" }),
-              "min-h-11 rounded-xl px-4.5 font-bold",
-            )}
-          >
-            <Pencil size={16} aria-hidden />
-            Edit
-          </Link>
-          {active && (
-            <Button
-              variant="secondary"
-              className="text-danger-ink min-h-11 rounded-xl px-4.5 font-bold"
-              disabled={remove.isPending}
-              onClick={() => setConfirmDelete(true)}
-            >
-              <Trash2 size={16} aria-hidden />
-              Delete
-            </Button>
+      <header className="flex min-w-0 items-center gap-4">
+        <BrandAvatar name={brand.name} size="lg" />
+        <div className="grid min-w-0 gap-1">
+          <h1 className="font-display text-[32px] leading-10 font-bold break-words">
+            {brand.name}
+          </h1>
+          {brand.campaign && (
+            <span className="text-muted-foreground">
+              &ldquo;{brand.campaign}&rdquo;
+            </span>
           )}
         </div>
       </header>
@@ -148,10 +121,64 @@ function BrandDetail({ brand }: { brand: Brand }) {
         </p>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[2fr_3fr]">
-        <ContactCard brand={brand} />
-        <PicCard brand={brand} />
-      </div>
+      <PageColumns
+        main={
+          <>
+            <InfoCard brand={brand} />
+            <PicCard brand={brand} />
+          </>
+        }
+        aside={
+          <>
+            <SectionCard title="Summary">
+              <dl className="grid gap-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground font-semibold">
+                    Status
+                  </dt>
+                  <dd>
+                    <StatusBadge
+                      status={brand.status}
+                      label={brandStatusLabel(brand.status)}
+                    />
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground font-semibold">
+                    People in charge
+                  </dt>
+                  <dd className="font-bold">{brand.pics.length}</dd>
+                </div>
+              </dl>
+            </SectionCard>
+            <SectionCard title="Actions">
+              <div className="grid gap-2.5">
+                <Link
+                  href={ROUTES.brands.edit(brand.id)}
+                  className={cn(
+                    buttonVariants({ variant: "secondary" }),
+                    "min-h-11 rounded-xl px-4.5 font-bold",
+                  )}
+                >
+                  <Pencil size={16} aria-hidden />
+                  Edit
+                </Link>
+                {active && (
+                  <Button
+                    variant="secondary"
+                    className="text-danger-ink min-h-11 rounded-xl px-4.5 font-bold"
+                    disabled={remove.isPending}
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    <Trash2 size={16} aria-hidden />
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </SectionCard>
+          </>
+        }
+      />
 
       <ConfirmDialog
         open={confirmDelete}
@@ -165,8 +192,8 @@ function BrandDetail({ brand }: { brand: Brand }) {
   );
 }
 
-/** Kartu Contact: telepon, email, dan website brand. Kolom kosong tampil "-". */
-function ContactCard({ brand }: { brand: Brand }) {
+/** Kartu Brand info: telepon, email, website, handle, dan kampanye. Kolom kosong tampil "-". */
+function InfoCard({ brand }: { brand: Brand }) {
   const rows: { label: string; value: React.ReactNode }[] = [
     { label: "Phone", value: brand.phone || "-" },
     {
@@ -196,19 +223,18 @@ function ContactCard({ brand }: { brand: Brand }) {
     },
   ];
   return (
-    <section className="border-border grid content-start gap-4 rounded-2xl border bg-white p-5">
-      <h2 className="font-display text-xl font-semibold">Contact</h2>
-      <dl className="grid gap-3">
-        {rows.map((row) => (
-          <div key={row.label} className="grid gap-0.5">
-            <dt className="text-muted-foreground text-[13px] font-semibold">
-              {row.label}
-            </dt>
-            <dd className="font-medium">{row.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
+    <SectionCard title="Brand info">
+      <InfoList
+        items={[
+          ...rows,
+          {
+            label: "Instagram",
+            value: brand.handle ? `@${brand.handle}` : null,
+          },
+          { label: "Campaign", value: brand.campaign },
+        ]}
+      />
+    </SectionCard>
   );
 }
 
@@ -231,14 +257,10 @@ function PicCard({ brand }: { brand: Brand }) {
   }
 
   return (
-    <section className="border-border grid content-start gap-4 rounded-2xl border bg-white p-5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-semibold">
-          PICs{" "}
-          <span className="text-muted-foreground font-sans text-base font-semibold">
-            {brand.pics.length}
-          </span>
-        </h2>
+    <SectionCard
+      title={`PICs (${brand.pics.length})`}
+      description="People we work with at this brand."
+      action={
         <Button
           className="min-h-10 rounded-xl font-bold"
           onClick={() => setDrawerOpen(true)}
@@ -246,13 +268,14 @@ function PicCard({ brand }: { brand: Brand }) {
           <Plus size={16} aria-hidden />
           Add PIC
         </Button>
-      </div>
+      }
+    >
       {brand.pics.length === 0 ? (
         <p className="text-muted-foreground">
           No PIC yet. Add the person we work with at this brand.
         </p>
       ) : (
-        <ul aria-label="PICs" className="grid gap-2.5">
+        <ul aria-label="PICs" className="grid gap-2.5 md:grid-cols-2">
           {brand.pics.map((pic) => (
             <li
               key={pic.userId}
@@ -302,6 +325,6 @@ function PicCard({ brand }: { brand: Brand }) {
         confirmLabel="Remove"
         onConfirm={() => toRemove && removePic(toRemove)}
       />
-    </section>
+    </SectionCard>
   );
 }

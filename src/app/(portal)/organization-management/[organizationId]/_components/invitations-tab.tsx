@@ -64,7 +64,7 @@ export function InvitationsTab({ organizationId }: { organizationId: string }) {
   const items = invitations.data ?? [];
   return (
     <section className="grid gap-4">
-      <p className="text-muted-foreground max-w-190 leading-[21px]">
+      <p className="text-muted-foreground leading-[21px]">
         People you invited who have not accepted yet. An invitation is valid for
         7 days; revoke it to stop it from being accepted.
       </p>

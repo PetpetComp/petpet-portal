@@ -11,6 +11,7 @@ import {
   changeMemberRole,
   countOrganizations,
   countPendingApplications,
+  createOrganization,
   getMyApplications,
   getOrganization,
   getOrganizationInvitations,
@@ -19,6 +20,7 @@ import {
   getPendingVerifications,
   getWaitingApplications,
   inviteOrganizationMember,
+  listOrganizationDirectory,
   listOrganizationPage,
   listOrganizations,
   rejectApplication,
@@ -30,6 +32,7 @@ import {
   updateOrganization,
 } from "./api";
 import type {
+  ApiOrganizationCreateBody,
   ApiOrganizationInvitationBody,
   ApiOrganizationUpdateBody,
   ApiOrganizerApplicationBody,
@@ -39,6 +42,7 @@ import type {
 export const organizationKeys = {
   all: ["organizations"] as const,
   list: ["organizations", "list"] as const,
+  directory: ["organizations", "list", "directory"] as const,
   page: (query: OrganizationListQuery) =>
     ["organizations", "list", "page", query] as const,
   detail: (id: string) => ["organizations", "detail", id] as const,
@@ -88,6 +92,15 @@ export function useOrganizationPage(query: OrganizationListQuery) {
     queryKey: organizationKeys.page(query),
     queryFn: () => listOrganizationPage(query),
     placeholderData: keepPreviousData,
+  });
+}
+
+/** Semua organisasi dengan kontak, untuk filter dan pencarian di browser. `enabled` false = tidak dimuat. */
+export function useOrganizationDirectory(enabled: boolean) {
+  return useQuery({
+    queryKey: organizationKeys.directory,
+    queryFn: listOrganizationDirectory,
+    enabled,
   });
 }
 
@@ -171,6 +184,15 @@ export function useUpdateOrganization(id: string) {
   return useMutation({
     mutationFn: (body: ApiOrganizationUpdateBody) =>
       updateOrganization(id, body),
+    onSuccess: refresh,
+  });
+}
+
+/** Admin membuat organisasi langsung (USULAN). Daftar dimuat ulang; hasilnya dibaca pemanggil. */
+export function useCreateOrganization() {
+  const refresh = useRefreshOrganizations();
+  return useMutation({
+    mutationFn: (body: ApiOrganizationCreateBody) => createOrganization(body),
     onSuccess: refresh,
   });
 }

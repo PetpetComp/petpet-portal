@@ -54,6 +54,7 @@ import {
   cancelApplicationRecord,
   changeMemberRoleRecord,
   createOrganizationInvitationRecord,
+  createOrganizationRecord,
   declineInvitationRecord,
   getOrganizationRecord,
   listApplicationRecords,
@@ -357,6 +358,12 @@ const routes: Route[] = [
     method: "GET",
     pattern: "/organizations",
     handler: (_params, _body, query) => listOrganizationRecords(query),
+  },
+  {
+    method: "POST",
+    pattern: "/organizations",
+    handler: (_params, body) =>
+      createOrganizationRecord(requireSession(), body),
   },
   {
     method: "GET",

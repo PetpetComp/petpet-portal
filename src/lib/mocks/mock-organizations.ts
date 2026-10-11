@@ -393,6 +393,40 @@ export function getOrganizationRecord(uuid: string): ApiOrganization {
 }
 
 /**
+ * `POST /organizations` (USULAN, belum ada di backend asli, lihat petpet-docs/09 bagian T):
+ * pembuatan langsung oleh pemegang `organization.verify` tanpa lewat pengajuan. Validasi body
+ * lebih dulu (422), lalu izin (403). Organisasi baru berstatus ACTIVE (seperti hasil approve)
+ * dan belum punya anggota: OWNER ditambahkan admin lewat undangan di halaman detail.
+ * Mengembalikan bentuk yang sama dengan `GET /organizations/{uuid}`.
+ */
+export function createOrganizationRecord(
+  user: MockUser,
+  body: Record<string, unknown> | undefined,
+): ApiOrganization {
+  validateBody(body, [
+    { field: "name", required: true, max: 200 },
+    { field: "description" },
+    { field: "email", email: true, max: 255 },
+    { field: "phone", max: 30 },
+    { field: "address" },
+  ]);
+  requireVerify(user);
+  const name = String(body?.name).trim();
+  const org: MockOrganization = {
+    uuid: nextUuid(),
+    name,
+    slug: uniqueSlug(name),
+    description: textOrNull(body?.description) ?? undefined,
+    email: textOrNull(body?.email) ?? undefined,
+    phone: textOrNull(body?.phone) ?? undefined,
+    address: textOrNull(body?.address) ?? undefined,
+    pics: [],
+  };
+  store.organizations.push(org);
+  return organizationRecord(org);
+}
+
+/**
  * `PATCH /organizations/{uuid}`: OWNER atau ADMIN (super admin lolos). Hanya field yang
  * dikirim yang diubah; slug tidak berubah walau nama berganti (seperti backend).
  */

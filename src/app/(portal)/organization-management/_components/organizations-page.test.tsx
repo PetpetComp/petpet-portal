@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -47,6 +47,10 @@ vi.mock("@/domains/organizations/api", () => {
       meta: { page: 1, perPage: 10, total: 2, lastPage: 1 },
     }),
     listOrganizations: vi.fn().mockResolvedValue([]),
+    listOrganizationDirectory: vi.fn().mockResolvedValue([
+      { id: "o1", name: "East Java Pet Sport" },
+      { id: "o2", name: "KPSGI Jakarta" },
+    ]),
     getWaitingApplications: vi.fn().mockResolvedValue([application({})]),
     getPendingVerifications: vi.fn().mockResolvedValue([]),
     getMyApplications: vi.fn().mockResolvedValue([]),
@@ -82,6 +86,30 @@ describe("OrganizationsPage", () => {
     expect(link).toHaveAttribute("href", "/organization-management/o1");
     expect(
       screen.getByText(/Showing 1.2 of 2 organizations/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows New organization to reviewers only", async () => {
+    renderPage();
+    const link = await screen.findByRole("link", { name: "New organization" });
+    expect(link).toHaveAttribute("href", "/organization-management/create");
+    cleanup();
+    session = { roles: ["USER"], permissions: [] };
+    renderPage();
+    await screen.findByRole("button", { name: "Apply as organizer" });
+    expect(
+      screen.queryByRole("link", { name: "New organization" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("narrows the list with the filter panel", async () => {
+    renderPage();
+    await screen.findByRole("link", { name: /East Java Pet Sport/ });
+    await userEvent.click(screen.getByRole("button", { name: /Filter/ }));
+    await userEvent.click(screen.getByLabelText("Has an email"));
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(
+      await screen.findByText("No organizations match these filters."),
     ).toBeInTheDocument();
   });
 

@@ -72,9 +72,30 @@ export type ApiOrganizationList = {
   meta: ApiPageMeta;
 };
 
+/**
+ * Baris di layar daftar organisasi: nama plus kontak singkat untuk kartu yang lebih padat.
+ * Field kontak opsional supaya data sederhana `{ id, name }` tetap sah.
+ */
+export type OrganizationListItem = Organization & {
+  email?: string;
+  phone?: string;
+  address?: string;
+};
+
+/** Baris API -> baris daftar (kontak kosong menjadi string kosong). */
+export function listItemFromApi(row: ApiOrganization): OrganizationListItem {
+  return {
+    id: row.uuid,
+    name: row.name,
+    email: row.email ?? "",
+    phone: row.phone ?? "",
+    address: row.address ?? "",
+  };
+}
+
 /** Satu halaman organisasi untuk layar list. */
 export type OrganizationPage = {
-  items: Organization[];
+  items: OrganizationListItem[];
   meta: { page: number; perPage: number; total: number; lastPage: number };
 };
 
@@ -99,7 +120,7 @@ export function organizationPageFromApi(
   data: ApiOrganizationList,
 ): OrganizationPage {
   return {
-    items: data.items.map(fromApi),
+    items: data.items.map(listItemFromApi),
     meta: {
       page: data.meta.current_page,
       perPage: data.meta.per_page,
@@ -117,6 +138,12 @@ export type ApiOrganizationUpdateBody = {
   phone: string | null;
   address: string | null;
 };
+
+/**
+ * Body `POST /organizations` (USULAN, belum ada di backend: petpet-docs/09 bagian T). Bentuknya
+ * sama dengan body `PATCH`; hanya pemegang `organization.verify` yang boleh memanggil.
+ */
+export type ApiOrganizationCreateBody = ApiOrganizationUpdateBody;
 
 // ---------------------------------------------------------------------------
 // Anggota

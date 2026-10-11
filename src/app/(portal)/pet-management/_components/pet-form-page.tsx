@@ -8,6 +8,7 @@ import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Forbidden } from "@/components/common/can";
 import { ErrorState } from "@/components/common/error-state";
+import { PageColumns, SectionCard } from "@/components/common/page-layout";
 import { Button } from "@/components/ui/button";
 import { FormField, fieldClass } from "@/components/ui/form-field";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +36,7 @@ import { ApiError } from "@/lib/api-client";
 import { PERMISSION } from "@/lib/auth/permissions";
 import { USING_MOCK_BACKEND } from "@/lib/backend-mode";
 import { ROUTES } from "@/lib/constants/routes";
+import { PetAvatar } from "./pet-avatar";
 import { PetOwnerPicker } from "./pet-owner-picker";
 
 /** Halaman New pet (`/pet-management/create`). Dipanggil dari `create/page.tsx`. */
@@ -60,7 +62,7 @@ export function PetEditPage({ petId }: { petId: string }) {
     );
   if (!pet)
     return (
-      <div className="grid max-w-3xl gap-4" aria-busy aria-label="Loading pet">
+      <div className="grid gap-4" aria-busy aria-label="Loading pet">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
@@ -78,7 +80,7 @@ export function PetEditPage({ petId }: { petId: string }) {
 /**
  * Kerangka halaman form: breadcrumb, judul, lalu form. Layar create dan edit memakai form yang
  * sama. Form ini tidak ada di desain Pets: diputuskan di kode, memakai pola form Event
- * (halaman penuh, kartu putih, dua kolom) karena URL `/create` dan `/edit` dipertahankan.
+ * (halaman penuh selebar konten, kartu seksi di kolom utama, ringkasan dan aksi di samping) karena URL `/create` dan `/edit` dipertahankan.
  */
 function PetFormShell({
   title,
@@ -99,7 +101,7 @@ function PetFormShell({
       : null;
   const masterReady = species.isSuccess && morphs.isSuccess;
   return (
-    <div className="grid max-w-3xl gap-5.5">
+    <div className="grid min-w-0 gap-5.5">
       <nav
         aria-label="Breadcrumb"
         className="text-muted-foreground flex flex-wrap items-center gap-2"
@@ -213,6 +215,10 @@ function PetFormCard({ pet, back }: { pet?: Pet; back: string }) {
       });
   });
 
+  const watchedName = useWatch({ control: form.control, name: "name" });
+  const speciesName =
+    species.data?.find((item) => item.id === speciesId)?.name ?? "";
+
   return (
     <form
       noValidate
@@ -220,158 +226,202 @@ function PetFormCard({ pet, back }: { pet?: Pet; back: string }) {
         e.preventDefault();
         void save();
       }}
-      className="border-border grid gap-4.5 rounded-2xl border bg-white p-6 sm:grid-cols-2"
     >
-      <div className="grid gap-2 sm:col-span-2">
-        <b className="text-sm">Owner</b>
-        {editing ? (
-          <p className="font-semibold">{pet.ownerName || "Your account"}</p>
-        ) : features.ownerPicker ? (
-          <PetOwnerPicker owner={owner} onChange={chooseOwner} />
-        ) : (
-          <p className="text-muted-foreground">
-            The pet is registered under your account.
-          </p>
-        )}
-        {errors.ownerId?.message && (
-          <span
-            role="alert"
-            className="text-danger-ink text-[13px] font-semibold"
-          >
-            {errors.ownerId.message}
-          </span>
-        )}
-      </div>
+      <PageColumns
+        main={
+          <>
+            <SectionCard title="Owner">
+              <div className="grid gap-2">
+                {editing ? (
+                  <p className="font-semibold">
+                    {pet.ownerName || "Your account"}
+                  </p>
+                ) : features.ownerPicker ? (
+                  <PetOwnerPicker owner={owner} onChange={chooseOwner} />
+                ) : (
+                  <p className="text-muted-foreground">
+                    The pet is registered under your account.
+                  </p>
+                )}
+                {errors.ownerId?.message && (
+                  <span
+                    role="alert"
+                    className="text-danger-ink text-[13px] font-semibold"
+                  >
+                    {errors.ownerId.message}
+                  </span>
+                )}
+              </div>
+            </SectionCard>
 
-      <FormField label="Pet name" required error={errors.name?.message}>
-        <input
-          {...form.register("name")}
-          type="text"
-          maxLength={150}
-          aria-invalid={!!errors.name}
-          className={fieldClass}
-        />
-      </FormField>
-      <FormField
-        label="Registration number"
-        error={errors.registrationNumber?.message}
-      >
-        <input
-          {...form.register("registrationNumber")}
-          type="text"
-          maxLength={100}
-          placeholder="Optional"
-          aria-invalid={!!errors.registrationNumber}
-          className={fieldClass}
-        />
-      </FormField>
+            <SectionCard title="Identity">
+              <div className="grid gap-4.5 sm:grid-cols-2">
+                <FormField
+                  label="Pet name"
+                  required
+                  error={errors.name?.message}
+                >
+                  <input
+                    {...form.register("name")}
+                    type="text"
+                    maxLength={150}
+                    aria-invalid={!!errors.name}
+                    className={fieldClass}
+                  />
+                </FormField>
+                <FormField
+                  label="Registration number"
+                  error={errors.registrationNumber?.message}
+                >
+                  <input
+                    {...form.register("registrationNumber")}
+                    type="text"
+                    maxLength={100}
+                    placeholder="Optional"
+                    aria-invalid={!!errors.registrationNumber}
+                    className={fieldClass}
+                  />
+                </FormField>
+                <FormField label="Gender" error={errors.gender?.message}>
+                  <select
+                    {...form.register("gender")}
+                    aria-invalid={!!errors.gender}
+                    className={fieldClass}
+                  >
+                    <option value="">Not set</option>
+                    {PET_GENDERS.map((gender) => (
+                      <option key={gender} value={gender}>
+                        {gender}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField
+                  label="Date of birth"
+                  error={errors.birthDate?.message}
+                >
+                  <input
+                    {...form.register("birthDate")}
+                    type="date"
+                    aria-invalid={!!errors.birthDate}
+                    className={fieldClass}
+                  />
+                </FormField>
+              </div>
+            </SectionCard>
 
-      <FormField
-        label="Species"
-        required
-        error={errors.speciesId?.message}
-        hint={
-          classificationLocked
-            ? "Species and morph cannot be changed after the pet is created."
-            : undefined
+            <SectionCard title="Species and traits">
+              <div className="grid gap-4.5 sm:grid-cols-2">
+                <FormField
+                  label="Species"
+                  required
+                  error={errors.speciesId?.message}
+                  hint={
+                    classificationLocked
+                      ? "Species and morph cannot be changed after the pet is created."
+                      : undefined
+                  }
+                >
+                  <select
+                    {...form.register("speciesId", {
+                      // Morph milik spesies lama tidak berlaku untuk spesies baru.
+                      onChange: () => form.setValue("morphId", ""),
+                    })}
+                    disabled={classificationLocked}
+                    aria-invalid={!!errors.speciesId}
+                    className={fieldClass}
+                  >
+                    <option value="">Choose a species</option>
+                    {species.data?.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Morph" error={errors.morphId?.message}>
+                  <select
+                    {...form.register("morphId")}
+                    disabled={classificationLocked || !speciesId}
+                    aria-invalid={!!errors.morphId}
+                    className={fieldClass}
+                  >
+                    <option value="">
+                      {speciesId ? "No morph" : "Choose a species first"}
+                    </option>
+                    {morphOptions.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Height (cm)" error={errors.heightCm?.message}>
+                  <input
+                    {...form.register("heightCm")}
+                    type="number"
+                    min={0}
+                    step="any"
+                    inputMode="decimal"
+                    aria-invalid={!!errors.heightCm}
+                    className={fieldClass}
+                  />
+                </FormField>
+                <FormField
+                  label="Weight (g)"
+                  error={errors.weightGrams?.message}
+                >
+                  <input
+                    {...form.register("weightGrams")}
+                    type="number"
+                    min={0}
+                    step="any"
+                    inputMode="decimal"
+                    aria-invalid={!!errors.weightGrams}
+                    className={fieldClass}
+                  />
+                </FormField>
+              </div>
+            </SectionCard>
+          </>
         }
-      >
-        <select
-          {...form.register("speciesId", {
-            // Morph milik spesies lama tidak berlaku untuk spesies baru.
-            onChange: () => form.setValue("morphId", ""),
-          })}
-          disabled={classificationLocked}
-          aria-invalid={!!errors.speciesId}
-          className={fieldClass}
-        >
-          <option value="">Choose a species</option>
-          {species.data?.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
-      </FormField>
-      <FormField label="Morph" error={errors.morphId?.message}>
-        <select
-          {...form.register("morphId")}
-          disabled={classificationLocked || !speciesId}
-          aria-invalid={!!errors.morphId}
-          className={fieldClass}
-        >
-          <option value="">
-            {speciesId ? "No morph" : "Choose a species first"}
-          </option>
-          {morphOptions.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
-      </FormField>
-
-      <FormField label="Gender" error={errors.gender?.message}>
-        <select
-          {...form.register("gender")}
-          aria-invalid={!!errors.gender}
-          className={fieldClass}
-        >
-          <option value="">Not set</option>
-          {PET_GENDERS.map((gender) => (
-            <option key={gender} value={gender}>
-              {gender}
-            </option>
-          ))}
-        </select>
-      </FormField>
-      <FormField label="Date of birth" error={errors.birthDate?.message}>
-        <input
-          {...form.register("birthDate")}
-          type="date"
-          aria-invalid={!!errors.birthDate}
-          className={fieldClass}
-        />
-      </FormField>
-
-      <FormField label="Height (cm)" error={errors.heightCm?.message}>
-        <input
-          {...form.register("heightCm")}
-          type="number"
-          min={0}
-          step="any"
-          inputMode="decimal"
-          aria-invalid={!!errors.heightCm}
-          className={fieldClass}
-        />
-      </FormField>
-      <FormField label="Weight (g)" error={errors.weightGrams?.message}>
-        <input
-          {...form.register("weightGrams")}
-          type="number"
-          min={0}
-          step="any"
-          inputMode="decimal"
-          aria-invalid={!!errors.weightGrams}
-          className={fieldClass}
-        />
-      </FormField>
-
-      <div className="flex justify-between gap-3 pt-1.5 sm:col-span-2">
-        <Link
-          href={back}
-          className="text-primary-dark flex min-h-11 items-center rounded-xl px-4 font-bold"
-        >
-          Cancel
-        </Link>
-        <Button
-          type="submit"
-          disabled={saving}
-          className="min-h-11 rounded-xl px-5.5 font-bold"
-        >
-          {saving ? "Saving..." : editing ? "Save changes" : "Create pet"}
-        </Button>
-      </div>
+        aside={
+          <>
+            <SectionCard title="Summary">
+              <div className="flex min-w-0 items-center gap-3">
+                <PetAvatar
+                  name={watchedName ?? ""}
+                  speciesName={speciesName}
+                  size="lg"
+                />
+                <div className="min-w-0">
+                  <p className="truncate font-bold">
+                    {watchedName?.trim() || "Unnamed pet"}
+                  </p>
+                  <p className="text-muted-foreground truncate text-sm">
+                    {speciesName || "No species chosen"}
+                  </p>
+                </div>
+              </div>
+            </SectionCard>
+            <SectionCard>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="min-h-11 w-full rounded-xl px-5.5 font-bold"
+              >
+                {saving ? "Saving..." : editing ? "Save changes" : "Create pet"}
+              </Button>
+              <Link
+                href={back}
+                className="text-primary-dark flex min-h-11 items-center justify-center rounded-xl px-4 font-bold"
+              >
+                Cancel
+              </Link>
+            </SectionCard>
+          </>
+        }
+      />
     </form>
   );
 }

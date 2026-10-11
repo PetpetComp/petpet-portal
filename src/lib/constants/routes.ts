@@ -35,6 +35,7 @@ export const ROUTES = {
   },
   organizationManagement: "/organization-management",
   organizations: {
+    create: "/organization-management/create",
     detail: (id: string) =>
       `/organization-management/${encodeURIComponent(id)}`,
     events: (id: string) =>

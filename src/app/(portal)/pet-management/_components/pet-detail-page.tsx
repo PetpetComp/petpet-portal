@@ -1,11 +1,16 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { ErrorState } from "@/components/common/error-state";
+import {
+  InfoList,
+  PageColumns,
+  SectionCard,
+} from "@/components/common/page-layout";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatHeight, formatWeight, petAgeLabel } from "@/domains/pets/format";
@@ -35,10 +40,13 @@ export function PetDetailPage({ petId }: { petId: string }) {
     );
   if (!pet)
     return (
-      <div className="grid max-w-3xl gap-4" aria-busy aria-label="Loading pet">
+      <div className="grid gap-4" aria-busy aria-label="Loading pet">
         <Skeleton className="h-5 w-40" />
         <Skeleton className="h-20 w-full rounded-2xl" />
-        <Skeleton className="h-64 w-full rounded-2xl" />
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <Skeleton className="h-64 w-full rounded-2xl" />
+          <Skeleton className="h-40 w-full rounded-2xl" />
+        </div>
       </div>
     );
   return <PetDetail pet={pet} />;
@@ -67,8 +75,11 @@ function PetDetail({ pet }: { pet: Pet }) {
 
   const age = petAgeLabel(pet.birthDate);
 
+  const welfare =
+    pet.welfareStatus.charAt(0) + pet.welfareStatus.slice(1).toLowerCase();
+
   return (
-    <div className="grid max-w-3xl gap-5.5">
+    <div className="grid min-w-0 gap-5.5">
       <nav
         aria-label="Breadcrumb"
         className="text-muted-foreground flex flex-wrap items-center gap-2"
@@ -120,31 +131,62 @@ function PetDetail({ pet }: { pet: Pet }) {
         </div>
       </header>
 
-      <dl className="border-border grid gap-x-6 gap-y-4 rounded-2xl border bg-white p-6 sm:grid-cols-2">
-        <Detail label="Owner">{pet.ownerName || "Your account"}</Detail>
-        <Detail label="Registration number">
-          {pet.registrationNumber || "-"}
-        </Detail>
-        <Detail label="Gender">{pet.gender || "-"}</Detail>
-        <Detail label="Date of birth">
-          {pet.birthDate
-            ? `${formatDate(pet.birthDate)}${age ? ` (${age})` : ""}`
-            : "-"}
-        </Detail>
-        <Detail label="Height">{formatHeight(pet.heightCm) || "-"}</Detail>
-        <Detail label="Weight">{formatWeight(pet.weightGrams) || "-"}</Detail>
-        <Detail label="Welfare check">
-          {pet.welfareStatus.charAt(0) +
-            pet.welfareStatus.slice(1).toLowerCase()}
-        </Detail>
-      </dl>
-
-      {/* Hak ubah ada tapi hak hapus tidak: satu-satunya sebab di kontrak adalah pet sudah punya entry. */}
-      {actions.update && !actions.delete && (
-        <p className="text-muted-foreground">
-          This pet cannot be deleted because it has competition entries.
-        </p>
-      )}
+      <PageColumns
+        main={
+          <>
+            <SectionCard title="Identity">
+              <InfoList
+                items={[
+                  {
+                    label: "Registration number",
+                    value: pet.registrationNumber,
+                  },
+                  { label: "Gender", value: pet.gender },
+                  {
+                    label: "Date of birth",
+                    value: pet.birthDate
+                      ? `${formatDate(pet.birthDate)}${age ? ` (${age})` : ""}`
+                      : "",
+                  },
+                ]}
+              />
+            </SectionCard>
+            <SectionCard title="Species and traits">
+              <InfoList
+                items={[
+                  { label: "Species", value: pet.speciesName },
+                  { label: "Morph", value: pet.morphName },
+                  { label: "Height", value: formatHeight(pet.heightCm) },
+                  { label: "Weight", value: formatWeight(pet.weightGrams) },
+                ]}
+              />
+            </SectionCard>
+            <SectionCard title="Owner">
+              <InfoList
+                items={[
+                  { label: "Owner", value: pet.ownerName || "Your account" },
+                ]}
+              />
+            </SectionCard>
+          </>
+        }
+        aside={
+          <SectionCard title="Status">
+            <InfoList
+              items={[
+                { label: "Welfare check", value: welfare },
+                { label: "Age", value: age },
+              ]}
+            />
+            {/* Hak ubah ada tapi hak hapus tidak: satu-satunya sebab di kontrak adalah pet sudah punya entry. */}
+            {actions.update && !actions.delete && (
+              <p className="text-muted-foreground text-sm">
+                This pet cannot be deleted because it has competition entries.
+              </p>
+            )}
+          </SectionCard>
+        }
+      />
 
       <ConfirmDialog
         open={confirmDelete}
@@ -154,18 +196,6 @@ function PetDetail({ pet }: { pet: Pet }) {
         confirmLabel="Delete pet"
         onConfirm={deletePet}
       />
-    </div>
-  );
-}
-
-/** Satu pasang label dan nilai di kartu informasi. */
-function Detail({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-1">
-      <dt className="text-muted-foreground text-[13px] font-semibold">
-        {label}
-      </dt>
-      <dd className="font-semibold break-words">{children}</dd>
     </div>
   );
 }

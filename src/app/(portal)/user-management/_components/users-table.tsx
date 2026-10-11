@@ -1,20 +1,10 @@
 "use client";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ChevronRight, UserX, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, UserX } from "lucide-react";
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
-import { fieldClass } from "@/components/ui/form-field";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { UserColumnFilters } from "@/domains/users/list-state";
-import {
-  USER_STATUSES,
-  USER_STATUS_LABEL,
-  type Role,
-  type SortDirection,
-  type User,
-  type UserSort,
-  type UserStatus,
-} from "@/domains/users/types";
+import type { SortDirection, User, UserSort } from "@/domains/users/types";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "./user-avatar";
@@ -24,9 +14,6 @@ import { UserStatusBadge } from "./user-status-badge";
 const GRID =
   "grid grid-cols-[minmax(0,1.6fr)_minmax(0,1.6fr)_150px_minmax(0,1fr)_minmax(0,1.2fr)_110px_32px] items-center gap-3 px-5";
 
-/** Kontrol filter lebih kecil dari field form biasa (36px, sesuai desain). */
-const filterClass = `${fieldClass} !min-h-9 !rounded-[10px] !px-2.5 !text-[13px]`;
-
 /** Fitur tabel yang aktif. Di mode backend asli hanya `q`, `role`, `status` yang didukung server. */
 export type UsersTableFeatures = {
   /** Filter email, telepon, kota dan urutan kolom didukung server (hanya mock). */
@@ -35,12 +22,8 @@ export type UsersTableFeatures = {
 
 type Props = {
   users: User[];
-  /** Daftar role untuk pilihan filter. Kosong selama belum dimuat. */
-  roles: Role[];
   loading: boolean;
   features: UsersTableFeatures;
-  filters: UserColumnFilters;
-  onFilterChange: (patch: Partial<UserColumnFilters>) => void;
   onClearFilters: () => void;
   filtersActive: boolean;
   sort: UserSort;
@@ -51,8 +34,8 @@ type Props = {
 };
 
 /**
- * Tabel list user sesuai desain Users: header, baris filter per kolom, lalu baris user.
- * Semua filter dikirim ke server lewat `onFilterChange` (pemanggil memegang state dan query).
+ * Tabel list user: header (kolom bisa diurutkan), lalu baris user. Filter tidak ada di sini lagi:
+ * pencarian dan panel Filter ada di `UsersPage` (pemanggil memegang state dan query).
  * Kolom Roles dan Status ditambahkan di luar desain (temuan D11 di doc 12).
  * Dapat digulir ke samping di dalam kartu. Dipanggil dari `UsersPage`.
  */
@@ -66,7 +49,6 @@ export function UsersTable(props: Props) {
     >
       <div role="table" aria-label="Users" className="min-w-[1000px]">
         <HeaderRow {...props} />
-        <FilterRow {...props} />
         {loading &&
           users.length === 0 &&
           [0, 1, 2, 3, 4].map((n) => <SkeletonRow key={n} />)}
@@ -268,108 +250,6 @@ function HeaderRow(props: Props) {
       <div role="columnheader">STATUS</div>
       <div role="columnheader">
         <span className="sr-only">Open</span>
-      </div>
-    </div>
-  );
-}
-
-/** Baris filter per kolom. Kontrol yang belum didukung server tidak ditampilkan (docs 08 bagian 9.3). */
-function FilterRow(props: Props) {
-  const { filters, features, roles } = props;
-  return (
-    <div
-      role="row"
-      className={cn(GRID, "border-border bg-primary-soft/40 border-b py-2.5")}
-    >
-      <div role="cell">
-        <input
-          type="text"
-          aria-label="Filter name or username"
-          placeholder="Name or username"
-          value={filters.name}
-          onChange={(e) => props.onFilterChange({ name: e.target.value })}
-          className={filterClass}
-        />
-      </div>
-      <div role="cell">
-        {features.extraFilters && (
-          <input
-            type="text"
-            aria-label="Filter email"
-            placeholder="Email"
-            value={filters.email}
-            onChange={(e) => props.onFilterChange({ email: e.target.value })}
-            className={filterClass}
-          />
-        )}
-      </div>
-      <div role="cell">
-        {features.extraFilters && (
-          <input
-            type="text"
-            aria-label="Filter phone"
-            placeholder="Phone"
-            value={filters.phone}
-            onChange={(e) => props.onFilterChange({ phone: e.target.value })}
-            className={filterClass}
-          />
-        )}
-      </div>
-      <div role="cell">
-        {features.extraFilters && (
-          <input
-            type="text"
-            aria-label="Filter city"
-            placeholder="City"
-            value={filters.city}
-            onChange={(e) => props.onFilterChange({ city: e.target.value })}
-            className={filterClass}
-          />
-        )}
-      </div>
-      <div role="cell">
-        <select
-          aria-label="Filter role"
-          value={filters.role}
-          onChange={(e) => props.onFilterChange({ role: e.target.value })}
-          className={filterClass}
-        >
-          <option value="">All roles</option>
-          {roles.map((role) => (
-            <option key={role.code} value={role.code}>
-              {role.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div role="cell">
-        <select
-          aria-label="Filter status"
-          value={filters.status}
-          onChange={(e) =>
-            props.onFilterChange({ status: e.target.value as UserStatus | "" })
-          }
-          className={filterClass}
-        >
-          <option value="">All</option>
-          {USER_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {USER_STATUS_LABEL[status]}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div role="cell">
-        <button
-          type="button"
-          aria-label="Clear filters"
-          title="Clear filters"
-          disabled={!props.filtersActive}
-          onClick={props.onClearFilters}
-          className="text-muted-foreground hover:text-primary-dark grid size-8 place-items-center rounded-[10px] disabled:opacity-40"
-        >
-          <X size={18} aria-hidden />
-        </button>
       </div>
     </div>
   );

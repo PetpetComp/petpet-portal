@@ -52,6 +52,16 @@ const page = (items: User[], total = items.length) => ({
   meta: { currentPage: 1, perPage: 8, total, lastPage: 1 },
 });
 
+/** Buka panel Filter. */
+async function openFilters() {
+  await userEvent.click(screen.getByRole("button", { name: /^Filter/ }));
+}
+
+/** Tekan Apply di panel Filter. */
+async function applyFilters() {
+  await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+}
+
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -97,10 +107,12 @@ describe("UsersPage", () => {
   it("sends the role filter to the server and returns to page 1", async () => {
     renderPage();
     await screen.findByRole("link", { name: "Salsa Putri" });
+    await openFilters();
     await userEvent.selectOptions(
       await screen.findByLabelText("Filter role"),
       "ORGANIZER",
     );
+    await applyFilters();
     await waitFor(() =>
       expect(listUsers).toHaveBeenLastCalledWith(
         expect.objectContaining({ role: "ORGANIZER", page: 1 }),
@@ -111,10 +123,12 @@ describe("UsersPage", () => {
   it("sends the status filter to the server", async () => {
     renderPage();
     await screen.findByRole("link", { name: "Salsa Putri" });
+    await openFilters();
     await userEvent.selectOptions(
       screen.getByLabelText("Filter status"),
       "SUSPENDED",
     );
+    await applyFilters();
     await waitFor(() =>
       expect(listUsers).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: "SUSPENDED" }),
@@ -125,6 +139,7 @@ describe("UsersPage", () => {
   it("shows email, phone and city filters only in mock mode", async () => {
     const { unmount } = renderPage();
     await screen.findByRole("link", { name: "Salsa Putri" });
+    await openFilters();
     expect(screen.getByLabelText("Filter email")).toBeInTheDocument();
     expect(screen.getByLabelText("Filter phone")).toBeInTheDocument();
     expect(screen.getByLabelText("Filter city")).toBeInTheDocument();
@@ -133,27 +148,29 @@ describe("UsersPage", () => {
     mode.mock = false;
     renderPage();
     await screen.findByRole("link", { name: "Salsa Putri" });
+    await openFilters();
     expect(screen.queryByLabelText("Filter email")).toBeNull();
     expect(screen.queryByLabelText("Filter phone")).toBeNull();
     expect(screen.queryByLabelText("Filter city")).toBeNull();
-    expect(
-      screen.getByLabelText("Filter name or username"),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Filter role")).toBeInTheDocument();
   });
 
   it("shows an empty state with a way back when the filters match nobody", async () => {
     vi.mocked(listUsers).mockResolvedValue(page([]));
     renderPage();
+    await openFilters();
     await userEvent.selectOptions(
       await screen.findByLabelText("Filter status"),
       "SUSPENDED",
     );
+    await applyFilters();
     expect(
       await screen.findByText("No users match these filters."),
     ).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: "Show all users" }),
     );
+    await openFilters();
     expect(screen.getByLabelText("Filter status")).toHaveValue("");
   });
 
