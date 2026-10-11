@@ -1,4 +1,5 @@
-import { PetWorkspace } from "@/app/(portal)/pet-management/_components/pet-workspace";
+import { PetsPage } from "./_components/pets-page";
+
 export default function Page() {
-  return <PetWorkspace />;
+  return <PetsPage />;
 }

@@ -1,9 +1,10 @@
-import { PetForm } from "@/app/(portal)/pet-management/_components/pet-form";
+import { PetEditPage } from "../../_components/pet-form-page";
+
 export default async function Page({
   params,
 }: {
   params: Promise<{ petId: string }>;
 }) {
   const { petId } = await params;
-  return <PetForm mode="edit" id={petId} />;
+  return <PetEditPage petId={petId} />;
 }

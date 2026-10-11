@@ -1,9 +1,10 @@
-import { PetWorkspace } from "@/app/(portal)/pet-management/_components/pet-workspace";
+import { PetDetailPage } from "../_components/pet-detail-page";
+
 export default async function Page({
   params,
 }: {
   params: Promise<{ petId: string }>;
 }) {
   const { petId } = await params;
-  return <PetWorkspace mode="detail" id={petId} />;
+  return <PetDetailPage petId={petId} />;
 }

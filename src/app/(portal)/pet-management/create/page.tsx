@@ -1,4 +1,5 @@
-import { PetForm } from "@/app/(portal)/pet-management/_components/pet-form";
+import { PetCreatePage } from "../_components/pet-form-page";
+
 export default function Page() {
-  return <PetForm mode="create" />;
+  return <PetCreatePage />;
 }
