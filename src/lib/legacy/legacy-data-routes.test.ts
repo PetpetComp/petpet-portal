@@ -42,12 +42,24 @@ describe("needsLegacyData", () => {
     expect(needsLegacyData("/pet-management/p1/edit")).toBe(false);
     expect(needsLegacyData("/pet-management/p1/other/deep")).toBe(true);
   });
+  it("skips the migrated Competition workspace pages", () => {
+    const base = "/event-management/7f3a-uuid/competitions/c1";
+    expect(needsLegacyData(base)).toBe(false);
+    for (const tab of [
+      "edit",
+      "participants",
+      "committee",
+      "settings",
+      "results",
+    ])
+      expect(needsLegacyData(`${base}/${tab}`)).toBe(false);
+    expect(needsLegacyData(`${base}/other/deep`)).toBe(true);
+  });
   it("still loads for old pages that read the shared store", () => {
-    expect(needsLegacyData("/event-management/event-registration")).toBe(true);
-    expect(needsLegacyData("/event-management/7f3a-uuid/competitions/c1")).toBe(
-      true,
-    );
-    expect(needsLegacyData("/competition")).toBe(true);
+    expect(needsLegacyData("/event-management/event-participant")).toBe(true);
+    expect(needsLegacyData("/event-management/doorprize-drawing")).toBe(true);
+    expect(needsLegacyData("/report")).toBe(true);
+    expect(needsLegacyData("/my-competitions")).toBe(true);
   });
   it("skips the migrated Users and Roles pages", () => {
     expect(needsLegacyData("/user-management")).toBe(false);

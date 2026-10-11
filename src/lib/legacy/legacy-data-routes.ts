@@ -4,8 +4,7 @@
  * Add a route here when its page is migrated. When every route is listed,
  * delete the provider.
  */
-const EVENT_LEGACY_PAGES =
-  "event-registration|doorprize-drawing|event-participant";
+const EVENT_LEGACY_PAGES = "doorprize-drawing|event-participant";
 
 const MIGRATED: RegExp[] = [
   /^\/home\/?$/, // Home
@@ -14,6 +13,7 @@ const MIGRATED: RegExp[] = [
   /^\/event-management\/create\/?$/, // New event wizard
   new RegExp(`^/event-management/(?!(?:${EVENT_LEGACY_PAGES})/?$)[^/]+/?$`), // Event overview
   /^\/event-management\/[^/]+\/competitions(\/create)?\/?$/, // Competitions tab, Add competition
+  /^\/event-management\/[^/]+\/competitions\/[^/]+(\/(edit|participants|committee|settings|results))?\/?$/, // Competition workspace, its tabs, Edit competition
   /^\/event-management\/[^/]+\/registrations\/?$/, // Registrations tab
   /^\/event-management\/[^/]+\/participants\/?$/, // Participants & check-in tab
   /^\/event-management\/[^/]+\/committee\/?$/, // Committee tab

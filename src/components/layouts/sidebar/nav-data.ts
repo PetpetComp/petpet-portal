@@ -100,11 +100,6 @@ export const navigation: NavGroup[] = [
     section: "Transitional",
     items: [
       {
-        label: "Event Registration",
-        href: ROUTES.eventManagement.eventRegistration,
-        permission: P.EVENT_UPDATE,
-      },
-      {
         label: "Event Participant",
         href: ROUTES.eventManagement.eventParticipant,
         permission: P.EVENT_UPDATE,
@@ -113,11 +108,6 @@ export const navigation: NavGroup[] = [
         label: "Doorprize Drawing",
         href: ROUTES.eventManagement.doorprizeDrawing,
         permission: P.EVENT_UPDATE,
-      },
-      {
-        label: "Competition",
-        href: ROUTES.competition,
-        permission: P.COMPETITION_UPDATE,
       },
     ],
   },
