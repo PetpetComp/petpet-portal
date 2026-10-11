@@ -1,503 +1,366 @@
 "use client";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Save } from "lucide-react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Field, Input, Textarea } from "@/components/ui/form-controls";
-import { SelectField } from "@/components/common/select-field";
-import { Breadcrumb } from "@/components/common/breadcrumb";
-import { usePortalData } from "@/components/providers/portal-data-provider";
-import { useAuth } from "@/hooks/use-auth";
-import { USER_SERVICES } from "@/services/user-management";
-import { ORGANIZATION_SERVICES } from "@/services/organization";
-import { AUTH_SERVICES } from "@/services/auth";
-import { recordPayload, type Row } from "@/services/backend-records";
-import { collectRows } from "@/services/common";
-import { REGION_SERVICES, type RegionRow } from "@/services/regions";
-import type { PortalRecord } from "@/types/portal";
+import { RequirePermission } from "@/components/common/can";
+import { ErrorState } from "@/components/common/error-state";
+import { Button } from "@/components/ui/button";
+import { FormField, fieldClass } from "@/components/ui/form-field";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  generateUsername,
-  isDuplicateContact,
-  isValidEmail,
-  isValidPhone,
-  userInitials,
-} from "../_lib/user-rules";
+  EMPTY_USER_FORM,
+  createUserFormSchema,
+  formValuesFromUser,
+  serverErrorsToFormErrors,
+  type UserFormInput,
+  type UserFormMode,
+  type UserFormValues,
+} from "@/domains/users/schema";
+import {
+  useCreateUser,
+  useRoles,
+  useUpdateUser,
+  useUser,
+} from "@/domains/users/queries";
+import { assignableRoles, sortRoles } from "@/domains/users/roles";
+import { GENDERS, GENDER_LABEL, type User } from "@/domains/users/types";
+import { useAuth } from "@/hooks/use-auth";
+import { ApiError } from "@/lib/api-client";
+import { PERMISSION } from "@/lib/auth/permissions";
+import { ROUTES } from "@/lib/constants/routes";
+import { cn } from "@/lib/utils";
+import { RegionFields } from "./region-fields";
 
-const BASE_PATH = "/user-management";
-const PROFILE_KEYS = ["dob", "gender", "address", "city", "province", "nation"];
-const STATUSES = [
-  { code: "Active", name: "Active" },
-  { code: "Inactive", name: "Inactive" },
-  { code: "Suspended", name: "Suspended" },
-];
-const GENDERS = [
-  { code: "Male", name: "Male" },
-  { code: "Female", name: "Female" },
-];
-function cityLabel(city: RegionRow) {
-  if (!city.type) return city.name;
-  const prefix = city.type.charAt(0) + city.type.slice(1).toLowerCase();
-  return prefix + " " + city.name;
+/** Skema per mode dibuat sekali di luar komponen supaya tidak berganti identitas tiap render. */
+const SCHEMAS = {
+  create: createUserFormSchema("create"),
+  edit: createUserFormSchema("edit"),
+};
+
+/** Kelas fieldset bergaya desain: kartu putih, judul di garis atas, kolom otomatis. */
+const FIELDSET =
+  "border-border m-0 grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-4 rounded-2xl border bg-white px-6 py-5";
+
+/** Halaman New user (`/user-management/create`). Dipanggil dari `create/page.tsx`. */
+export function UserCreatePage() {
+  return (
+    <RequirePermission permission={PERMISSION.USER_MANAGE}>
+      <UserForm mode="create" />
+    </RequirePermission>
+  );
 }
 
-export function UserForm({
-  mode,
-  id,
-}: {
-  mode: "create" | "edit";
-  id?: string;
-}) {
+/**
+ * Halaman Edit user (`/user-management/[userId]/edit`). Memuat user, lalu menampilkan form
+ * yang sama dengan New user, sudah terisi. Dipanggil dari `edit/page.tsx`.
+ */
+export function UserEditPage({ userId }: { userId: string }) {
+  const user = useUser(userId);
+  return (
+    <RequirePermission permission={PERMISSION.USER_MANAGE}>
+      {user.isError ? (
+        <ErrorState
+          error={user.error}
+          fallback="Unable to load this user."
+          onRetry={() => user.refetch()}
+        />
+      ) : !user.data ? (
+        <div className="grid max-w-3xl gap-4" aria-busy>
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-96 w-full rounded-2xl" />
+        </div>
+      ) : (
+        <UserForm mode="edit" user={user.data} />
+      )}
+    </RequirePermission>
+  );
+}
+
+/**
+ * Form New user / Edit user sesuai desain UserForm: kartu Identity, Contact & address, dan
+ * (hanya saat membuat) Platform roles. Username dan email dikunci saat edit karena backend
+ * tidak menerimanya di PATCH. Tidak ada kecamatan. Validasi zod; pesan 422 server ditaruh
+ * di bawah fieldnya, selain itu jadi toast.
+ */
+function UserForm({ mode, user }: { mode: UserFormMode; user?: User }) {
   const router = useRouter();
-  const { data, save, refresh } = usePortalData();
-  const { user: authUser, refreshSession } = useAuth();
-  const user = mode === "edit" ? data.users.find((item) => item.id === id) : undefined;
-  const currentRole = user?.roles?.split(",")[0]?.trim() ?? "";
-  const isSelf = mode === "edit" && !!user && user.id === authUser?.id;
-  const [draft, setDraft] = useState<PortalRecord>(() => ({
-    id: "",
-    name: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    status: "Active",
-    organizationId: "",
-    role: currentRole,
-    ...user,
-  }));
-  const [roles, setRoles] = useState<Row[]>([]);
-  const [organizations, setOrganizations] = useState<Row[]>([]);
-  const [countries, setCountries] = useState<RegionRow[]>([]);
-  const [provinces, setProvinces] = useState<RegionRow[]>([]);
-  const [cities, setCities] = useState<RegionRow[]>([]);
-  const [countryId, setCountryId] = useState("");
-  const [provinceId, setProvinceId] = useState("");
-  const [cityId, setCityId] = useState("");
-  const [photoPreview, setPhotoPreview] = useState(user?.photoUrl ?? "");
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-  const backPath = mode === "edit" && user ? BASE_PATH + "/" + user.id : BASE_PATH;
+  const { hasRole } = useAuth();
+  const create = useCreateUser();
+  const update = useUpdateUser(user?.id ?? "");
+  const roles = useRoles();
+  const editing = mode === "edit";
+  const saving = create.isPending || update.isPending;
 
-  useEffect(() => {
-    let active = true;
-    collectRows(USER_SERVICES.getRole)
-      .then((rows) => {
-        if (active) setRoles(rows);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
+  const form = useForm<UserFormValues, unknown, UserFormInput>({
+    resolver: zodResolver(SCHEMAS[mode]),
+    defaultValues: user ? formValuesFromUser(user) : EMPTY_USER_FORM,
+  });
+  const { register, control, setValue, formState } = form;
+  const errors = formState.errors;
+  const province = useWatch({ control, name: "province" }) ?? "";
+  const city = useWatch({ control, name: "city" }) ?? "";
+  const backHref = user ? ROUTES.users.detail(user.id) : ROUTES.userManagement;
 
-  useEffect(() => {
-    let active = true;
-    collectRows(ORGANIZATION_SERVICES.list)
-      .then((rows) => {
-        if (active) setOrganizations(rows);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
+  /** Pesan 422 server ke field-nya; bila tak ada yang cocok, toast umum. */
+  function showError(cause: unknown, fallback: string) {
+    const fieldErrors =
+      cause instanceof ApiError ? serverErrorsToFormErrors(cause.errors) : {};
+    if (Object.keys(fieldErrors).length > 0) {
+      for (const [field, message] of Object.entries(fieldErrors))
+        form.setError(field as keyof UserFormValues, { message });
+      return;
+    }
+    toast.error(cause instanceof Error ? cause.message : fallback);
+  }
 
-  useEffect(() => {
-    let active = true;
-    REGION_SERVICES.countries()
-      .then((rows) => {
-        if (!active) return;
-        setCountries(rows);
-        const match = rows.find(
-          (row) => row.name.toLowerCase() === draft.nation?.trim().toLowerCase(),
-        );
-        if (match) setCountryId(match.uuid);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!countryId) return;
-    let active = true;
-    REGION_SERVICES.provinces(countryId)
-      .then((rows) => {
-        if (!active) return;
-        setProvinces(rows);
-        const match = rows.find(
-          (row) => row.name.toLowerCase() === draft.province?.trim().toLowerCase(),
-        );
-        if (match) setProvinceId(match.uuid);
-      })
-      .catch(() => {
-        if (active) setProvinces([]);
+  const save = form.handleSubmit((input) => {
+    if (editing) {
+      update.mutate(input, {
+        onSuccess: () => {
+          toast.success("User updated");
+          router.push(backHref);
+        },
+        onError: (cause) => showError(cause, "Unable to save the user."),
       });
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countryId]);
-
-  useEffect(() => {
-    if (!provinceId) return;
-    let active = true;
-    REGION_SERVICES.cities(provinceId)
-      .then((rows) => {
-        if (!active) return;
-        setCities(rows);
-        const match = rows.find(
-          (row) => row.name.toLowerCase() === draft.city?.trim().toLowerCase(),
-        );
-        if (match) setCityId(match.uuid);
-      })
-      .catch(() => {
-        if (active) setCities([]);
-      });
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provinceId]);
-
-  if (mode === "edit" && !user)
-    return (
-      <section className="page-stack">
-        <h1>User not found</h1>
-        <Link className="link-button" href={BASE_PATH}>
-          Back to User Management
-        </Link>
-      </section>
-    );
-
-  function set(key: string, value: string) {
-    setDraft((current) => ({ ...current, [key]: value }));
-  }
-
-  function setCountry(uuid: string) {
-    const row = countries.find((item) => item.uuid === uuid);
-    setDraft((current) => ({
-      ...current,
-      nation: row?.name ?? "",
-      province: "",
-      city: "",
-    }));
-    setCountryId(uuid);
-    setProvinceId("");
-    setCityId("");
-    setProvinces([]);
-    setCities([]);
-  }
-
-  function setProvince(uuid: string) {
-    const row = provinces.find((item) => item.uuid === uuid);
-    setDraft((current) => ({ ...current, province: row?.name ?? "", city: "" }));
-    setProvinceId(uuid);
-    setCityId("");
-    setCities([]);
-  }
-
-  function setCity(uuid: string) {
-    const row = cities.find((item) => item.uuid === uuid);
-    set("city", row?.name ?? "");
-    setCityId(uuid);
-  }
-
-  function pickPhoto(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setPhotoPreview(String(reader.result));
-    reader.readAsDataURL(file);
-    if (mode !== "edit" || !id) return;
-    setPhotoUploading(true);
-    const upload = isSelf
-      ? AUTH_SERVICES.uploadMyPhoto(file)
-      : USER_SERVICES.uploadPhoto(id, file);
-    upload
-      .then(async () => {
-        await Promise.all([isSelf ? refreshSession() : Promise.resolve(), refresh()]);
-        toast.success("Profile photo updated");
-      })
-      .catch((cause) => {
-        toast.error(
-          cause instanceof Error ? cause.message : "Unable to upload photo.",
-        );
-      })
-      .finally(() => setPhotoUploading(false));
-  }
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (pending) return;
-    if (!isValidPhone(draft.phone ?? "")) {
-      setError("Phone must contain 8-15 digits.");
       return;
     }
-    if (draft.email && !isValidEmail(draft.email)) {
-      setError("Enter a valid email format.");
-      return;
-    }
-    if (!draft.role) {
-      setError("Role is required.");
-      return;
-    }
-    const username =
-      draft.username?.trim() ||
-      generateUsername(draft.firstName, draft.lastName, data.users);
-    const next: PortalRecord = { ...draft, username };
-    if (isDuplicateContact(data.users, next)) {
-      setError("Email or phone is already registered.");
-      return;
-    }
-    setError("");
-    setPending(true);
-    try {
-      const saved = await save("users", next);
-      if (mode === "create" && PROFILE_KEYS.some((key) => draft[key]?.trim())) {
-        const body = recordPayload("users", { ...draft, id: saved.id }, true);
-        await USER_SERVICES.update(saved.id, body);
-        await refresh();
-      }
-      if (mode === "edit" && draft.role && draft.role !== currentRole) {
-        await USER_SERVICES.assignRole(saved.id, draft.role);
-        await refresh();
-      }
-      toast.success("User saved");
-      router.push(mode === "edit" ? BASE_PATH + "/" + saved.id : BASE_PATH);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save user.");
-      setPending(false);
-    }
-  }
+    create.mutate(input, {
+      onSuccess: ({ user: created, profileError }) => {
+        toast.success("User created");
+        if (profileError)
+          toast.warning(
+            `The address details were not saved (${profileError}). Open Edit to add them.`,
+          );
+        router.push(ROUTES.users.detail(created.id));
+      },
+      onError: (cause) => showError(cause, "Unable to create the user."),
+    });
+  });
 
-  const breadcrumbItems = [
-    { label: "User Management", href: BASE_PATH },
-    ...(mode === "edit" && user
-      ? [{ label: user.name || user.id, href: backPath }]
-      : []),
-    { label: mode === "edit" ? "Edit User" : "Add New User" },
-  ];
+  const offeredRoles = assignableRoles(
+    sortRoles(roles.data ?? []),
+    hasRole("SUPER_ADMIN"),
+  );
 
   return (
-    <div className="page-stack">
-      <Breadcrumb items={breadcrumbItems} />
-      <header>
-        <h1>{mode === "edit" ? "Edit User" : "Add New User"}</h1>
-        <p className="muted">
-          {mode === "edit"
-            ? "Update the selected user's profile information."
-            : "Create a new platform user record."}
-        </p>
-      </header>
-      <form onSubmit={submit} className="page-stack">
-        <fieldset disabled={pending} className="form-section">
-          <h2>General Information</h2>
-          <div className="form-grid">
-            <div className="form-grid-span-2">
-              <Field label="User Photo">
-                <div className="photo-uploader">
-                  {photoPreview ? (
-                    <img
-                      src={photoPreview}
-                      alt=""
-                      className="image-preview-circle image-placeholder-lg"
-                    />
-                  ) : (
-                    <span
-                      className="image-placeholder image-preview-circle image-placeholder-lg"
-                      aria-hidden="true"
-                    >
-                      {userInitials(draft.firstName, draft.lastName ?? "")}
-                    </span>
-                  )}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={photoUploading}
-                    onClick={() => photoInputRef.current?.click()}
-                  >
-                    {photoUploading ? "Uploading..." : "Choose Photo"}
-                  </Button>
-                  <input
-                    ref={photoInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={pickPhoto}
-                  />
-                </div>
-                <p className="muted photo-uploader-note">
-                  {mode === "edit"
-                    ? "Uploaded and saved when you pick a file."
-                    : "Save the user first, then open Edit User to set a photo."}
-                </p>
-              </Field>
-            </div>
-            <div className="form-grid-span-2">
-              <Field label="Username">
-                <Input
-                  placeholder="Leave blank to auto-generate"
-                  value={draft.username ?? ""}
-                  onChange={(event) => set("username", event.target.value)}
-                />
-              </Field>
-            </div>
-            <Field label="First Name *">
-              <Input
-                required
-                value={draft.firstName}
-                onChange={(event) => set("firstName", event.target.value)}
-              />
-            </Field>
-            <Field label="Last Name">
-              <Input
-                value={draft.lastName ?? ""}
-                onChange={(event) => set("lastName", event.target.value)}
-              />
-            </Field>
-            <Field label="Date of Birth">
-              <Input
-                type="date"
-                value={draft.dob ?? ""}
-                onChange={(event) => set("dob", event.target.value)}
-              />
-            </Field>
-            <Field label="Gender">
-              <SelectField
-                items={GENDERS}
-                value={draft.gender ?? ""}
-                onChange={(value) => set("gender", value)}
-                getId={(item) => item.code}
-                getLabel={(item) => item.name}
-                placeholder="Search gender"
-              />
-            </Field>
-            <Field label="Email">
-              <Input
-                type="email"
-                placeholder="name@example.com"
-                value={draft.email ?? ""}
-                onChange={(event) => set("email", event.target.value)}
-              />
-            </Field>
-            <Field label="Phone *">
-              <Input
-                required
-                inputMode="numeric"
-                maxLength={15}
-                placeholder="081234567890"
-                value={draft.phone ?? ""}
-                onChange={(event) =>
-                  set("phone", event.target.value.replace(/[^0-9]/g, ""))
-                }
-              />
-            </Field>
-            <Field label="Status">
-              <SelectField
-                items={STATUSES}
-                value={draft.status ?? "Active"}
-                onChange={(value) => set("status", value)}
-                getId={(item) => item.code}
-                getLabel={(item) => item.name}
-                placeholder="Search status"
-              />
-            </Field>
-            <Field label="Role *">
-              <SelectField
-                items={roles}
-                value={draft.role ?? ""}
-                onChange={(value) => set("role", value)}
-                getId={(role) => String(role.code)}
-                getLabel={(role) => String(role.name)}
-                placeholder="Search role"
-              />
-            </Field>
-            <div className="form-grid-span-2">
-              <Field label="Organization">
-                <SelectField
-                  items={organizations}
-                  value={draft.organizationId ?? ""}
-                  onChange={(value) => set("organizationId", value)}
-                  getId={(org) => String(org.uuid)}
-                  getLabel={(org) => String(org.name)}
-                  placeholder="Search organization"
-                />
-              </Field>
-            </div>
-            <div className="form-grid-span-2">
-              <Field label="Address">
-                <Textarea
-                  rows={3}
-                  value={draft.address ?? ""}
-                  onChange={(event) => set("address", event.target.value)}
-                />
-              </Field>
-            </div>
-            <Field label="Country">
-              <SelectField
-                items={countries}
-                value={countryId}
-                onChange={setCountry}
-                getId={(country) => country.uuid}
-                getLabel={(country) => country.name}
-                placeholder="Search country"
-              />
-            </Field>
-            <Field label="State / Province">
-              <SelectField
-                items={countryId ? provinces : []}
-                value={provinceId}
-                onChange={setProvince}
-                getId={(province) => province.uuid}
-                getLabel={(province) => province.name}
-                placeholder={countryId ? "Search province" : "Select country first"}
-              />
-            </Field>
-            <Field label="City">
-              <SelectField
-                items={provinceId ? cities : []}
-                value={cityId}
-                onChange={setCity}
-                getId={(city) => city.uuid}
-                getLabel={cityLabel}
-                placeholder={provinceId ? "Search city" : "Select province first"}
-              />
-            </Field>
-            <Field label="Postal / ZIP Code">
-              <Input
-                value={draft.postalCode ?? ""}
-                onChange={(event) => set("postalCode", event.target.value)}
-                placeholder="e.g. 12345"
-              />
-              <p className="muted">Not yet supported by the connected API — not saved.</p>
-            </Field>
-          </div>
-        </fieldset>
-        {error && (
-          <p role="alert" className="form-error">
-            {error}
-          </p>
+    <div className="grid max-w-215 gap-5">
+      <nav
+        aria-label="Breadcrumb"
+        className="text-muted-foreground flex flex-wrap items-center gap-2"
+      >
+        <Link
+          href={ROUTES.userManagement}
+          className="text-primary font-semibold"
+        >
+          Users
+        </Link>
+        <ChevronRight size={14} aria-hidden />
+        {user && (
+          <>
+            <Link href={backHref} className="text-primary font-semibold">
+              {user.name}
+            </Link>
+            <ChevronRight size={14} aria-hidden />
+          </>
         )}
-        <div className="form-actions">
-          <Link className={buttonVariants({ variant: "secondary" })} href={backPath}>
+        <span className="text-foreground font-semibold">
+          {editing ? "Edit" : "New user"}
+        </span>
+      </nav>
+      <h1 className="font-display text-[32px] leading-10 font-bold">
+        {editing ? "Edit user" : "New user"}
+      </h1>
+
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+        className="grid gap-4"
+      >
+        <fieldset className={FIELDSET}>
+          <legend className="px-1.5 font-extrabold">Identity</legend>
+          <FormField
+            label="First name"
+            required
+            error={errors.firstName?.message}
+          >
+            <input
+              {...register("firstName")}
+              type="text"
+              maxLength={100}
+              aria-invalid={!!errors.firstName}
+              className={fieldClass}
+            />
+          </FormField>
+          <FormField label="Last name" error={errors.lastName?.message}>
+            <input
+              {...register("lastName")}
+              type="text"
+              maxLength={100}
+              aria-invalid={!!errors.lastName}
+              className={fieldClass}
+            />
+          </FormField>
+          <FormField
+            label="Username"
+            required={!editing}
+            hint={editing ? "Username cannot be changed." : undefined}
+            error={errors.username?.message}
+          >
+            <input
+              {...register("username")}
+              type="text"
+              maxLength={100}
+              disabled={editing}
+              aria-invalid={!!errors.username}
+              className={fieldClass}
+            />
+          </FormField>
+          <FormField label="Gender" error={errors.gender?.message}>
+            <select {...register("gender")} className={fieldClass}>
+              <option value="">Not set</option>
+              {GENDERS.map((g) => (
+                <option key={g} value={g}>
+                  {GENDER_LABEL[g]}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        </fieldset>
+
+        <fieldset className={FIELDSET}>
+          <legend className="px-1.5 font-extrabold">
+            Contact &amp; address
+          </legend>
+          <FormField
+            label="Email"
+            required={!editing}
+            hint={editing ? "Email cannot be changed." : undefined}
+            error={errors.email?.message}
+          >
+            <input
+              {...register("email")}
+              type="email"
+              maxLength={255}
+              disabled={editing}
+              aria-invalid={!!errors.email}
+              className={fieldClass}
+            />
+          </FormField>
+          <FormField label="Phone" required error={errors.phone?.message}>
+            <input
+              {...register("phone")}
+              type="tel"
+              inputMode="numeric"
+              aria-invalid={!!errors.phone}
+              className={cn(fieldClass, errors.phone && "border-2")}
+            />
+          </FormField>
+          <RegionFields
+            control={control}
+            errors={errors}
+            setValue={setValue}
+            province={province}
+            city={city}
+          />
+        </fieldset>
+
+        {editing ? (
+          <p className="text-muted-foreground text-[13px]">
+            Platform roles are changed on the{" "}
+            <Link
+              href={backHref}
+              className="text-primary-dark font-bold underline"
+            >
+              user page
+            </Link>
+            .
+          </p>
+        ) : (
+          <fieldset className="border-border m-0 flex flex-wrap gap-2.5 rounded-2xl border bg-white px-6 py-5">
+            <legend className="px-1.5 font-extrabold">Platform roles</legend>
+            <p className="text-muted-foreground mb-1 basis-full text-[13px]">
+              Global permissions (see{" "}
+              <Link
+                href={ROUTES.rolesAccess}
+                className="text-primary font-bold"
+              >
+                Roles &amp; access
+              </Link>
+              ). Org roles are set on the organization; event duties come from
+              assignments.
+            </p>
+            {roles.isPending && <Skeleton className="h-11 w-64 rounded-xl" />}
+            {roles.isError && (
+              <p role="alert" className="text-danger-ink text-[13px]">
+                Unable to load roles. The user will be created with no role.
+              </p>
+            )}
+            <Controller
+              control={control}
+              name="roles"
+              render={({ field }) => (
+                <>
+                  {offeredRoles.map((role) => {
+                    const checked = field.value.includes(role.code);
+                    return (
+                      <label
+                        key={role.code}
+                        className={cn(
+                          "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border px-3.5",
+                          checked
+                            ? "border-primary bg-primary-soft border-2 font-bold"
+                            : "border-input",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            field.onChange(
+                              checked
+                                ? field.value.filter((c) => c !== role.code)
+                                : [...field.value, role.code],
+                            )
+                          }
+                          className="accent-primary size-4.5"
+                        />
+                        {role.name}
+                      </label>
+                    );
+                  })}
+                </>
+              )}
+            />
+            {errors.roles?.message && (
+              <span
+                role="alert"
+                className="text-danger-ink basis-full text-[13px] font-semibold"
+              >
+                {errors.roles.message}
+              </span>
+            )}
+          </fieldset>
+        )}
+
+        <div className="flex justify-end gap-2.5">
+          <Link
+            href={backHref}
+            className="text-primary-dark flex min-h-11 items-center rounded-xl px-4 font-bold"
+          >
             Cancel
           </Link>
-          <Button type="submit" disabled={pending}>
-            <Save size={16} />
-            {pending ? "Saving..." : mode === "edit" ? "Save Changes" : "Save User"}
+          <Button
+            type="submit"
+            disabled={saving}
+            className="min-h-11 rounded-xl px-5.5 font-bold"
+          >
+            {saving ? "Saving..." : editing ? "Save changes" : "Create user"}
           </Button>
         </div>
       </form>

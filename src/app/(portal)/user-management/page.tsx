@@ -1,4 +1,5 @@
-import { UserWorkspace } from "@/app/(portal)/user-management/_components/user-workspace";
+import { UsersPage } from "./_components/users-page";
+
 export default function Page() {
-  return <UserWorkspace />;
+  return <UsersPage />;
 }

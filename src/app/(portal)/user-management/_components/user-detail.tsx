@@ -1,112 +1,314 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { DataTable, type Column } from "@/components/common/data-table";
-import { formatDate, calculateAge } from "@/lib/format/date";
-import type { PortalRecord } from "@/types/portal";
-import { userInitials } from "../_lib/user-rules";
+import { useRouter } from "next/navigation";
+import { ChevronRight, X } from "lucide-react";
+import { toast } from "sonner";
+import { Can } from "@/components/common/can";
+import { ConfirmDialog } from "@/components/common/confirm-dialog";
+import { ErrorState } from "@/components/common/error-state";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/form-field";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  useAssignRole,
+  useDeactivateUser,
+  useRevokeRole,
+  useRoles,
+  useUser,
+} from "@/domains/users/queries";
+import { assignableRoles, sortRoles } from "@/domains/users/roles";
+import { GENDER_LABEL, type User, type UserRole } from "@/domains/users/types";
+import { useAuth } from "@/hooks/use-auth";
+import { PERMISSION } from "@/lib/auth/permissions";
+import { ROUTES } from "@/lib/constants/routes";
+import { cn } from "@/lib/utils";
+import { UserAvatar } from "./user-avatar";
+import { UserStatusBadge } from "./user-status-badge";
 
-const BASE_PATH = "/user-management";
+/** Pesan dari error apa pun untuk toast. */
+const messageOf = (cause: unknown, fallback: string) =>
+  cause instanceof Error ? cause.message : fallback;
 
-export function UserDetail({
-  user,
-  pets,
-  onRequestDelete,
-}: {
-  user: PortalRecord;
-  pets: PortalRecord[];
-  onRequestDelete: () => void;
-}) {
-  const info: [string, string][] = [
-    ["User ID", user.id],
-    ["Username", user.username],
-    ["First Name", user.firstName],
-    ["Last Name", user.lastName || "-"],
-    ["Email", user.email || "-"],
-    ["Phone", user.phone],
-    ["Date of Birth", formatDate(user.dob)],
-    ["Gender", user.gender || "-"],
-    ["Address", user.address || "-"],
-    ["City", user.city || "-"],
-    ["State / Province", user.province || "-"],
-    ["Postal / ZIP Code", user.postalCode || "-"],
-    ["Country", user.nation || "-"],
-  ];
-  const petColumns: Column<PortalRecord>[] = [
-    { key: "id", label: "Pet ID", value: (row) => row.id },
-    { key: "name", label: "Pet Name", value: (row) => row.name },
-    { key: "animal", label: "Animal", value: (row) => row.animal },
-    { key: "variant", label: "Variant", value: (row) => row.variant || "-" },
-    { key: "gender", label: "Gender", value: (row) => row.gender || "-" },
-    {
-      key: "age",
-      label: "Age",
-      value: (row) => calculateAge(row.dob),
-      render: (row) => calculateAge(row.dob),
-    },
-  ];
-  return (
-    <div className="page-stack">
-      <div className="pet-detail-header">
-        <Link className="back-link" href={BASE_PATH}>
-          <ArrowLeft size={16} />
-          Back to User Management
-        </Link>
-        <div className="row-actions">
-          <Link className="link-button secondary" href={BASE_PATH + "/" + user.id + "/edit"}>
-            <Pencil size={15} />
-            Edit User
-          </Link>
-          <Button variant="destructive" onClick={onRequestDelete}>
-            <Trash2 size={15} />
-            Remove User
-          </Button>
-        </div>
+/**
+ * Halaman detail user (`/user-management/[userId]`). Tidak ada di desain: dibuat mengikuti
+ * pola header + kartu halaman lain (penyimpangan dicatat). Berisi profil, role platform
+ * (beri/cabut), dan tombol Edit serta Deactivate. Dipanggil dari `[userId]/page.tsx`.
+ */
+export function UserDetailPage({ userId }: { userId: string }) {
+  const user = useUser(userId);
+  if (user.isError)
+    return (
+      <ErrorState
+        error={user.error}
+        fallback="Unable to load this user."
+        onRetry={() => user.refetch()}
+      />
+    );
+  if (!user.data)
+    return (
+      <div className="grid max-w-3xl gap-4" aria-busy>
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
-      <section className="form-section pet-detail-card">
-        <div className="pet-detail-profile">
-          {user.photo ? (
-            <Image
-              src={user.photo}
-              width={72}
-              height={72}
-              unoptimized
-              alt={user.name}
-              className="image-preview image-preview-circle"
-            />
-          ) : (
-            <span className="image-placeholder image-preview-circle" aria-hidden="true">
-              {userInitials(user.firstName, user.lastName)}
-            </span>
-          )}
-          <div>
-            <div className="eyebrow">USER INFORMATION</div>
-            <h2>{user.name}</h2>
-            <p className="muted">@{user.username}</p>
+    );
+  return <UserDetail user={user.data} />;
+}
+
+/** Isi halaman setelah user berhasil dimuat. */
+function UserDetail({ user }: { user: User }) {
+  const router = useRouter();
+  const { user: me } = useAuth();
+  const deactivate = useDeactivateUser(user.id);
+  const [confirming, setConfirming] = useState(false);
+  const isSelf = me?.id === user.id;
+
+  function confirmDeactivate() {
+    deactivate.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("User deactivated");
+        router.push(ROUTES.userManagement);
+      },
+      onError: (cause) =>
+        toast.error(messageOf(cause, "Unable to deactivate the user.")),
+    });
+  }
+
+  return (
+    <div className="grid max-w-3xl gap-5">
+      <nav
+        aria-label="Breadcrumb"
+        className="text-muted-foreground flex flex-wrap items-center gap-2"
+      >
+        <Link
+          href={ROUTES.userManagement}
+          className="text-primary font-semibold"
+        >
+          Users
+        </Link>
+        <ChevronRight size={14} aria-hidden />
+        <span className="text-foreground font-semibold">{user.name}</span>
+      </nav>
+
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <UserAvatar initials={user.initials} size="lg" />
+          <div className="grid min-w-0 gap-1">
+            <h1 className="font-display truncate text-[30px] leading-9 font-bold">
+              {user.name}
+            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">@{user.username}</span>
+              <UserStatusBadge status={user.status} />
+            </div>
           </div>
         </div>
-        <dl className="detail-grid">
-          {info.map(([label, value]) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
+        <Can permission={PERMISSION.USER_MANAGE}>
+          <div className="flex gap-2">
+            <Link
+              href={ROUTES.users.edit(user.id)}
+              className={cn(
+                buttonVariants({ variant: "secondary" }),
+                "min-h-11 rounded-xl font-bold",
+              )}
+            >
+              Edit
+            </Link>
+            {user.status !== "SUSPENDED" && !isSelf && (
+              <Button
+                variant="destructive"
+                className="min-h-11 rounded-xl"
+                disabled={deactivate.isPending}
+                onClick={() => setConfirming(true)}
+              >
+                Deactivate
+              </Button>
+            )}
+          </div>
+        </Can>
+      </header>
+
+      <section
+        aria-label="Profile"
+        className="border-border rounded-2xl border bg-white p-6"
+      >
+        <h2 className="mb-4 text-[17px] font-extrabold">Profile</h2>
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+          <Fact label="Email">
+            {user.email}
+            {!user.emailVerified && (
+              <span className="text-muted-foreground ml-2 text-xs">
+                (not verified)
+              </span>
+            )}
+          </Fact>
+          <Fact label="Phone" mono>
+            {user.phone || "-"}
+          </Fact>
+          <Fact label="Gender">
+            {user.gender ? GENDER_LABEL[user.gender] : "-"}
+          </Fact>
+          <Fact label="City">{user.city || "-"}</Fact>
+          <Fact label="Province">{user.province || "-"}</Fact>
         </dl>
       </section>
-      <section className="form-section pet-detail-card">
-        <div className="section-head">
-          <div>
-            <div className="eyebrow">OWNED PETS</div>
-            <h2>Pet List</h2>
-            <p className="muted">Pets registered under this user.</p>
-          </div>
-          <span className="user-pet-count">{pets.length} Pets</span>
-        </div>
-        <DataTable rows={pets} columns={petColumns} label="Owned pets" />
-      </section>
+
+      <RolesCard user={user} />
+
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Deactivate user"
+        description={`Deactivate ${user.name}? The account is suspended and can no longer sign in. The user stays in the list as Suspended.`}
+        confirmLabel="Deactivate"
+        onConfirm={confirmDeactivate}
+      />
     </div>
+  );
+}
+
+/** Satu pasang label dan nilai di kartu profil. */
+function Fact({
+  label,
+  mono = false,
+  children,
+}: {
+  label: string;
+  mono?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-0.5">
+      <dt className="text-muted-foreground text-xs font-bold tracking-[0.06em] uppercase">
+        {label}
+      </dt>
+      <dd className={cn("min-w-0 break-words", mono && "font-mono text-sm")}>
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Kartu role platform: chip role dengan tombol cabut (konfirmasi), plus pilihan "Add role".
+ * Role yang ditawarkan datang dari `GET /auth/roles`; SUPER_ADMIN hanya untuk super admin
+ * (aturan sebenarnya di backend, di sini hanya menyembunyikan). Aksi hanya muncul untuk
+ * yang punya `user.manage`.
+ */
+function RolesCard({ user }: { user: User }) {
+  const { can, hasRole } = useAuth();
+  const roles = useRoles();
+  const assign = useAssignRole(user.id);
+  const revoke = useRevokeRole(user.id);
+  const [toRevoke, setToRevoke] = useState<UserRole | null>(null);
+  const [selected, setSelected] = useState("");
+  const manage = can(PERMISSION.USER_MANAGE);
+
+  const held = new Set(user.roles.map((r) => r.code));
+  const addable = assignableRoles(
+    sortRoles(roles.data ?? []),
+    hasRole("SUPER_ADMIN"),
+  ).filter((r) => !held.has(r.code));
+
+  function addRole() {
+    if (!selected) return;
+    assign.mutate(selected, {
+      onSuccess: () => {
+        toast.success("Role added");
+        setSelected("");
+      },
+      onError: (cause) =>
+        toast.error(messageOf(cause, "Unable to add the role.")),
+    });
+  }
+
+  function revokeRole() {
+    if (!toRevoke) return;
+    revoke.mutate(toRevoke.code, {
+      onSuccess: () => toast.success("Role removed"),
+      onError: (cause) =>
+        toast.error(messageOf(cause, "Unable to remove the role.")),
+    });
+  }
+
+  return (
+    <section
+      aria-label="Platform roles"
+      className="border-border grid gap-4 rounded-2xl border bg-white p-6"
+    >
+      <div className="grid gap-1">
+        <h2 className="text-[17px] font-extrabold">Platform roles</h2>
+        <p className="text-muted-foreground text-[13px]">
+          Global permissions (see{" "}
+          <Link href={ROUTES.rolesAccess} className="text-primary font-bold">
+            Roles &amp; access
+          </Link>
+          ). Org roles are set on the organization; event duties come from
+          assignments.
+        </p>
+      </div>
+
+      {user.roles.length === 0 ? (
+        <p className="text-muted-foreground">This user has no platform role.</p>
+      ) : (
+        <ul className="flex flex-wrap gap-2">
+          {user.roles.map((role) => (
+            <li
+              key={role.code}
+              className="bg-primary-soft text-primary-dark flex min-h-9 items-center gap-1.5 rounded-full pr-1.5 pl-3.5 text-sm font-bold"
+            >
+              {role.name}
+              {manage && (
+                <button
+                  type="button"
+                  aria-label={`Remove role ${role.name}`}
+                  disabled={revoke.isPending}
+                  onClick={() => setToRevoke(role)}
+                  className="hover:bg-primary/15 grid size-6 place-items-center rounded-full disabled:opacity-50"
+                >
+                  <X size={14} aria-hidden />
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {manage && addable.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            aria-label="Role to add"
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            className={cn(fieldClass, "max-w-64")}
+          >
+            <option value="">Add a role...</option>
+            {addable.map((role) => (
+              <option key={role.code} value={role.code}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="secondary"
+            className="min-h-11 rounded-xl"
+            disabled={!selected || assign.isPending}
+            onClick={addRole}
+          >
+            Add role
+          </Button>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={toRevoke !== null}
+        onOpenChange={(open) => !open && setToRevoke(null)}
+        title="Remove role"
+        description={`Remove the ${toRevoke?.name ?? ""} role from ${user.name}? Their permissions change right away.`}
+        confirmLabel="Remove role"
+        onConfirm={revokeRole}
+      />
+    </section>
   );
 }

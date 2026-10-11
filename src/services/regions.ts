@@ -11,8 +11,4 @@ export const REGION_SERVICES = {
     collectRows((params) =>
       MASTER_SERVICES.cities({ ...params, province_id: provinceId }),
     ),
-  districts: (cityId: string) =>
-    collectRows((params) =>
-      MASTER_SERVICES.districts({ ...params, city_id: cityId }),
-    ),
 };

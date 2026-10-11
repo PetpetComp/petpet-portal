@@ -33,8 +33,4 @@ export const MASTER_SERVICES = {
     apiClient.get<ListResponse<MasterRow>>(
       buildUrl(ENDPOINTS.master.cities, params),
     ),
-  districts: (params?: ListParams & { city_id?: string }) =>
-    apiClient.get<ListResponse<MasterRow>>(
-      buildUrl(ENDPOINTS.master.districts, params),
-    ),
 };
