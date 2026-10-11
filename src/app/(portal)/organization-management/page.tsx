@@ -1,4 +1,5 @@
-import { OrganizationWorkspace } from "./_components/organization-workspace";
+import { OrganizationsPage } from "./_components/organizations-page";
+
 export default function Page() {
-  return <OrganizationWorkspace />;
+  return <OrganizationsPage />;
 }
