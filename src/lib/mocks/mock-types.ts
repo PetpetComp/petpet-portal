@@ -18,7 +18,21 @@ export interface MockUser {
   first_name: string;
   last_name?: string;
   phone?: string;
+  /** Nilai backend: ACTIVE, INACTIVE, SUSPENDED. Data seed lama masih "Active"; `mock-users.ts` menormalkannya. */
   status: string;
+  /**
+   * Kode role yang diberikan lewat `POST /users/{uuid}/roles` atau saat user dibuat.
+   * Kosong (undefined) = belum pernah diatur: role diturunkan dari data lain (`mock-access.ts`).
+   */
+  roles?: string[];
+  /** Isian profil (gender, kota, provinsi). Kosong = pakai data contoh `mock-users.ts`. */
+  profile?: {
+    gender: string | null;
+    city: string | null;
+    province: string | null;
+  };
+  /** False untuk akun yang baru dibuat admin (belum klik tautan email). Kosong = terverifikasi. */
+  emailVerified?: boolean;
 }
 
 export interface MockPic {
@@ -27,13 +41,24 @@ export interface MockPic {
   user_uuid: string;
 }
 
+/**
+ * Anggota organisasi. `pics` tetap nama lamanya karena `/auth/me` dan pencarian user
+ * membacanya. `member_role` kosong dibaca sebagai ADMIN (nilai lama sebelum ada peran).
+ */
+export interface MockOrganizationMember extends MockPic {
+  member_role?: "OWNER" | "ADMIN" | "STAFF";
+}
+
 export interface MockOrganization {
   uuid: string;
   name: string;
+  /** Kosong = diturunkan dari nama saat dibaca; terisi saat dibuat lewat approve atau saat nama diubah. */
+  slug?: string;
+  description?: string;
   email?: string;
   phone?: string;
   address?: string;
-  pics: MockPic[];
+  pics: MockOrganizationMember[];
 }
 
 export interface MockEvent {
@@ -109,6 +134,10 @@ export interface MockSponsor {
   website_url?: string;
   status: string;
   pics: MockPic[];
+  /** Kolom `campaign` di tabel; belum dikirim API asli (draf kontrak brands). */
+  campaign?: string;
+  /** Kolom `instagram_id` di tabel (tanpa "@"); belum dikirim API asli. */
+  instagram_id?: string;
 }
 
 export interface MockEventSponsor {

@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ChartNoAxesCombined,
   PawPrint,
+  ShieldCheck,
   Tag,
   Users,
   Wrench,
@@ -65,7 +66,15 @@ export const navigation: NavGroup[] = [
     label: "Organizations",
     icon: Building2,
     href: ROUTES.organizationManagement,
-    permission: P.ORGANIZATION_VERIFY,
+    // Terbuka untuk semua akun: akun biasa membuka halaman ini untuk "Apply as organizer".
+    section: "Data",
+  },
+  {
+    // GET /auth/permissions butuh user.view, jadi menu ini memakai izin yang sama.
+    label: "Roles & access",
+    icon: ShieldCheck,
+    href: ROUTES.rolesAccess,
+    permission: P.USER_VIEW,
     section: "Data",
   },
   {

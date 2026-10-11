@@ -383,11 +383,26 @@ export const store = {
       name: "Petpet Community",
       email: "contact@petpetcommunity.dev",
       phone: "0215500001",
+      description: "Community that runs the Jakarta Pet Festival.",
+      address: "Jl. Kemayoran Baru No. 10, Jakarta",
       pics: [
         {
           uuid: "pic-org-1",
           name: "Organizer Demo",
           user_uuid: ORGANIZER_UUID,
+          member_role: "OWNER",
+        },
+        {
+          uuid: "pic-org-1b",
+          name: "Bima Saputra",
+          user_uuid: "u-organizer-3",
+          member_role: "ADMIN",
+        },
+        {
+          uuid: "pic-org-1c",
+          name: "Dian Kusuma",
+          user_uuid: "u-organizer-2",
+          member_role: "STAFF",
         },
       ],
     },
@@ -397,7 +412,12 @@ export const store = {
       email: "hello@jakartacatlovers.dev",
       phone: "0215500002",
       pics: [
-        { uuid: "pic-org-2", name: "Dian Kusuma", user_uuid: "u-organizer-2" },
+        {
+          uuid: "pic-org-2",
+          name: "Dian Kusuma",
+          user_uuid: "u-organizer-2",
+          member_role: "OWNER",
+        },
       ],
     },
     {
@@ -406,7 +426,113 @@ export const store = {
       email: "info@surabayapetsports.dev",
       phone: "0315500003",
       pics: [
-        { uuid: "pic-org-3", name: "Bima Saputra", user_uuid: "u-organizer-3" },
+        {
+          uuid: "pic-org-3",
+          name: "Bima Saputra",
+          user_uuid: "u-organizer-3",
+          member_role: "OWNER",
+        },
+      ],
+    },
+    // Organisasi tambahan (tanpa event) supaya daftar punya 10 baris seperti desain Orgs.
+    {
+      uuid: "org-east-java-pet-sport",
+      name: "East Java Pet Sport",
+      email: "contact@eastjavapetsport.dev",
+      phone: "0315500004",
+      description: "Organizer of pet sport events across East Java.",
+      address: "Jl. Basuki Rahmat No. 21, Surabaya",
+      pics: [
+        {
+          uuid: "pic-org-4a",
+          name: "Bima Saputra",
+          user_uuid: "u-organizer-3",
+          member_role: "OWNER",
+        },
+        {
+          uuid: "pic-org-4b",
+          name: "Dian Kusuma",
+          user_uuid: "u-organizer-2",
+          member_role: "ADMIN",
+        },
+      ],
+    },
+    {
+      uuid: "org-happy-paws-indonesia",
+      name: "Happy Paws Indonesia",
+      email: "hello@happypaws.dev",
+      pics: [
+        {
+          uuid: "pic-org-5",
+          name: "Dian Kusuma",
+          user_uuid: "u-organizer-2",
+          member_role: "OWNER",
+        },
+      ],
+    },
+    {
+      uuid: "org-jogja-sugar-glider",
+      name: "Jogja Sugar Glider Community",
+      email: "admin@jogjaglider.dev",
+      pics: [
+        {
+          uuid: "pic-org-6",
+          name: "Bima Saputra",
+          user_uuid: "u-organizer-3",
+          member_role: "OWNER",
+        },
+      ],
+    },
+    {
+      uuid: "org-kpsgi-jakarta",
+      name: "KPSGI Jakarta",
+      email: "jakarta@kpsgi.dev",
+      pics: [
+        {
+          uuid: "pic-org-7",
+          name: "Dian Kusuma",
+          user_uuid: "u-organizer-2",
+          member_role: "OWNER",
+        },
+      ],
+    },
+    {
+      uuid: "org-kpsgi-surabaya",
+      name: "KPSGI Surabaya",
+      email: "surabaya@kpsgi.dev",
+      pics: [
+        {
+          uuid: "pic-org-8",
+          name: "Bima Saputra",
+          user_uuid: "u-organizer-3",
+          member_role: "OWNER",
+        },
+      ],
+    },
+    {
+      uuid: "org-kpsgi-tangerang",
+      name: "KPSGI Tangerang",
+      email: "tangerang@kpsgi.dev",
+      pics: [
+        {
+          uuid: "pic-org-9",
+          name: "Dian Kusuma",
+          user_uuid: "u-organizer-2",
+          member_role: "OWNER",
+        },
+      ],
+    },
+    {
+      uuid: "org-sugar-glider-bandung",
+      name: "Sugar Glider Bandung",
+      email: "bandung@sugarglider.dev",
+      pics: [
+        {
+          uuid: "pic-org-10",
+          name: "Bima Saputra",
+          user_uuid: "u-organizer-3",
+          member_role: "OWNER",
+        },
       ],
     },
   ] as MockOrganization[],
@@ -777,7 +903,7 @@ export const store = {
       uuid: SPONSOR_UUID,
       brand_name: "Whiskas Indonesia",
       email: "partnership@whiskas.example",
-      status: "Active",
+      status: "ACTIVE",
       pics: [
         { uuid: "pic-1", name: "Sponsor Demo", user_uuid: SPONSOR_USER_UUID },
       ],
@@ -787,7 +913,7 @@ export const store = {
       brand_name: "Royal Canin Indonesia",
       email: "partnership@royalcanin.petpet.dev",
       website_url: "https://royalcanin.example",
-      status: "Active",
+      status: "ACTIVE",
       pics: [
         { uuid: "pic-2", name: "Wulan Anggraini", user_uuid: "u-sponsor-2" },
       ],
@@ -797,29 +923,87 @@ export const store = {
       brand_name: "Pet Plus Store",
       email: "sponsorship@petplus.petpet.dev",
       website_url: "https://petplusstore.example",
-      status: "Active",
+      status: "ACTIVE",
       pics: [
         { uuid: "pic-3", name: "Agus Prasetyo", user_uuid: "u-sponsor-3" },
       ],
     },
     // Brand untuk sponsor Surabaya Paw Race 2026 (nama dan telepon dari desain Ev-Sponsors).
+    // Kolom ke-4 dan ke-5 (kampanye dan handle Instagram) dari desain Brands; kosong = tidak ada.
     ...(
       [
-        ["spo-kibbleworks", "KibbleWorks", "081270000006"],
-        ["spo-scalecare", "ScaleCare", "081380000056"],
-        ["spo-furnutrition", "FurNutrition", "081380000022"],
-        ["spo-happy-tail", "Happy Tail Nutrition", "081270000002"],
-        ["spo-glidercare", "GliderCare", "081270000018"],
-        ["spo-pawtech", "PawTech", "081270000014"],
-        ["spo-urbanstudio", "UrbanStudio", "081380000090"],
-        ["spo-whisker-lab", "Whisker Lab", "081270000010"],
+        [
+          "spo-kibbleworks",
+          "KibbleWorks",
+          "081270000006",
+          "Better Bowl Better Day",
+          "kibbleworks",
+        ],
+        ["spo-scalecare", "ScaleCare", "081380000056", "", ""],
+        ["spo-furnutrition", "FurNutrition", "081380000022", "", ""],
+        [
+          "spo-happy-tail",
+          "Happy Tail Nutrition",
+          "081270000002",
+          "Healthy Pets Happy Families",
+          "happytailnutriti",
+        ],
+        ["spo-glidercare", "GliderCare", "081270000018", "", ""],
+        ["spo-pawtech", "PawTech", "081270000014", "", ""],
+        ["spo-urbanstudio", "UrbanStudio", "081380000090", "", ""],
+        ["spo-whisker-lab", "Whisker Lab", "081270000010", "", ""],
+        // Brand lain dari desain Brands (belum terhubung ke event mana pun).
+        [
+          "spo-pawfuel",
+          "PawFuel",
+          "081270000001",
+          "Power Every Paw",
+          "pawfuel",
+        ],
+        [
+          "spo-petglow",
+          "PetGlow Indonesia",
+          "081270000003",
+          "Glow With Your Best Friend",
+          "petglowindonesia",
+        ],
+        [
+          "spo-furrygo",
+          "FurryGo",
+          "081270000004",
+          "Adventure Starts Together",
+          "furrygo",
+        ],
+        [
+          "spo-pawmart",
+          "PawMart",
+          "081270000005",
+          "Everything Your Pet Loves",
+          "pawmart",
+        ],
+        [
+          "spo-petcare-plus",
+          "PetCare Plus",
+          "081270000007",
+          "Care Beyond Competition",
+          "petcareplus",
+        ],
+        [
+          "spo-tailtreats",
+          "TailTreats",
+          "081270000008",
+          "Treat Every Victory",
+          "tailtreats",
+        ],
       ] as const
-    ).map(([uuid, brand_name, phone]) => ({
+    ).map(([uuid, brand_name, phone, campaign, instagram_id]) => ({
       uuid,
       brand_name,
       phone,
-      status: "Active",
+      status: "ACTIVE",
       pics: [],
+      ...(campaign ? { campaign } : {}),
+      ...(instagram_id ? { instagram_id } : {}),
     })),
   ] as MockSponsor[],
 
@@ -1052,32 +1236,6 @@ export const store = {
     },
   ] as MockPetMorph[],
   scoreCriteria: [] as Record<string, unknown>[],
-  organizerApplications: [
-    {
-      uuid: "app-bekasi-pet-club",
-      proposed_organization_name: "Bekasi Pet Club",
-      organization_type: "COMMUNITY",
-      description: null,
-      contact_email: "hello@bekasipet.id",
-      contact_phone: null,
-      address: null,
-      status: "SUBMITTED",
-      review_note: null,
-      approved_organization_uuid: null,
-    },
-    {
-      uuid: "app-solo-glider",
-      proposed_organization_name: "Solo Glider Society",
-      organization_type: "COMMUNITY",
-      description: null,
-      contact_email: "admin@sologlider.id",
-      contact_phone: null,
-      address: null,
-      status: "UNDER_REVIEW",
-      review_note: null,
-      approved_organization_uuid: null,
-    },
-  ],
 };
 
 export const SUPERADMIN_EMAILS = (

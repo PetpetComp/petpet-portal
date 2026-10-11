@@ -39,10 +39,67 @@ import {
   revokeInvitationRecord,
 } from "./mock-staff";
 import {
+  addBrandPicRecord,
+  createBrandRecord,
+  deactivateBrandRecord,
+  getBrandRecord,
+  listBrandRecords,
+  removeBrandPicRecord,
+  updateBrandRecord,
+} from "./mock-brands";
+import {
+  acceptInvitationRecord,
+  approveApplicationRecord,
+  approveVerificationRecord,
+  cancelApplicationRecord,
+  changeMemberRoleRecord,
+  createOrganizationInvitationRecord,
+  declineInvitationRecord,
+  getOrganizationRecord,
+  listApplicationRecords,
+  listMemberRecords,
+  listMyApplicationRecords,
+  listOrganizationInvitationRecords,
+  listOrganizationRecords,
+  listOrganizationVerificationRecords,
+  listVerificationQueueRecords,
+  lookupInvitationRecord,
+  rejectApplicationRecord,
+  rejectVerificationRecord,
+  removeMemberRecord,
+  revokeOrganizationInvitationRecord,
+  submitApplicationRecord,
+  submitVerificationRecord,
+  updateOrganizationRecord,
+} from "./mock-organizations";
+import {
   addEventSponsorRecord,
   listEventSponsorRecords,
   removeEventSponsorRecord,
 } from "./mock-sponsors";
+import {
+  assignRoleRecord,
+  createUserRecord,
+  deactivateUserRecord,
+  getUserRecord,
+  listCityRecords,
+  listCountryRecords,
+  listPermissionRecords,
+  listProvinceRecords,
+  listRoleRecords,
+  listUserRecords,
+  normalizedStatus,
+  revokeRoleRecord,
+  updateUserRecord,
+} from "./mock-users";
+import {
+  createPetRecord,
+  deletePetRecord,
+  getPetRecord,
+  listPetMorphRecords,
+  listPetRecords,
+  updatePetRecord,
+} from "./mock-pets";
 
 function matchPath(
   pattern: string,
@@ -71,7 +128,7 @@ function userRecord(user: MockUser) {
     first_name: user.first_name,
     last_name: user.last_name ?? null,
     phone: user.phone ?? null,
-    status: user.status,
+    status: normalizedStatus(user),
     ...mockAccess(user),
   };
 }
@@ -202,143 +259,205 @@ const routes: Route[] = [
       return null;
     },
   },
-  { method: "GET", pattern: "/auth/roles", handler: () => [] },
-  { method: "GET", pattern: "/auth/permissions", handler: () => [] },
+  // Users, role, permission, wilayah: aturan di mock-users.ts (kontrak users).
+  { method: "GET", pattern: "/auth/roles", handler: () => listRoleRecords() },
+  {
+    method: "GET",
+    pattern: "/auth/permissions",
+    handler: () => listPermissionRecords(requireSession()),
+  },
+  {
+    method: "GET",
+    pattern: "/master/countries",
+    handler: () => listCountryRecords(),
+  },
+  {
+    method: "GET",
+    pattern: "/master/provinces",
+    handler: (_params, _body, query) => listProvinceRecords(query),
+  },
+  {
+    method: "GET",
+    pattern: "/master/cities",
+    handler: (_params, _body, query) => listCityRecords(query),
+  },
   {
     method: "GET",
     pattern: "/users",
-    handler: (_params, _body, query) => {
-      const q = (query.get("q") ?? "").toLowerCase();
-      const users = store.users.filter(
-        (u) =>
-          !q ||
-          [
-            u.username,
-            u.email,
-            u.first_name,
-            u.last_name ?? "",
-            u.phone ?? "",
-            `${u.first_name} ${u.last_name ?? ""}`,
-          ].some((v) => v.toLowerCase().includes(q)),
-      );
-      // Kontrak 13 bagian 1: dengan organization_id, anggota organisasi itu diurutkan
-      // lebih dulu dan ditandai is_member (dipakai pencarian PIC di wizard New event).
-      const organization = store.organizations.find(
-        (o) => o.uuid === query.get("organization_id"),
-      );
-      if (!organization) return paginate(users.map(userRecord), query);
-      const isMember = (u: MockUser) =>
-        organization.pics.some((pic) => pic.user_uuid === u.uuid);
-      const ordered = [...users].sort(
-        (a, b) => Number(isMember(b)) - Number(isMember(a)),
-      );
-      return paginate(
-        ordered.map((u) => ({ ...userRecord(u), is_member: isMember(u) })),
-        query,
-      );
-    },
+    handler: (_params, _body, query) =>
+      listUserRecords(requireSession(), query),
+  },
+  {
+    method: "POST",
+    pattern: "/users",
+    handler: (_params, body) => createUserRecord(requireSession(), body),
   },
   {
     method: "GET",
     pattern: "/users/:uuid",
+    handler: (params) => getUserRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "PATCH",
+    pattern: "/users/:uuid",
+    handler: (params, body) =>
+      updateUserRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "DELETE",
+    pattern: "/users/:uuid",
+    handler: (params) => deactivateUserRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/users/:uuid/roles",
+    handler: (params, body) =>
+      assignRoleRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "DELETE",
+    pattern: "/users/:uuid/roles/:code",
     handler: (params) =>
-      userRecord(findOrThrow(store.users, params.uuid, "User")),
+      revokeRoleRecord(requireSession(), params.uuid, params.code),
   },
   {
     method: "GET",
+    // Pet: aturan di mock-pets.ts (kontrak pets). Butuh login seperti `jwt.auth` di backend.
     pattern: "/pets",
-    handler: (_params, _body, query) => paginate(store.pets, query),
+    handler: (_params, _body, query) => listPetRecords(requireSession(), query),
   },
   {
     method: "GET",
     pattern: "/pets/:uuid",
-    handler: (params) => findOrThrow(store.pets, params.uuid, "Pet"),
+    handler: (params) => getPetRecord(requireSession(), params.uuid),
   },
   {
     method: "POST",
     pattern: "/pets",
-    handler: (_params, body) => {
-      const owner = requireSession();
-      const pet = {
-        uuid: nextUuid(),
-        owner_uuid: owner.uuid,
-        name: String(body?.name ?? ""),
-        species_id: body?.species_id ? String(body.species_id) : undefined,
-        status: "Active",
-        ...body,
-      };
-      store.pets.push(pet as (typeof store.pets)[number]);
-      return pet;
-    },
+    handler: (_params, body) => createPetRecord(requireSession(), body),
   },
   {
     method: "PATCH",
     pattern: "/pets/:uuid",
-    handler: (params, body) => {
-      const pet = findOrThrow(store.pets, params.uuid, "Pet");
-      Object.assign(pet, body);
-      return pet;
-    },
+    handler: (params, body) =>
+      updatePetRecord(requireSession(), params.uuid, body),
   },
   {
     method: "DELETE",
     pattern: "/pets/:uuid",
-    handler: (params) => {
-      store.pets = store.pets.filter((item) => item.uuid !== params.uuid);
-      return null;
-    },
+    handler: (params) => deletePetRecord(requireSession(), params.uuid),
   },
   {
     method: "GET",
-    pattern: "/organizations",
-    handler: (_params, _body, query) => paginate(store.organizations, query),
+    pattern: "/master/pet-morphs",
+    handler: (_params, _body, query) => listPetMorphRecords(query),
   },
+  // Organizations (draf kontrak organizations): aturannya ada di mock-organizations.ts.
   {
-    method: "POST",
+    method: "GET",
     pattern: "/organizations",
-    handler: (_params, body) => {
-      const owner = requireSession();
-      const org = {
-        uuid: nextUuid(),
-        name: String(body?.name ?? ""),
-        email: body?.email ? String(body.email) : undefined,
-        phone: body?.phone ? String(body.phone) : undefined,
-        address: body?.address ? String(body.address) : undefined,
-        pics: [
-          { uuid: nextUuid(), name: owner.first_name, user_uuid: owner.uuid },
-        ],
-      };
-      store.organizations.push(org);
-      return org;
-    },
+    handler: (_params, _body, query) => listOrganizationRecords(query),
   },
   {
     method: "GET",
     pattern: "/organizations/:uuid",
-    handler: (params) =>
-      findOrThrow(store.organizations, params.uuid, "Organization"),
+    handler: (params) => getOrganizationRecord(params.uuid),
   },
   {
     method: "PATCH",
     pattern: "/organizations/:uuid",
-    handler: (params, body) => {
-      const org = findOrThrow(store.organizations, params.uuid, "Organization");
-      const { pic_ids, ...rest } = body ?? {};
-      Object.assign(org, rest);
-      if (Array.isArray(pic_ids)) {
-        org.pics = pic_ids.map((userId) => {
-          const existing = org.pics.find((pic) => pic.user_uuid === userId);
-          if (existing) return existing;
-          const user = store.users.find((item) => item.uuid === userId);
-          return {
-            uuid: nextUuid(),
-            name: user?.first_name ?? "PIC",
-            user_uuid: String(userId),
-          };
-        });
-      }
-      return org;
-    },
+    handler: (params, body) =>
+      updateOrganizationRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "GET",
+    pattern: "/organizations/:uuid/members",
+    handler: (params) => listMemberRecords(requireSession(), params.uuid),
+  },
+  {
+    method: "PATCH",
+    pattern: "/organizations/:uuid/members/:userUuid",
+    handler: (params, body) =>
+      changeMemberRoleRecord(
+        requireSession(),
+        params.uuid,
+        params.userUuid,
+        body,
+      ),
+  },
+  {
+    method: "DELETE",
+    pattern: "/organizations/:uuid/members/:userUuid",
+    handler: (params) =>
+      removeMemberRecord(requireSession(), params.uuid, params.userUuid),
+  },
+  {
+    method: "POST",
+    pattern: "/organizations/:uuid/invitations",
+    handler: (params, body) =>
+      createOrganizationInvitationRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "GET",
+    pattern: "/organizations/:uuid/invitations",
+    handler: (params) =>
+      listOrganizationInvitationRecords(requireSession(), params.uuid),
+  },
+  {
+    method: "DELETE",
+    pattern: "/organizations/:uuid/invitations/:invitationUuid",
+    handler: (params) =>
+      revokeOrganizationInvitationRecord(
+        requireSession(),
+        params.uuid,
+        params.invitationUuid,
+      ),
+  },
+  {
+    method: "POST",
+    pattern: "/organizations/:uuid/verifications",
+    handler: (params, body) =>
+      submitVerificationRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "GET",
+    pattern: "/organizations/:uuid/verifications",
+    handler: (params) =>
+      listOrganizationVerificationRecords(requireSession(), params.uuid),
+  },
+  {
+    method: "GET",
+    pattern: "/verifications",
+    handler: (_params, _body, query) =>
+      listVerificationQueueRecords(requireSession(), query),
+  },
+  {
+    method: "POST",
+    pattern: "/verifications/:uuid/approve",
+    handler: (params) =>
+      approveVerificationRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/verifications/:uuid/reject",
+    handler: (params, body) =>
+      rejectVerificationRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "GET",
+    pattern: "/invitations/:token",
+    handler: (params) => lookupInvitationRecord(params.token),
+  },
+  {
+    method: "POST",
+    pattern: "/invitations/:token/accept",
+    handler: (params) => acceptInvitationRecord(requireSession(), params.token),
+  },
+  {
+    method: "POST",
+    pattern: "/invitations/:token/decline",
+    handler: (params) =>
+      declineInvitationRecord(requireSession(), params.token),
   },
   {
     method: "GET",
@@ -555,17 +674,37 @@ const routes: Route[] = [
     handler: () => listAssignmentRoles(),
   },
   {
+    method: "POST",
+    pattern: "/organizer-applications",
+    handler: (_params, body) => submitApplicationRecord(requireSession(), body),
+  },
+  {
+    method: "GET",
+    pattern: "/organizer-applications/me",
+    handler: () => listMyApplicationRecords(requireSession()),
+  },
+  {
     method: "GET",
     pattern: "/organizer-applications",
-    handler: (_params, _body, query) => {
-      const status = query.get("status");
-      return paginate(
-        store.organizerApplications.filter(
-          (a) => !status || a.status === status,
-        ),
-        query,
-      );
-    },
+    handler: (_params, _body, query) =>
+      listApplicationRecords(requireSession(), query),
+  },
+  {
+    method: "DELETE",
+    pattern: "/organizer-applications/:uuid",
+    handler: (params) => cancelApplicationRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/organizer-applications/:uuid/approve",
+    handler: (params) =>
+      approveApplicationRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/organizer-applications/:uuid/reject",
+    handler: (params, body) =>
+      rejectApplicationRecord(requireSession(), params.uuid, body),
   },
   {
     method: "GET",
@@ -646,65 +785,40 @@ const routes: Route[] = [
   {
     method: "GET",
     pattern: "/sponsors",
-    handler: (_params, _body, query) => paginate(store.sponsors, query),
+    handler: (_params, _body, query) => listBrandRecords(query),
   },
   {
     method: "GET",
     pattern: "/sponsors/:uuid",
-    handler: (params) => findOrThrow(store.sponsors, params.uuid, "Sponsor"),
+    handler: (params) => getBrandRecord(params.uuid),
   },
   {
     method: "POST",
     pattern: "/sponsors",
-    handler: (_params, body) => {
-      const sponsor = {
-        uuid: nextUuid(),
-        brand_name: String(body?.brand_name ?? ""),
-        status: "Active",
-        pics: [] as { uuid: string; name: string; user_uuid: string }[],
-        ...body,
-      };
-      store.sponsors.push(sponsor as (typeof store.sponsors)[number]);
-      return sponsor;
-    },
+    handler: (_params, body) => createBrandRecord(requireSession(), body),
   },
   {
     method: "PATCH",
     pattern: "/sponsors/:uuid",
-    handler: (params, body) => {
-      const sponsor = findOrThrow(store.sponsors, params.uuid, "Sponsor");
-      Object.assign(sponsor, body);
-      return sponsor;
-    },
+    handler: (params, body) =>
+      updateBrandRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "DELETE",
+    pattern: "/sponsors/:uuid",
+    handler: (params) => deactivateBrandRecord(requireSession(), params.uuid),
   },
   {
     method: "POST",
     pattern: "/sponsors/:uuid/pics",
-    handler: (params, body) => {
-      const sponsor = findOrThrow(store.sponsors, params.uuid, "Sponsor");
-      const user = findOrThrow(
-        store.users,
-        String(body?.user_id ?? ""),
-        "User",
-      );
-      sponsor.pics.push({
-        uuid: nextUuid(),
-        name: user.first_name,
-        user_uuid: user.uuid,
-      });
-      return sponsor;
-    },
+    handler: (params, body) =>
+      addBrandPicRecord(requireSession(), params.uuid, body),
   },
   {
     method: "DELETE",
     pattern: "/sponsors/:uuid/pics/:userId",
-    handler: (params) => {
-      const sponsor = findOrThrow(store.sponsors, params.uuid, "Sponsor");
-      sponsor.pics = sponsor.pics.filter(
-        (pic) => pic.user_uuid !== params.userId,
-      );
-      return null;
-    },
+    handler: (params) =>
+      removeBrandPicRecord(requireSession(), params.uuid, params.userId),
   },
   // Sponsor event: aturan di mock-sponsors.ts (kontrak 13 bagian 4). GET mengembalikan array datar.
   {

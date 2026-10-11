@@ -53,10 +53,33 @@ export const ENDPOINTS = {
     pic: (uuid: string, userId: string) =>
       `/sponsors/${id(uuid)}/pics/${id(userId)}`,
   },
-  organizerApplications: { list: "/organizer-applications" },
+  organizerApplications: {
+    list: "/organizer-applications",
+    mine: "/organizer-applications/me",
+    detail: (uuid: string) => `/organizer-applications/${id(uuid)}`,
+    approve: (uuid: string) => `/organizer-applications/${id(uuid)}/approve`,
+    reject: (uuid: string) => `/organizer-applications/${id(uuid)}/reject`,
+  },
   organizations: {
     list: "/organizations",
     detail: (uuid: string) => `/organizations/${id(uuid)}`,
+    members: (uuid: string) => `/organizations/${id(uuid)}/members`,
+    member: (uuid: string, userUuid: string) =>
+      `/organizations/${id(uuid)}/members/${id(userUuid)}`,
+    invitations: (uuid: string) => `/organizations/${id(uuid)}/invitations`,
+    invitation: (uuid: string, invitationUuid: string) =>
+      `/organizations/${id(uuid)}/invitations/${id(invitationUuid)}`,
+    verifications: (uuid: string) => `/organizations/${id(uuid)}/verifications`,
+  },
+  verifications: {
+    list: "/verifications",
+    approve: (uuid: string) => `/verifications/${id(uuid)}/approve`,
+    reject: (uuid: string) => `/verifications/${id(uuid)}/reject`,
+  },
+  invitations: {
+    detail: (token: string) => `/invitations/${id(token)}`,
+    accept: (token: string) => `/invitations/${id(token)}/accept`,
+    decline: (token: string) => `/invitations/${id(token)}/decline`,
   },
   master: {
     species: "/master/species",
@@ -66,7 +89,6 @@ export const ENDPOINTS = {
     countries: "/master/countries",
     provinces: "/master/provinces",
     cities: "/master/cities",
-    districts: "/master/districts",
   },
   entries: {
     detail: (uuid: string) => `/entries/${id(uuid)}`,

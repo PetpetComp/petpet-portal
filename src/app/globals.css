@@ -94,3 +94,13 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
+
+/*
+ * Kotak scroll horizontal (tabel lebar) harus menjadi containing block bagi elemen
+ * position:absolute di dalamnya, misalnya teks `sr-only` di tiap baris tabel. Tanpa ini
+ * elemen itu "keluar" dari kotak scroll dan melebarkan seluruh halaman di layar HP.
+ */
+.overflow-x-auto,
+.table-scroll {
+  position: relative;
+}

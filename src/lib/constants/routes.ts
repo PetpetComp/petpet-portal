@@ -34,6 +34,16 @@ export const ROUTES = {
       `/competition/${encodeURIComponent(id)}/time-trial`,
   },
   organizationManagement: "/organization-management",
+  organizations: {
+    detail: (id: string) =>
+      `/organization-management/${encodeURIComponent(id)}`,
+    events: (id: string) =>
+      `/organization-management/${encodeURIComponent(id)}/events`,
+    invitations: (id: string) =>
+      `/organization-management/${encodeURIComponent(id)}/invitations`,
+    profile: (id: string) =>
+      `/organization-management/${encodeURIComponent(id)}/profile`,
+  },
   myOrganization: "/my-organization",
   userManagement: "/user-management",
   users: {
@@ -53,5 +63,6 @@ export const ROUTES = {
     detail: (id: string) => `/sponsorship-brand/${encodeURIComponent(id)}`,
     edit: (id: string) => `/sponsorship-brand/${encodeURIComponent(id)}/edit`,
   },
+  rolesAccess: "/roles-access",
   report: "/report",
 } as const;

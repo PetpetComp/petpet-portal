@@ -28,12 +28,45 @@ describe("needsLegacyData", () => {
       needsLegacyData("/event-management/7f3a-uuid/competitions/create"),
     ).toBe(false);
   });
+  it("skips the migrated Brands pages", () => {
+    expect(needsLegacyData("/sponsorship-brand")).toBe(false);
+    expect(needsLegacyData("/sponsorship-brand/create")).toBe(false);
+    expect(needsLegacyData("/sponsorship-brand/b1")).toBe(false);
+    expect(needsLegacyData("/sponsorship-brand/b1/edit")).toBe(false);
+    expect(needsLegacyData("/sponsorship-brand/b1/other/deep")).toBe(true);
+  });
+  it("skips the migrated Pets pages", () => {
+    expect(needsLegacyData("/pet-management")).toBe(false);
+    expect(needsLegacyData("/pet-management/create")).toBe(false);
+    expect(needsLegacyData("/pet-management/p1")).toBe(false);
+    expect(needsLegacyData("/pet-management/p1/edit")).toBe(false);
+    expect(needsLegacyData("/pet-management/p1/other/deep")).toBe(true);
+  });
   it("still loads for old pages that read the shared store", () => {
     expect(needsLegacyData("/event-management/event-registration")).toBe(true);
     expect(needsLegacyData("/event-management/7f3a-uuid/competitions/c1")).toBe(
       true,
     );
-    expect(needsLegacyData("/user-management")).toBe(true);
     expect(needsLegacyData("/competition")).toBe(true);
+  });
+  it("skips the migrated Users and Roles pages", () => {
+    expect(needsLegacyData("/user-management")).toBe(false);
+    expect(needsLegacyData("/user-management/create")).toBe(false);
+    expect(needsLegacyData("/user-management/u1")).toBe(false);
+    expect(needsLegacyData("/user-management/u1/edit")).toBe(false);
+    expect(needsLegacyData("/user-management/u1/other/deep")).toBe(true);
+    expect(needsLegacyData("/roles-access")).toBe(false);
+  });
+  it("skips the migrated Organizations pages", () => {
+    expect(needsLegacyData("/organization-management")).toBe(false);
+    expect(needsLegacyData("/organization-management/o1")).toBe(false);
+    expect(needsLegacyData("/organization-management/o1/events")).toBe(false);
+    expect(needsLegacyData("/organization-management/o1/invitations")).toBe(
+      false,
+    );
+    expect(needsLegacyData("/organization-management/o1/profile")).toBe(false);
+    expect(needsLegacyData("/organization-management/o1/other/deep")).toBe(
+      true,
+    );
   });
 });

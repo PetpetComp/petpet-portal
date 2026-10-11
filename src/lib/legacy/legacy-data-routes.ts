@@ -18,6 +18,11 @@ const MIGRATED: RegExp[] = [
   /^\/event-management\/[^/]+\/committee\/?$/, // Committee tab
   /^\/event-management\/[^/]+\/(sponsors|doorprize)\/?$/, // Tabs that are still "coming soon"
   /^\/event-management\/[^/]+\/edit\/?$/, // Edit event
+  /^\/pet-management(\/[^/]+(\/edit)?)?\/?$/, // Pets: list, New pet, detail, Edit pet
+  /^\/sponsorship-brand(\/[^/]+(\/edit)?)?\/?$/, // Brands: list, New brand, detail, Edit brand
+  /^\/user-management(\/[^/]+(\/edit)?)?\/?$/, // Users: list, New user, detail, Edit user
+  /^\/roles-access\/?$/, // Roles & access
+  /^\/organization-management(\/[^/]+(\/(events|invitations|profile))?)?\/?$/, // Organizations: list, detail and its tabs
 ];
 
 export function needsLegacyData(pathname: string): boolean {

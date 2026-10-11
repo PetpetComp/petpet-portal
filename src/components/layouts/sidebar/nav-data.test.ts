@@ -6,7 +6,7 @@ const labels = (allowed: string[]) =>
 
 describe("visibleNavigation", () => {
   it("shows a user without permissions only what needs none", () => {
-    expect(labels([])).toEqual(["Home", "Pets"]);
+    expect(labels([])).toEqual(["Home", "Pets", "Organizations"]);
   });
   it("shows organizer menus once the permission is held", () => {
     expect(labels(["event.update"])).toEqual(
@@ -16,7 +16,8 @@ describe("visibleNavigation", () => {
   it("hides platform-admin menus from organizers", () => {
     const organizer = labels(["event.update", "organization.view"]);
     expect(organizer).not.toContain("Users");
-    expect(organizer).not.toContain("Organizations");
+    // Organizations terbuka untuk semua akun (tombol "Apply as organizer").
+    expect(organizer).toContain("Organizations");
     expect(organizer).not.toContain("Brands");
   });
   it("hides the Event tools group when none of its items are allowed", () => {
