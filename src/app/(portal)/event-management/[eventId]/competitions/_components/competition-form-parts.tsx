@@ -1,3 +1,4 @@
+import { SectionCard } from "@/components/common/page-layout";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,12 +16,40 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-border rounded-2xl border bg-white p-5">
-      <h2 className="mb-4">{title}</h2>
+    <SectionCard title={title}>
       <div className={cn("grid gap-4", !wide && "md:grid-cols-2")}>
         {children}
       </div>
-    </section>
+    </SectionCard>
+  );
+}
+
+/**
+ * Daftar "label: nilai" satu kolom untuk kartu Summary di kolom samping. Dipanggil dari
+ * halaman Add dan Edit competition. Nilai kosong tampil "-". Bukan `<label>` supaya tidak
+ * mengganggu pencarian field berdasarkan label.
+ */
+export function SummaryList({
+  items,
+}: {
+  items: { label: string; value: React.ReactNode }[];
+}) {
+  return (
+    <dl className="grid gap-3">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="flex min-w-0 items-start justify-between gap-3"
+        >
+          <dt className="text-muted-foreground shrink-0 text-[13px] font-semibold">
+            {item.label}
+          </dt>
+          <dd className="min-w-0 text-right text-sm font-medium break-words">
+            {item.value || "-"}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

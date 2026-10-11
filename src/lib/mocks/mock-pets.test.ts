@@ -88,9 +88,16 @@ describe("listPetRecords", () => {
   });
 
   it("filters by species and rejects an unknown species", () => {
+    const gliders = store.pets.filter((p) => p.species_uuid === SUGAR_GLIDER);
     expect(
       listPetRecords(admin, query({ species_id: SUGAR_GLIDER })).meta.total,
-    ).toBe(store.pets.length);
+    ).toBe(gliders.length);
+    expect(
+      listPetRecords(admin, query({ species_id: "sp-dog" })).meta.total,
+    ).toBe(6);
+    expect(
+      listPetRecords(admin, query({ species_id: "sp-cat" })).meta.total,
+    ).toBe(4);
     expect(
       failure(() => listPetRecords(admin, query({ species_id: "nope" })))
         .status,
@@ -319,7 +326,9 @@ describe("listPetMorphRecords", () => {
   it("filters by species and answers 404 for an unknown one", () => {
     expect(
       listPetMorphRecords(query({ species_id: SUGAR_GLIDER })).length,
-    ).toBe(store.petMorphs.length);
+    ).toBe(
+      store.petMorphs.filter((m) => m.species_uuid === SUGAR_GLIDER).length,
+    );
     expect(
       failure(() => listPetMorphRecords(query({ species_id: "nope" }))).status,
     ).toBe(404);

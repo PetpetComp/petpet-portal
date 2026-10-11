@@ -51,19 +51,12 @@ function seedResults(): Record<string, StoredResult[]> {
   });
   return {
     [FUN_RUN_UUID]: [
-      finished("pet-niko", 41003),
-      finished("pet-chibi", 38412),
-      { pet_uuid: "pet-nana", status: "DNF", finish_time_ms: null },
-      finished("pet-kona", 40256),
-      finished("pet-bolt", 43904),
-      { pet_uuid: "pet-pipi", status: "DNS", finish_time_ms: null },
-      finished("pet-sora", 39087),
-      finished("pet-mika", 41870),
-      finished("pet-rocky", 44520),
-      finished("pet-puffy", 42115),
-      { pet_uuid: "pet-kiwi", status: "DQ", finish_time_ms: null },
-      finished("pet-mochi", 45377),
-      finished("pet-momo", 46002),
+      finished("pet-cooper", 41003),
+      finished("pet-rufus", 38412),
+      { pet_uuid: "pet-pepper", status: "DNF", finish_time_ms: null },
+      finished("pet-teddy", 44520),
+      { pet_uuid: "pet-daisy", status: "DQ", finish_time_ms: null },
+      finished("pet-waffle", 39087),
     ],
   };
 }

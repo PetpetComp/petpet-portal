@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Check, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { FormField, fieldClass } from "@/components/ui/form-field";
+import { FilterSheet } from "@/components/common/filter-sheet";
 import { Can } from "@/components/common/can";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
@@ -51,6 +53,20 @@ function valueOf<T extends string>(
 
 const petLabel = (e: Entry) => e.petName ?? "Team entry";
 
+/** Filter di panel Filter. Nilai select berupa label (lihat `valueOf`), kosong = semua. */
+type RegistrationFilters = {
+  competition: string;
+  payment: string;
+  /** True: ikutkan pendaftaran yang sudah ditarik (status tidak dikirim ke API). */
+  showWithdrawn: boolean;
+};
+
+const EMPTY_FILTERS: RegistrationFilters = {
+  competition: "",
+  payment: "",
+  showWithdrawn: false,
+};
+
 /** F2.1: every registration of the event, filtered, sorted and paged by the API. */
 export function EventRegistrations({ eventId }: { eventId: string }) {
   const competitions = useEventCompetitions(eventId);
@@ -62,9 +78,8 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
   const [pageSize, setPageSize] = useState(10);
   const [reviewFilter, setReviewFilter] = useState<EligibilityStatus | "">("");
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<Record<string, string>>({
-    status: ENTRY_STATUS_LABEL.REGISTERED,
-  });
+  const [filters, setFilters] = useState<RegistrationFilters>(EMPTY_FILTERS);
+  const [draft, setDraft] = useState<RegistrationFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<Sort>({ key: "registered", direction: -1 });
   const q = useDebouncedValue(search);
 
@@ -74,7 +89,7 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
     )?.id,
     eligibility: reviewFilter || undefined,
     payment: valueOf(PAYMENT_LABEL, filters.payment),
-    status: valueOf(ENTRY_STATUS_LABEL, filters.status),
+    status: filters.showWithdrawn ? undefined : "REGISTERED",
     q,
     sort: SORT_BY_COLUMN[sort.key],
     direction: sort.direction === 1 ? "asc" : "desc",
@@ -82,6 +97,25 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
     perPage: pageSize,
   };
   const entries = useEventEntries(eventId, query);
+  /** Jumlah filter berlaku di panel (pencarian dan tombol review tidak dihitung). */
+  const activeCount = [
+    filters.competition,
+    filters.payment,
+    filters.showWithdrawn,
+  ].filter(Boolean).length;
+
+  /** Apply: salin draft panel ke filter berlaku, kembali ke halaman pertama. */
+  function applyDraft() {
+    setFilters(draft);
+    setPage(0);
+  }
+
+  /** Reset: kosongkan filter panel (draft dan berlaku). */
+  function resetDraft() {
+    setDraft(EMPTY_FILTERS);
+    setFilters(EMPTY_FILTERS);
+    setPage(0);
+  }
   const summary = entries.data?.summary;
 
   function decide(entry: Entry, decision: "approve" | "reject") {
@@ -152,16 +186,11 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
     {
       key: "competition",
       label: "Competition",
-      filter: {
-        type: "select",
-        options: (competitions.data ?? []).map((c) => c.name),
-      },
       render: (e) => e.competitionName,
     },
     {
       key: "payment",
       label: "Payment",
-      filter: { type: "select", options: Object.values(PAYMENT_LABEL) },
       render: (e) => (
         <span className="flex flex-col items-start gap-1">
           <StatusBadge status={PAYMENT_LABEL[e.payment]} />
@@ -237,20 +266,55 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
             className="min-w-0 flex-1 bg-transparent outline-none"
           />
         </label>
-        <label className="text-muted-foreground flex items-center gap-2 text-sm font-semibold">
-          <input
-            type="checkbox"
-            checked={!filters.status}
-            onChange={(e) => {
-              setFilters((f) => ({
-                ...f,
-                status: e.target.checked ? "" : ENTRY_STATUS_LABEL.REGISTERED,
-              }));
-              setPage(0);
-            }}
-          />
-          Show withdrawn
-        </label>
+        <FilterSheet
+          activeCount={activeCount}
+          onOpen={() => setDraft(filters)}
+          onApply={applyDraft}
+          onReset={resetDraft}
+        >
+          <FormField label="Competition">
+            <select
+              aria-label="Filter competition"
+              value={draft.competition}
+              onChange={(e) =>
+                setDraft({ ...draft, competition: e.target.value })
+              }
+              className={fieldClass}
+            >
+              <option value="">All competitions</option>
+              {(competitions.data ?? []).map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Payment">
+            <select
+              aria-label="Filter payment"
+              value={draft.payment}
+              onChange={(e) => setDraft({ ...draft, payment: e.target.value })}
+              className={fieldClass}
+            >
+              <option value="">All</option>
+              {Object.values(PAYMENT_LABEL).map((label) => (
+                <option key={label} value={label}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={draft.showWithdrawn}
+              onChange={(e) =>
+                setDraft({ ...draft, showWithdrawn: e.target.checked })
+              }
+            />
+            Show withdrawn
+          </label>
+        </FilterSheet>
         {summary && (
           <p className="text-muted-foreground text-sm">
             <b className="text-foreground">{summary.total}</b> registrations ·{" "}
@@ -270,11 +334,6 @@ export function EventRegistrations({ eventId }: { eventId: string }) {
           label="Registrations"
           rows={entries.data?.items ?? []}
           columns={columns}
-          filters={filters}
-          onFilterChange={(key, value) => {
-            setFilters((f) => ({ ...f, [key]: value }));
-            setPage(0);
-          }}
           sort={sort}
           onSortChange={(next) => {
             setSort(next);

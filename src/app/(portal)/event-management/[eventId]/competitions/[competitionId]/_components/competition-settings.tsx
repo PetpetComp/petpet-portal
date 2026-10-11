@@ -6,7 +6,11 @@ import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import { ErrorState } from "@/components/common/error-state";
-import { SectionCard } from "@/components/common/page-layout";
+import {
+  InfoList,
+  PageColumns,
+  SectionCard,
+} from "@/components/common/page-layout";
 import { Button } from "@/components/ui/button";
 import { FormField, fieldClass } from "@/components/ui/form-field";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +28,7 @@ import {
 } from "@/domains/competitions/queries";
 import { PERIOD_LABEL, usesCriteria } from "@/domains/competitions/schema";
 import {
+  formatCutoff,
   hasNoChanges,
   missingChannelTypes,
   settingsChanges,
@@ -42,6 +47,7 @@ import {
 } from "@/domains/competitions/types";
 import { useEvent } from "@/domains/events/queries";
 import { useAuth } from "@/hooks/use-auth";
+import { rupiah } from "@/lib/format/label";
 import { PERMISSION } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
 
@@ -94,6 +100,7 @@ export function CompetitionSettings({
       competition={competition.data}
       type={type}
       rule={rule}
+      rules={rules.data ?? []}
       rulesUnavailable={rules.isError}
       periods={periods.data}
       canUpdate={
@@ -108,6 +115,7 @@ function SettingsForm({
   competition,
   type,
   rule,
+  rules,
   rulesUnavailable,
   periods,
   canUpdate,
@@ -116,6 +124,7 @@ function SettingsForm({
   competition: Competition;
   type: CompetitionType | null;
   rule: CompetitionRule | null;
+  rules: CompetitionRule[];
   rulesUnavailable: boolean;
   periods: RegistrationPeriod[];
   canUpdate: boolean;
@@ -188,297 +197,332 @@ function SettingsForm({
     : "Any animal";
 
   return (
-    <form onSubmit={onSubmit} noValidate className="grid max-w-6xl gap-5">
-      {!canUpdate && (
-        <p className="text-muted-foreground" role="note">
-          You can view these settings but not change them.
-        </p>
-      )}
-
-      <SectionCard
-        title={type ? `${type.name} rules` : "Rules"}
-        action={
-          !judged && (
-            <p className="text-muted-foreground text-sm">
-              Saving creates a new rule version; past heats keep theirs.
-            </p>
-          )
-        }
-      >
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <FormField label="Type">
-            <input
-              className={fieldClass}
-              value={type?.name ?? ""}
-              disabled
-              readOnly
-            />
-          </FormField>
-          <FormField label="Animal">
-            <input className={fieldClass} value={animal} disabled readOnly />
-          </FormField>
-          {!judged && (
-            <>
-              <FormField
-                label="Lanes per match"
-                error={errors.laneTotal?.message}
-              >
-                <input
-                  type="number"
-                  min={1}
-                  className={fieldClass}
-                  disabled={rulesLocked}
-                  {...register("laneTotal")}
-                />
-              </FormField>
-              {resultMode === "CHECKPOINT" && (
-                <FormField
-                  label="Checkpoints"
-                  error={errors.checkpointTotal?.message}
-                >
+    <form onSubmit={onSubmit} noValidate className="grid gap-5">
+      <PageColumns
+        main={
+          <>
+            {!canUpdate && (
+              <p className="text-muted-foreground" role="note">
+                You can view these settings but not change them.
+              </p>
+            )}
+            <SectionCard title={type ? `${type.name} rules` : "Rules"}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Type">
                   <input
-                    type="number"
-                    min={0}
                     className={fieldClass}
-                    disabled={rulesLocked}
-                    {...register("checkpointTotal")}
+                    value={type?.name ?? ""}
+                    disabled
+                    readOnly
                   />
                 </FormField>
-              )}
-              <FormField
-                label="Cut-off time"
-                hint="Minutes and seconds, for example 01:30."
-                error={errors.cutoff?.message}
-              >
-                <input
-                  className={cn(fieldClass, "font-mono")}
-                  placeholder="01:30"
-                  disabled={rulesLocked}
-                  {...register("cutoff")}
-                />
-              </FormField>
-            </>
-          )}
-        </div>
-        {rulesUnavailable && (
-          <p className="text-muted-foreground text-sm">
-            Rules are not available for your account.
-          </p>
-        )}
-        {judged && (
-          <CriteriaSummary
-            loading={criteria.isPending}
-            failed={criteria.isError}
-            rows={criteria.data ?? []}
-          />
-        )}
-      </SectionCard>
-
-      <SectionCard
-        title="Registration channels"
-        action={
-          canUpdate && (
-            <Button
-              variant="secondary"
-              disabled={free.length === 0}
-              onClick={() =>
-                rows.append({
-                  periodId: "",
-                  type: free[0],
-                  closed: false,
-                  price: 0,
-                  quota: "",
-                  startAt: "",
-                  endAt: "",
-                })
-              }
-            >
-              <Plus size={16} aria-hidden /> Add channel
-            </Button>
-          )
-        }
-      >
-        {rows.fields.length === 0 ? (
-          <p className="text-muted-foreground">
-            No registration channels yet.
-            {canUpdate ? " Add one so participants can sign up." : ""}
-          </p>
-        ) : (
-          <div className="-mx-5 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left">
-              <thead>
-                <tr className="text-muted-foreground text-xs tracking-wide uppercase">
-                  <th className="px-5 py-2 font-semibold">Channel</th>
-                  <th className="px-2 py-2 font-semibold">Price</th>
-                  <th className="px-2 py-2 font-semibold">Quota</th>
-                  <th className="px-2 py-2 font-semibold">Opens</th>
-                  <th className="px-2 py-2 font-semibold">Closes</th>
-                  <th className="px-5 py-2">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.fields.map((field, i) => {
-                  const row = watched?.[i];
-                  const label = PERIOD_LABEL[row?.type ?? field.type];
-                  const closed = field.closed;
-                  const isNew = field.periodId === "";
-                  const err = errors.periods?.[i];
-                  const locked = !canUpdate || closed;
-                  return (
-                    <tr
-                      key={field.id}
-                      className="border-border border-t align-top"
+                <FormField label="Animal">
+                  <input
+                    className={fieldClass}
+                    value={animal}
+                    disabled
+                    readOnly
+                  />
+                </FormField>
+                {!judged && (
+                  <>
+                    <FormField
+                      label="Lanes per match"
+                      error={errors.laneTotal?.message}
                     >
-                      <td className="px-5 py-3">
-                        {isNew ? (
-                          <select
-                            aria-label={`Channel type of row ${i + 1}`}
-                            className={fieldClass}
-                            {...register(`periods.${i}.type`)}
-                          >
-                            {[row?.type ?? field.type, ...free].map(
-                              (t, n, all) =>
-                                all.indexOf(t) === n ? (
-                                  <option key={t} value={t}>
-                                    {PERIOD_LABEL[t]}
-                                  </option>
-                                ) : null,
-                            )}
-                          </select>
-                        ) : (
-                          <b className="flex min-h-11 items-center gap-2">
-                            {label}
-                            {closed && (
-                              <span className="text-muted-foreground text-xs font-semibold">
-                                Closed
-                              </span>
-                            )}
-                          </b>
-                        )}
-                      </td>
-                      <td className="px-2 py-3">
+                      <input
+                        type="number"
+                        min={1}
+                        className={fieldClass}
+                        disabled={rulesLocked}
+                        {...register("laneTotal")}
+                      />
+                    </FormField>
+                    {resultMode === "CHECKPOINT" && (
+                      <FormField
+                        label="Checkpoints"
+                        error={errors.checkpointTotal?.message}
+                      >
                         <input
                           type="number"
                           min={0}
-                          step={1000}
-                          aria-label={`${label} price`}
-                          aria-invalid={!!err?.price}
-                          className={cn(fieldClass, "font-mono")}
-                          disabled={locked}
-                          {...register(`periods.${i}.price`)}
-                        />
-                        <Err message={err?.price?.message} />
-                      </td>
-                      <td className="px-2 py-3">
-                        <input
-                          type="number"
-                          min={1}
-                          placeholder="No limit"
-                          aria-label={`${label} quota`}
-                          aria-invalid={!!err?.quota}
                           className={fieldClass}
-                          disabled={locked}
-                          {...register(`periods.${i}.quota`)}
+                          disabled={rulesLocked}
+                          {...register("checkpointTotal")}
                         />
-                        <Err message={err?.quota?.message} />
-                      </td>
-                      <td className="px-2 py-3">
-                        <input
-                          type="datetime-local"
-                          aria-label={`${label} opens`}
-                          aria-invalid={!!err?.startAt}
-                          className={fieldClass}
-                          disabled={locked}
-                          {...register(`periods.${i}.startAt`)}
-                        />
-                        <Err message={err?.startAt?.message} />
-                      </td>
-                      <td className="px-2 py-3">
-                        <input
-                          type="datetime-local"
-                          aria-label={`${label} closes`}
-                          aria-invalid={!!err?.endAt}
-                          className={fieldClass}
-                          disabled={locked}
-                          {...register(`periods.${i}.endAt`)}
-                        />
-                        <Err message={err?.endAt?.message} />
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        {canUpdate && !closed && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={
-                              isNew
-                                ? `Remove ${label} row`
-                                : `Close ${label} channel`
-                            }
-                            onClick={() =>
-                              isNew
-                                ? rows.remove(i)
-                                : setToClose({
-                                    id: field.periodId,
-                                    label,
-                                  })
-                            }
-                          >
-                            <X size={16} aria-hidden />
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <Err
-          message={errors.periods?.root?.message ?? errors.periods?.message}
-        />
-      </SectionCard>
-
-      {competition.registrationClosed && (
-        <div
-          role="status"
-          className="border-danger/30 bg-danger-soft flex flex-wrap items-center justify-between gap-4 rounded-2xl border px-5 py-4"
-        >
-          <div className="text-danger-ink grid gap-0.5">
-            <b>Registration closed</b>
-            <span>
-              Closed on {formatDayTime(competition.registrationClosedAt)}.
-              {competition.actions.reopenRegistration
-                ? " Reopening invalidates the current drawing."
-                : ""}
-            </span>
-          </div>
-          {competition.actions.reopenRegistration && (
-            <Button
-              variant="secondary"
-              className="border-danger text-danger-ink bg-white"
-              disabled={lifecycle.isPending}
-              onClick={() => setConfirmReopen(true)}
+                      </FormField>
+                    )}
+                    <FormField
+                      label="Cut-off time"
+                      hint="Minutes and seconds, for example 01:30."
+                      error={errors.cutoff?.message}
+                    >
+                      <input
+                        className={cn(fieldClass, "font-mono")}
+                        placeholder="01:30"
+                        disabled={rulesLocked}
+                        {...register("cutoff")}
+                      />
+                    </FormField>
+                  </>
+                )}
+              </div>
+              {rulesUnavailable && (
+                <p className="text-muted-foreground text-sm">
+                  Rules are not available for your account.
+                </p>
+              )}
+              {judged && (
+                <CriteriaSummary
+                  loading={criteria.isPending}
+                  failed={criteria.isError}
+                  rows={criteria.data ?? []}
+                />
+              )}
+            </SectionCard>
+            <SectionCard
+              title="Registration channels"
+              action={
+                canUpdate && (
+                  <Button
+                    variant="secondary"
+                    disabled={free.length === 0}
+                    onClick={() =>
+                      rows.append({
+                        periodId: "",
+                        type: free[0],
+                        closed: false,
+                        price: 0,
+                        quota: "",
+                        startAt: "",
+                        endAt: "",
+                      })
+                    }
+                  >
+                    <Plus size={16} aria-hidden /> Add channel
+                  </Button>
+                )
+              }
             >
-              Reopen registration
-            </Button>
-          )}
-        </div>
-      )}
-
-      {canUpdate && (
-        <div className="flex justify-end">
-          <Button
-            type="submit"
-            className="min-h-11 rounded-xl px-5 font-bold"
-            disabled={save.isPending || !formState.isDirty}
-          >
-            {save.isPending ? "Saving…" : "Save changes"}
-          </Button>
-        </div>
-      )}
+              {rows.fields.length === 0 ? (
+                <p className="text-muted-foreground">
+                  No registration channels yet.
+                  {canUpdate ? " Add one so participants can sign up." : ""}
+                </p>
+              ) : (
+                <div className="-mx-5 overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-left">
+                    <thead>
+                      <tr className="text-muted-foreground text-xs tracking-wide uppercase">
+                        <th className="px-5 py-2 font-semibold">Channel</th>
+                        <th className="px-2 py-2 font-semibold">Price</th>
+                        <th className="px-2 py-2 font-semibold">Quota</th>
+                        <th className="px-2 py-2 font-semibold">Opens</th>
+                        <th className="px-2 py-2 font-semibold">Closes</th>
+                        <th className="px-5 py-2">
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.fields.map((field, i) => {
+                        const row = watched?.[i];
+                        const label = PERIOD_LABEL[row?.type ?? field.type];
+                        const closed = field.closed;
+                        const isNew = field.periodId === "";
+                        const err = errors.periods?.[i];
+                        const locked = !canUpdate || closed;
+                        return (
+                          <tr
+                            key={field.id}
+                            className="border-border border-t align-top"
+                          >
+                            <td className="px-5 py-3">
+                              {isNew ? (
+                                <select
+                                  aria-label={`Channel type of row ${i + 1}`}
+                                  className={fieldClass}
+                                  {...register(`periods.${i}.type`)}
+                                >
+                                  {[row?.type ?? field.type, ...free].map(
+                                    (t, n, all) =>
+                                      all.indexOf(t) === n ? (
+                                        <option key={t} value={t}>
+                                          {PERIOD_LABEL[t]}
+                                        </option>
+                                      ) : null,
+                                  )}
+                                </select>
+                              ) : (
+                                <b className="flex min-h-11 items-center gap-2">
+                                  {label}
+                                  {closed && (
+                                    <span className="text-muted-foreground text-xs font-semibold">
+                                      Closed
+                                    </span>
+                                  )}
+                                </b>
+                              )}
+                            </td>
+                            <td className="px-2 py-3">
+                              <input
+                                type="number"
+                                min={0}
+                                step={1000}
+                                aria-label={`${label} price`}
+                                aria-invalid={!!err?.price}
+                                className={cn(fieldClass, "font-mono")}
+                                disabled={locked}
+                                {...register(`periods.${i}.price`)}
+                              />
+                              <Err message={err?.price?.message} />
+                            </td>
+                            <td className="px-2 py-3">
+                              <input
+                                type="number"
+                                min={1}
+                                placeholder="No limit"
+                                aria-label={`${label} quota`}
+                                aria-invalid={!!err?.quota}
+                                className={fieldClass}
+                                disabled={locked}
+                                {...register(`periods.${i}.quota`)}
+                              />
+                              <Err message={err?.quota?.message} />
+                            </td>
+                            <td className="px-2 py-3">
+                              <input
+                                type="datetime-local"
+                                aria-label={`${label} opens`}
+                                aria-invalid={!!err?.startAt}
+                                className={fieldClass}
+                                disabled={locked}
+                                {...register(`periods.${i}.startAt`)}
+                              />
+                              <Err message={err?.startAt?.message} />
+                            </td>
+                            <td className="px-2 py-3">
+                              <input
+                                type="datetime-local"
+                                aria-label={`${label} closes`}
+                                aria-invalid={!!err?.endAt}
+                                className={fieldClass}
+                                disabled={locked}
+                                {...register(`periods.${i}.endAt`)}
+                              />
+                              <Err message={err?.endAt?.message} />
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                              {canUpdate && !closed && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label={
+                                    isNew
+                                      ? `Remove ${label} row`
+                                      : `Close ${label} channel`
+                                  }
+                                  onClick={() =>
+                                    isNew
+                                      ? rows.remove(i)
+                                      : setToClose({
+                                          id: field.periodId,
+                                          label,
+                                        })
+                                  }
+                                >
+                                  <X size={16} aria-hidden />
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <Err
+                message={
+                  errors.periods?.root?.message ?? errors.periods?.message
+                }
+              />
+            </SectionCard>
+          </>
+        }
+        aside={
+          <div className="grid gap-5 xl:sticky xl:top-4">
+            <SectionCard title="Rule version">
+              <RuleVersions
+                rules={rules}
+                judged={judged}
+                unavailable={rulesUnavailable}
+              />
+            </SectionCard>
+            <SectionCard title="Registration">
+              <InfoList
+                items={[
+                  {
+                    label: "Status",
+                    value: competition.registrationClosed
+                      ? "Closed"
+                      : competition.registrationOpen
+                        ? "Open"
+                        : "Not open yet",
+                  },
+                  {
+                    label: "Active channel",
+                    value: competition.activeRegistrationPeriod
+                      ? `${PERIOD_LABEL[competition.activeRegistrationPeriod.type]}, ${rupiah(competition.activeRegistrationPeriod.price)}`
+                      : "None right now",
+                  },
+                ]}
+              />
+              {competition.registrationClosed && (
+                <div
+                  role="status"
+                  className="border-danger/30 bg-danger-soft grid gap-3 rounded-xl border p-4"
+                >
+                  <div className="text-danger-ink grid gap-0.5">
+                    <b>Registration closed</b>
+                    <span>
+                      Closed on{" "}
+                      {formatDayTime(competition.registrationClosedAt)}.
+                      {competition.actions.reopenRegistration
+                        ? " Reopening invalidates the current drawing."
+                        : ""}
+                    </span>
+                  </div>
+                  {competition.actions.reopenRegistration && (
+                    <Button
+                      variant="secondary"
+                      className="border-danger text-danger-ink bg-white"
+                      disabled={lifecycle.isPending}
+                      onClick={() => setConfirmReopen(true)}
+                    >
+                      Reopen registration
+                    </Button>
+                  )}
+                </div>
+              )}
+            </SectionCard>
+            {canUpdate && (
+              <SectionCard title="Save changes">
+                <p className="text-muted-foreground text-sm">
+                  The button turns on once you edit a rule or a channel.
+                </p>
+                <Button
+                  type="submit"
+                  className="min-h-11 w-full rounded-xl px-5 font-bold"
+                  disabled={save.isPending || !formState.isDirty}
+                >
+                  {save.isPending ? "Saving…" : "Save changes"}
+                </Button>
+              </SectionCard>
+            )}
+          </div>
+        }
+      />
 
       <ConfirmDialog
         open={confirmReopen}
@@ -550,6 +594,65 @@ function CriteriaSummary({
       <p className="text-muted-foreground text-sm">
         Criteria are set when the competition is created.
       </p>
+    </div>
+  );
+}
+
+/**
+ * Isi kartu "Rule version" di kolom samping: versi aktif, penjelasan bahwa menyimpan membuat
+ * versi baru, dan daftar versi sebelumnya (terbaru di atas). Dipanggil dari `SettingsForm`.
+ * Input: semua versi rule dari server. Backend tidak mengirim waktu simpan, jadi hanya nomor
+ * versi dan ringkasan isi yang ditampilkan.
+ */
+function RuleVersions({
+  rules,
+  judged,
+  unavailable,
+}: {
+  rules: CompetitionRule[];
+  judged: boolean;
+  unavailable: boolean;
+}) {
+  const current = currentRule(rules);
+  const ordered = [...rules].sort((a, b) => b.version - a.version);
+  const previous = ordered.filter((r) => r.id !== current?.id);
+  if (unavailable)
+    return (
+      <p className="text-muted-foreground text-sm">
+        Rule versions are not available for your account.
+      </p>
+    );
+  return (
+    <div className="grid gap-3">
+      <InfoList
+        items={[
+          {
+            label: "Current version",
+            value: current ? `v${current.version}` : "No rule yet",
+          },
+        ]}
+      />
+      <p className="text-muted-foreground text-sm">
+        {judged
+          ? "Rules are versioned; past heats keep theirs."
+          : "Saving creates a new rule version; past heats keep theirs."}
+      </p>
+      {previous.length > 0 && (
+        <div className="grid gap-1.5">
+          <b className="text-sm">Previous versions</b>
+          <ul className="grid gap-1.5 text-sm">
+            {previous.map((r) => (
+              <li key={r.id} className="flex justify-between gap-3">
+                <span className="font-semibold">v{r.version}</span>
+                <span className="text-muted-foreground text-right">
+                  {r.laneTotal ? `${r.laneTotal} lanes, ` : ""}
+                  cut-off {formatCutoff(r.timeLimitMs)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

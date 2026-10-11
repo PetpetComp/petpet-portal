@@ -113,7 +113,7 @@ export function ResultsRanking({
           page={page}
           perPage={perPage}
           total={rest.length}
-          label="participants"
+          label="entries below the podium"
           onPageChange={setPage}
           onPerPageChange={(value) => {
             setPerPage(value);

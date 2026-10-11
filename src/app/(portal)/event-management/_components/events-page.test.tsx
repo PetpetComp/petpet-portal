@@ -108,20 +108,28 @@ describe("EventsPage", () => {
     );
   });
 
-  it("sends the organizer filter to the server and clears it again", async () => {
+  it("sends the organizer filter only after Apply and clears it with Reset", async () => {
     const user = userEvent.setup();
     renderPage();
+    await screen.findByRole("link", { name: "Surabaya Paw Race 2026" });
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
     const select = await screen.findByLabelText("Filter organizer");
     await within(select).findByRole("option", {
       name: "Solo Exotic Pet Community",
     });
     await user.selectOptions(select, "o2");
+    // Belum Apply: server belum menerima filter organizer.
+    expect(listEvents).not.toHaveBeenLastCalledWith(
+      expect.objectContaining({ organizationId: "o2" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Apply" }));
     await waitFor(() =>
       expect(listEvents).toHaveBeenLastCalledWith(
-        expect.objectContaining({ organizationId: "o2" }),
+        expect.objectContaining({ organizationId: "o2", page: 1 }),
       ),
     );
-    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+    await user.click(await screen.findByRole("button", { name: "Reset" }));
     await waitFor(() =>
       expect(listEvents).toHaveBeenLastCalledWith(
         expect.objectContaining({ organizationId: undefined }),
@@ -159,7 +167,16 @@ describe("EventsPage", () => {
     expect(screen.queryByLabelText("Search events")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Filter status")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Filter month")).not.toBeInTheDocument();
-    // Filter organizer didukung backend asli (organization_id), jadi tetap ada.
-    expect(screen.getByLabelText("Filter organizer")).toBeInTheDocument();
+    // Filter organizer didukung backend asli (organization_id): ada di panel Filter.
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /^Filter/ }));
+    expect(
+      await screen.findByLabelText("Filter organizer"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Filter month")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Filter event name or ID"),
+    ).not.toBeInTheDocument();
   });
 });

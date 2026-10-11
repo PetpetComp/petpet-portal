@@ -28,7 +28,25 @@ import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api-client";
 import { PERMISSION } from "@/lib/auth/permissions";
 import { ROUTES } from "@/lib/constants/routes";
-import { EventDetailsFields } from "./event-details-fields";
+import {
+  PageColumns,
+  SectionCard,
+  InfoList,
+} from "@/components/common/page-layout";
+import { formatDateTime } from "@/lib/format/date";
+import { EventAvatar } from "./event-avatar";
+import {
+  EventAddressField,
+  EventNameField,
+  EventPhotoField,
+  EventScheduleFields,
+  EventSloganField,
+  EventVenueField,
+} from "./event-details-fields";
+import { EventPhaseBadge } from "./event-phase-badge";
+
+/** id elemen form, supaya tombol Save di kolom samping bisa men-submit form di kolom utama. */
+const FORM_ID = "edit-event-form";
 
 /**
  * Halaman Edit event (`/event-management/[eventId]/edit`).
@@ -50,7 +68,7 @@ export function EventEditPage({ eventId }: { eventId: string }) {
     );
   if (!event.data)
     return (
-      <div className="grid max-w-3xl gap-4" aria-busy>
+      <div className="grid gap-4" aria-busy>
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
@@ -72,7 +90,12 @@ function EventEditForm({ event }: { event: Event }) {
     resolver: zodResolver(eventDetailsSchema),
     defaultValues: detailsFromEvent(event),
   });
-  const name = useWatch({ control: form.control, name: "name" });
+  // Nilai yang sedang diketik, untuk kartu ringkasan di kolom samping.
+  const [name, startAt, endAt, venueName] = useWatch({
+    control: form.control,
+    name: ["name", "startAt", "endAt", "venueName"],
+  });
+  const fieldProps = { register: form.register, errors: form.formState.errors };
 
   /** Simpan perubahan; pesan 422 server dikembalikan ke field-nya, selain itu jadi toast. */
   const save = form.handleSubmit((details) =>
@@ -114,7 +137,7 @@ function EventEditForm({ event }: { event: Event }) {
   }
 
   return (
-    <div className="grid max-w-3xl gap-5.5">
+    <div className="grid min-w-0 gap-5.5">
       <nav
         aria-label="Breadcrumb"
         className="text-muted-foreground flex flex-wrap items-center gap-2"
@@ -136,56 +159,117 @@ function EventEditForm({ event }: { event: Event }) {
         Edit event
       </h1>
 
-      <form
-        noValidate
-        onSubmit={(e) => {
-          e.preventDefault();
-          void save();
-        }}
-        className="border-border grid gap-4.5 rounded-2xl border bg-white p-6 sm:grid-cols-2"
-      >
-        <EventDetailsFields
-          register={form.register}
-          errors={form.formState.errors}
-          name={name ?? ""}
-          phase={event.phase}
-        />
-        <div className="flex justify-between gap-3 pt-1.5 sm:col-span-2">
-          <Link
-            href={back}
-            className="text-primary-dark flex min-h-11 items-center rounded-xl px-4 font-bold"
+      <PageColumns
+        main={
+          <form
+            id={FORM_ID}
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void save();
+            }}
+            className="grid min-w-0 gap-5"
           >
-            Cancel
-          </Link>
-          <Button
-            type="submit"
-            disabled={update.isPending}
-            className="min-h-11 rounded-xl px-5.5 font-bold"
-          >
-            {update.isPending ? "Saving..." : "Save changes"}
-          </Button>
-        </div>
-      </form>
-
-      {event.status !== "CANCELLED" &&
-        canOnEvent(event, PERMISSION.EVENT_DELETE) && (
-          <section className="border-danger/30 grid gap-3 rounded-2xl border bg-white p-6">
-            <b className="text-[17px]">Cancel this event</b>
-            <p className="text-muted-foreground">
-              A cancelled event stays in the list but can no longer be run. This
-              cannot be undone from here.
-            </p>
-            <div>
-              <Button
-                variant="destructive"
-                disabled={cancel.isPending}
-                onClick={() => setConfirmCancel(true)}
-              >
-                Cancel event
-              </Button>
-            </div>
-          </section>
-        )}
+            <SectionCard
+              title="Basics"
+              description="The name must be unique across events."
+            >
+              <div className="grid gap-4.5 sm:grid-cols-2">
+                <EventNameField {...fieldProps} />
+                <EventSloganField {...fieldProps} />
+              </div>
+            </SectionCard>
+            <SectionCard
+              title="Date and time"
+              description="When the event starts and ends."
+            >
+              <div className="grid gap-4.5 sm:grid-cols-2">
+                <EventScheduleFields {...fieldProps} />
+              </div>
+            </SectionCard>
+            <SectionCard
+              title="Venue"
+              description="Where participants should go."
+            >
+              <div className="grid gap-4.5 sm:grid-cols-2">
+                <EventVenueField {...fieldProps} />
+                <EventAddressField {...fieldProps} />
+              </div>
+            </SectionCard>
+            <SectionCard title="Photo">
+              <div className="grid sm:grid-cols-2">
+                <EventPhotoField name={name ?? ""} phase={event.phase} />
+              </div>
+            </SectionCard>
+          </form>
+        }
+        aside={
+          <>
+            <SectionCard title="Summary">
+              <div className="flex min-w-0 items-center gap-3">
+                <EventAvatar
+                  name={name || event.name}
+                  phase={event.phase}
+                  size="lg"
+                />
+                <div className="grid min-w-0 gap-1.5">
+                  <b className="text-base break-words">{name || "-"}</b>
+                  <span>
+                    <EventPhaseBadge event={event} />
+                  </span>
+                </div>
+              </div>
+              <InfoList
+                items={[
+                  { label: "Start", value: formatDateTime(startAt) },
+                  { label: "End", value: formatDateTime(endAt) },
+                  { label: "Venue", value: venueName },
+                  { label: "Organizer", value: event.organizationName },
+                ]}
+              />
+            </SectionCard>
+            <SectionCard title="Actions">
+              <div className="flex flex-wrap justify-between gap-3">
+                <Link
+                  href={back}
+                  className="text-primary-dark flex min-h-11 items-center rounded-xl px-4 font-bold"
+                >
+                  Cancel
+                </Link>
+                <Button
+                  type="submit"
+                  form={FORM_ID}
+                  disabled={update.isPending}
+                  className="min-h-11 rounded-xl px-5.5 font-bold"
+                >
+                  {update.isPending ? "Saving..." : "Save changes"}
+                </Button>
+              </div>
+            </SectionCard>
+            {event.status !== "CANCELLED" &&
+              canOnEvent(event, PERMISSION.EVENT_DELETE) && (
+                <SectionCard
+                  title="Cancel this event"
+                  className="border-danger/30"
+                >
+                  <p className="text-muted-foreground text-sm">
+                    A cancelled event stays in the list but can no longer be
+                    run. This cannot be undone from here.
+                  </p>
+                  <div>
+                    <Button
+                      variant="destructive"
+                      disabled={cancel.isPending}
+                      onClick={() => setConfirmCancel(true)}
+                    >
+                      Cancel event
+                    </Button>
+                  </div>
+                </SectionCard>
+              )}
+          </>
+        }
+      />
       <ConfirmDialog
         open={confirmCancel}
         onOpenChange={setConfirmCancel}

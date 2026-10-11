@@ -1,10 +1,14 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Can } from "@/components/common/can";
 import { ErrorState } from "@/components/common/error-state";
+import { FilterSheet } from "@/components/common/filter-sheet";
+import { ListPageHeader } from "@/components/common/list-page-header";
+import { ListToolbar } from "@/components/common/list-toolbar";
 import { buttonVariants } from "@/components/ui/button";
+import { FormField, fieldClass } from "@/components/ui/form-field";
 import { Pagination } from "@/components/ui/pagination";
 import {
   SegmentedTabs,
@@ -36,6 +40,18 @@ import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
 import { EventsTable } from "./events-table";
 
+/** Filter di dalam panel Filter (semua filter kolom kecuali status, yang ada di tab). */
+type FilterDraft = Pick<
+  EventColumnFilters,
+  "name" | "month" | "venue" | "organizationId"
+>;
+
+/** Ambil bagian panel dari filter yang sedang berlaku. */
+function draftFrom(filters: EventColumnFilters): FilterDraft {
+  const { name, month, venue, organizationId } = filters;
+  return { name, month, venue, organizationId };
+}
+
 /** Nilai tab "All". Tab lain memakai nama fase. */
 type TabValue = EventPhase | "ALL";
 
@@ -52,21 +68,50 @@ const SUMMARY_KEY: Record<
 
 /**
  * Halaman list event (`/event-management`), sesuai desain A-Events.
- * Filter, pencarian, urutan, dan paging semuanya dikirim ke server lewat `useEvents`.
- * Di mode backend asli (yang belum mendukungnya) tab status, pencarian, dan filter kolom
- * disembunyikan; yang tersisa filter organizer dan paging (docs 08 bagian 9.3, docs 09 bagian F).
+ * Tab status dan pencarian ada di atas tabel (pencarian di-debounce). Filter lain (nama/ID,
+ * bulan, venue, organizer) ada di panel Filter dengan pola DRAFT: panel mengubah `draft`,
+ * baru masuk ke `state.filters` saat Apply. Semuanya dikirim ke server lewat `useEvents`.
+ * Di mode backend asli (yang belum mendukungnya) tab status, pencarian, dan filter selain
+ * organizer disembunyikan (docs 08 bagian 9.3, docs 09 bagian F).
  */
 export function EventsPage() {
   const { can } = useAuth();
   const [state, setState] = useState<EventListState>(INITIAL_LIST_STATE);
   const organizations = useOrganizations();
+  const [draft, setDraft] = useState<FilterDraft>(
+    draftFrom(INITIAL_LIST_STATE.filters),
+  );
   const serverFilters = USING_MOCK_BACKEND;
 
   // Ketikan di-debounce supaya server tidak ditembak di tiap huruf.
   const search = useDebouncedValue(state.search);
-  const name = useDebouncedValue(state.filters.name);
-  const venue = useDebouncedValue(state.filters.venue);
-  const events = useEvents(buildEventListQuery(state, { search, name, venue }));
+  const events = useEvents(
+    buildEventListQuery(state, {
+      search,
+      name: state.filters.name,
+      venue: state.filters.venue,
+    }),
+  );
+
+  /** Jumlah filter berlaku di panel (pencarian dan tab status tidak dihitung). */
+  const activeCount = [
+    serverFilters ? state.filters.name.trim() : "",
+    serverFilters ? state.filters.month : "",
+    serverFilters ? state.filters.venue.trim() : "",
+    state.filters.organizationId,
+  ].filter(Boolean).length;
+
+  /** Apply: salin draft panel ke filter berlaku, kembali ke halaman 1. */
+  function applyDraft() {
+    changeFilters(draft);
+  }
+
+  /** Reset: kosongkan filter panel (draft dan berlaku); pencarian dan tab tidak disentuh. */
+  function resetDraft() {
+    const empty = draftFrom(EMPTY_COLUMN_FILTERS);
+    setDraft(empty);
+    changeFilters(empty);
+  }
 
   /** Ubah satu bagian status, lalu kembali ke halaman 1 (hasil berubah, nomor halaman lama tak berarti). */
   function update(patch: Partial<EventListState>) {
@@ -109,54 +154,108 @@ export function EventsPage() {
   ];
   const filtersActive = hasActiveFilters(state);
 
+  const filterSheet = (
+    <FilterSheet
+      activeCount={activeCount}
+      onOpen={() => setDraft(draftFrom(state.filters))}
+      onApply={applyDraft}
+      onReset={resetDraft}
+    >
+      {serverFilters && (
+        <FormField label="Event name or ID">
+          <input
+            type="text"
+            aria-label="Filter event name or ID"
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            className={fieldClass}
+          />
+        </FormField>
+      )}
+      {serverFilters && (
+        <FormField label="Month">
+          <input
+            type="month"
+            aria-label="Filter month"
+            value={draft.month}
+            onChange={(e) => setDraft({ ...draft, month: e.target.value })}
+            className={fieldClass}
+          />
+        </FormField>
+      )}
+      {serverFilters && (
+        <FormField label="Venue or city">
+          <input
+            type="text"
+            aria-label="Filter venue or city"
+            value={draft.venue}
+            onChange={(e) => setDraft({ ...draft, venue: e.target.value })}
+            className={fieldClass}
+          />
+        </FormField>
+      )}
+      <FormField label="Organizer">
+        <select
+          aria-label="Filter organizer"
+          value={draft.organizationId}
+          onChange={(e) =>
+            setDraft({ ...draft, organizationId: e.target.value })
+          }
+          className={fieldClass}
+        >
+          <option value="">All organizers</option>
+          {(organizations.data ?? []).map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </select>
+      </FormField>
+    </FilterSheet>
+  );
+
   return (
     <div className="grid min-w-0 grid-cols-1 gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="grid gap-1.5">
-          <h1 className="font-display text-[34px] leading-[38px] font-bold">
-            Events
-          </h1>
-          <p className="text-muted-foreground text-[15px]">
-            Open an event to manage its competitions, registrations and
-            event-day operations.
-          </p>
-        </div>
-        <Can permission={PERMISSION.EVENT_CREATE}>
-          <Link
-            href={ROUTES.eventManagement.create}
-            className={cn(
-              buttonVariants(),
-              "min-h-11 rounded-xl px-[18px] text-[15px] font-bold",
-            )}
-          >
-            <Plus size={18} aria-hidden />
-            New event
-          </Link>
-        </Can>
-      </header>
+      <ListPageHeader
+        title="Events"
+        description="Open an event to manage its competitions, registrations and event-day operations."
+        action={
+          <Can permission={PERMISSION.EVENT_CREATE}>
+            <Link
+              href={ROUTES.eventManagement.create}
+              className={cn(
+                buttonVariants(),
+                "min-h-11 rounded-xl px-[18px] text-[15px] font-bold",
+              )}
+            >
+              <Plus size={18} aria-hidden />
+              New event
+            </Link>
+          </Can>
+        }
+      />
 
       {serverFilters && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <SegmentedTabs
-            label="Status"
-            tabs={tabs}
-            value={state.filters.phase || "ALL"}
-            onChange={(value) =>
-              changeFilters({ phase: value === "ALL" ? "" : value })
-            }
-          />
-          <label className="border-input focus-within:border-primary flex min-h-11 w-full max-w-80 items-center gap-2 rounded-xl border bg-white px-3.5 sm:w-80">
-            <Search size={18} aria-hidden className="text-muted-foreground" />
-            <input
-              type="search"
-              aria-label="Search events"
-              placeholder="Search event, venue or organizer"
-              value={state.search}
-              onChange={(e) => update({ search: e.target.value })}
-              className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
-            />
-          </label>
-        </div>
+        <SegmentedTabs
+          label="Status"
+          tabs={tabs}
+          value={state.filters.phase || "ALL"}
+          onChange={(value) =>
+            changeFilters({ phase: value === "ALL" ? "" : value })
+          }
+        />
+      )}
+
+      {serverFilters ? (
+        <ListToolbar
+          searchLabel="Search event, venue or organizer"
+          search={state.search}
+          onSearchChange={(value) => update({ search: value })}
+        >
+          {filterSheet}
+        </ListToolbar>
+      ) : (
+        <div className="flex">{filterSheet}</div>
       )}
 
       {events.isError ? (
@@ -172,8 +271,6 @@ export function EventsPage() {
             organizers={organizations.data ?? []}
             loading={events.isPending || events.isPlaceholderData}
             features={{ serverFilters }}
-            filters={state.filters}
-            onFilterChange={changeFilters}
             onClearFilters={() =>
               setState((current) => ({
                 ...current,

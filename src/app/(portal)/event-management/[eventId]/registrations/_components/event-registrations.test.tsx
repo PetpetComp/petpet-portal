@@ -108,10 +108,12 @@ describe("EventRegistrations", () => {
         expect.objectContaining({ eligibility: "PENDING", page: 1 }),
       ),
     );
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
     await user.selectOptions(
-      screen.getByLabelText("Filter Competition"),
+      await screen.findByLabelText("Filter competition"),
       "Closed Cup",
     );
+    await user.click(screen.getByRole("button", { name: "Apply" }));
     await waitFor(() =>
       expect(listEventEntries).toHaveBeenLastCalledWith(
         "e1",

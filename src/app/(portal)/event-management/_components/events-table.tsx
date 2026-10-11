@@ -1,17 +1,12 @@
 "use client";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, CalendarX, ChevronRight, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarX, ChevronRight } from "lucide-react";
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fieldClass } from "@/components/ui/form-field";
 import { formatEventSchedule } from "@/domains/events/format";
-import type { EventColumnFilters } from "@/domains/events/list-state";
 import {
-  EVENT_PHASES,
-  EVENT_PHASE_LABEL,
   type Event,
-  type EventPhase,
   type EventSort,
   type SortDirection,
 } from "@/domains/events/types";
@@ -25,12 +20,9 @@ import { EventPhaseBadge } from "./event-phase-badge";
 const GRID =
   "grid grid-cols-[minmax(0,2.4fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_minmax(0,1.4fr)_120px_32px] items-center gap-4 px-5";
 
-/** Kontrol filter lebih kecil dari field form biasa (36px, sesuai desain). */
-const filterClass = `${fieldClass} !min-h-9 !rounded-[10px] !px-2.5 !text-[13px]`;
-
-/** Fitur tabel yang aktif. Di mode backend asli hanya filter organizer yang didukung server. */
+/** Fitur tabel yang aktif. Di mode backend asli urutan belum didukung server. */
 export type EventsTableFeatures = {
-  /** Filter nama, bulan, venue, status, dan urutan didukung server. */
+  /** Urutan kolom didukung server. */
   serverFilters: boolean;
 };
 
@@ -40,8 +32,6 @@ type Props = {
   organizers: Organization[];
   loading: boolean;
   features: EventsTableFeatures;
-  filters: EventColumnFilters;
-  onFilterChange: (patch: Partial<EventColumnFilters>) => void;
   onClearFilters: () => void;
   filtersActive: boolean;
   sort: EventSort;
@@ -61,9 +51,8 @@ function organizerName(event: Event, organizers: Organization[]): string {
 }
 
 /**
- * Tabel list event sesuai desain A-Events: header, baris filter per kolom,
- * lalu baris event. Semua filter dikirim ke server lewat `onFilterChange`
- * (pemanggil yang memegang state dan query). Tabel dapat digulir ke samping di dalam kartu.
+ * Tabel list event sesuai desain A-Events: header lalu baris event. Filter ada di panel Filter
+ * milik `EventsPage`, tabel hanya menampilkan hasil. Tabel dapat digulir ke samping di dalam kartu.
  * Dipanggil dari `EventsPage`.
  */
 export function EventsTable(props: Props) {
@@ -76,7 +65,6 @@ export function EventsTable(props: Props) {
     >
       <div role="table" aria-label="Events" className="min-w-[880px]">
         <HeaderRow {...props} />
-        <FilterRow {...props} />
         {loading &&
           events.length === 0 &&
           [0, 1, 2, 3, 4].map((n) => <SkeletonRow key={n} />)}
@@ -249,99 +237,4 @@ function HeaderRow(props: Props) {
 function ariaSort(props: Props, column: EventSort) {
   if (!props.features.serverFilters || props.sort !== column) return undefined;
   return props.direction === "asc" ? "ascending" : "descending";
-}
-
-/** Baris filter per kolom. Kontrol yang belum didukung server tidak ditampilkan (docs 08 bagian 9.3). */
-function FilterRow(props: Props) {
-  const { filters, features, organizers } = props;
-  return (
-    <div
-      role="row"
-      className={cn(GRID, "border-border bg-primary-soft/40 border-b py-2.5")}
-    >
-      <div role="cell">
-        {features.serverFilters && (
-          <input
-            type="text"
-            aria-label="Filter event name or ID"
-            placeholder="Name or ID"
-            value={filters.name}
-            onChange={(e) => props.onFilterChange({ name: e.target.value })}
-            className={filterClass}
-          />
-        )}
-      </div>
-      <div role="cell">
-        {features.serverFilters && (
-          <input
-            type="month"
-            aria-label="Filter month"
-            value={filters.month}
-            onChange={(e) => props.onFilterChange({ month: e.target.value })}
-            className={filterClass}
-          />
-        )}
-      </div>
-      <div role="cell">
-        {features.serverFilters && (
-          <input
-            type="text"
-            aria-label="Filter venue or city"
-            placeholder="Venue or city"
-            value={filters.venue}
-            onChange={(e) => props.onFilterChange({ venue: e.target.value })}
-            className={filterClass}
-          />
-        )}
-      </div>
-      <div role="cell">
-        <select
-          aria-label="Filter organizer"
-          value={filters.organizationId}
-          onChange={(e) =>
-            props.onFilterChange({ organizationId: e.target.value })
-          }
-          className={filterClass}
-        >
-          <option value="">All organizers</option>
-          {organizers.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div role="cell">
-        {features.serverFilters && (
-          <select
-            aria-label="Filter status"
-            value={filters.phase}
-            onChange={(e) =>
-              props.onFilterChange({ phase: e.target.value as EventPhase | "" })
-            }
-            className={filterClass}
-          >
-            <option value="">All</option>
-            {EVENT_PHASES.map((phase) => (
-              <option key={phase} value={phase}>
-                {EVENT_PHASE_LABEL[phase]}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-      <div role="cell">
-        <button
-          type="button"
-          aria-label="Clear filters"
-          title="Clear filters"
-          disabled={!props.filtersActive}
-          onClick={props.onClearFilters}
-          className="text-muted-foreground hover:text-primary-dark grid size-8 place-items-center rounded-[10px] disabled:opacity-40"
-        >
-          <X size={18} aria-hidden />
-        </button>
-      </div>
-    </div>
-  );
 }

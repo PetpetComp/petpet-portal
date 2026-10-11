@@ -56,18 +56,18 @@ describe("GET /competitions/{uuid}/results", () => {
     ).rejects.toMatchObject({ status: 403 });
   });
 
-  it("returns the ranking in order with at least 12 rows including a DNF", async () => {
+  it("returns the ranking in order with at least 6 rows including a DNF", async () => {
     await asOrganizer();
     const data = await call<ApiCompetitionResults>(
       "GET",
       `/competitions/${FUN_RUN}/results`,
     );
-    expect(data.items.length).toBeGreaterThanOrEqual(12);
+    expect(data.items.length).toBeGreaterThanOrEqual(6);
     expect(data.items.map((r) => r.rank)).toEqual(
       data.items.map((_, i) => i + 1),
     );
     expect(data.items[0]).toMatchObject({
-      pet_name: "Chibi",
+      pet_name: "Rufus",
       status: "FINISHED",
       finish_time_ms: 38412,
     });

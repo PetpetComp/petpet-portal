@@ -19,21 +19,27 @@ const DEFAULT_LEVEL = "GOLD";
  * Drawer "Add sponsor": pilih satu brand yang belum terhubung ke event, pilih tier, simpan.
  * Dipanggil dari `EventSponsors`. `brands` sudah disaring (hanya yang belum terhubung).
  * Galat dari server (mis. 422 brand sudah terhubung) ditampilkan di bawah form.
+ * `initialBrandId` dan `initialLevel` mengisi pilihan awal (tombol Add cepat di kartu samping
+ * atau di tier kosong). Pemanggil me-remount drawer (lewat `key`) tiap dibuka supaya nilai awal terbaca.
  */
 export function AddSponsorDrawer({
   eventId,
   brands,
   open,
   onOpenChange,
+  initialBrandId = "",
+  initialLevel = DEFAULT_LEVEL,
 }: {
   eventId: string;
   brands: Brand[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialBrandId?: string;
+  initialLevel?: string;
 }) {
   const [query, setQuery] = useState("");
-  const [brandId, setBrandId] = useState("");
-  const [level, setLevel] = useState<string>(DEFAULT_LEVEL);
+  const [brandId, setBrandId] = useState(initialBrandId);
+  const [level, setLevel] = useState<string>(initialLevel);
   const add = useAddSponsor(eventId);
 
   const term = query.trim().toLowerCase();
@@ -44,8 +50,8 @@ export function AddSponsorDrawer({
   /** Mengosongkan isian setiap drawer ditutup supaya pembukaan berikutnya bersih. */
   function reset() {
     setQuery("");
-    setBrandId("");
-    setLevel(DEFAULT_LEVEL);
+    setBrandId(initialBrandId);
+    setLevel(initialLevel);
     add.reset();
   }
 

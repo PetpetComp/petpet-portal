@@ -18,7 +18,9 @@ export function FindEvent({
   const matches = query
     ? events
         .filter(isEligibleEvent)
-        .filter((event) => event.name.toLowerCase().includes(query.toLowerCase()))
+        .filter((event) =>
+          event.name.toLowerCase().includes(query.toLowerCase()),
+        )
         .slice(0, 8)
     : [];
   return (
@@ -27,7 +29,9 @@ export function FindEvent({
         <div>
           {eyebrow && <div className="eyebrow">{eyebrow}</div>}
           <h2>Find Event</h2>
-          <p className="muted">Search active or upcoming events by Event Name.</p>
+          <p className="muted">
+            Search active or upcoming events by Event Name.
+          </p>
         </div>
         <span className="muted">Open &amp; Pending only</span>
       </div>
@@ -49,7 +53,9 @@ export function FindEvent({
               <li key={event.id}>
                 <button type="button" onClick={() => onSelect(event)}>
                   <strong>{event.name}</strong>
-                  <small>{event.organizer || "-"} · {event.status}</small>
+                  <small>
+                    {event.organizer || "-"} · {event.status}
+                  </small>
                 </button>
               </li>
             ))

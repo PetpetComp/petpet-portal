@@ -1,16 +1,19 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Forbidden } from "@/components/common/can";
+import { PageColumns, SectionCard } from "@/components/common/page-layout";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/form-controls";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useCompetition,
+  useCompetitionTypes,
+  useSpecies,
   useUpdateCompetition,
 } from "@/domains/competitions/queries";
 import {
@@ -26,7 +29,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api-client";
 import { PERMISSION } from "@/lib/auth/permissions";
 import { ROUTES } from "@/lib/constants/routes";
-import { Labeled, Section } from "../../_components/competition-form-parts";
+import { formatDayTime } from "@/domains/competitions/format";
+import {
+  Labeled,
+  Section,
+  SummaryList,
+} from "../../_components/competition-form-parts";
 import {
   CompetitionLoadError,
   CompetitionNotFound,
@@ -68,7 +76,7 @@ export function CompetitionEditPage({
     );
   if (!competition.data || !event.data)
     return (
-      <div className="grid max-w-5xl gap-4" aria-busy>
+      <div className="grid gap-4" aria-busy>
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
@@ -102,6 +110,13 @@ function CompetitionEditForm({
 }) {
   const router = useRouter();
   const update = useUpdateCompetition(competition.id);
+  const types = useCompetitionTypes();
+  const species = useSpecies();
+  const typeName =
+    types.data?.find((t) => t.id === competition.typeId)?.name ?? "";
+  const animalName = competition.speciesId
+    ? (species.data?.find((sp) => sp.id === competition.speciesId)?.name ?? "")
+    : "Any animal";
   const back = ROUTES.eventManagement.competitionDetail(
     eventId,
     competition.id,
@@ -113,6 +128,11 @@ function CompetitionEditForm({
   });
   const { register, handleSubmit, setError, formState } = form;
   const errors = formState.errors;
+  // Nilai terkini untuk kartu Summary di kolom samping (hanya tampilan).
+  const [watchedName, watchedStartAt, watchedEndAt] = useWatch({
+    control: form.control,
+    name: ["name", "startAt", "endAt"],
+  });
 
   const onSubmit = handleSubmit((values) =>
     update.mutate(editToApi(values), {
@@ -141,7 +161,7 @@ function CompetitionEditForm({
   );
 
   return (
-    <form onSubmit={onSubmit} noValidate className="page-stack max-w-5xl">
+    <form onSubmit={onSubmit} noValidate className="page-stack">
       <nav
         aria-label="Breadcrumb"
         className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm"
@@ -165,49 +185,81 @@ function CompetitionEditForm({
       </nav>
       <h1>Edit competition</h1>
 
-      <Section title="Basics">
-        <Labeled label="Name" required error={errors.name?.message}>
-          <Input {...register("name")} />
-        </Labeled>
-        <Labeled label="Arena" error={errors.arenaName?.message}>
-          <Input {...register("arenaName")} placeholder="e.g. Main Arena" />
-        </Labeled>
-        <div className="md:col-span-2">
-          <Labeled label="Description" error={errors.description?.message}>
-            <Textarea rows={3} {...register("description")} />
-          </Labeled>
-        </div>
-      </Section>
+      <PageColumns
+        main={
+          <>
+            <Section title="Basics">
+              <Labeled label="Name" required error={errors.name?.message}>
+                <Input {...register("name")} />
+              </Labeled>
+              <Labeled label="Arena" error={errors.arenaName?.message}>
+                <Input
+                  {...register("arenaName")}
+                  placeholder="e.g. Main Arena"
+                />
+              </Labeled>
+              <div className="md:col-span-2">
+                <Labeled
+                  label="Description"
+                  error={errors.description?.message}
+                >
+                  <Textarea rows={3} {...register("description")} />
+                </Labeled>
+              </div>
+            </Section>
 
-      <Section title="Schedule">
-        <Labeled label="Starts" required error={errors.startAt?.message}>
-          <Input type="datetime-local" {...register("startAt")} />
-        </Labeled>
-        <Labeled label="Ends" required error={errors.endAt?.message}>
-          <Input type="datetime-local" {...register("endAt")} />
-        </Labeled>
-        <Labeled
-          label="Slots"
-          hint="Empty means no limit."
-          error={errors.capacity?.message}
-        >
-          <Input type="number" min={1} {...register("capacity")} />
-        </Labeled>
-      </Section>
-
-      <p className="text-muted-foreground text-sm">
-        The type and animal are fixed when a competition is created.
-        Registration channels and rules are managed in the Settings tab.
-      </p>
-
-      <div className="border-border sticky bottom-0 flex justify-end gap-2 border-t bg-[var(--color-background)] py-4">
-        <Link href={back} className="link-button secondary">
-          Cancel
-        </Link>
-        <Button type="submit" disabled={update.isPending}>
-          {update.isPending ? "Saving…" : "Save changes"}
-        </Button>
-      </div>
+            <Section title="Schedule">
+              <Labeled label="Starts" required error={errors.startAt?.message}>
+                <Input type="datetime-local" {...register("startAt")} />
+              </Labeled>
+              <Labeled label="Ends" required error={errors.endAt?.message}>
+                <Input type="datetime-local" {...register("endAt")} />
+              </Labeled>
+              <Labeled
+                label="Slots"
+                hint="Empty means no limit."
+                error={errors.capacity?.message}
+              >
+                <Input type="number" min={1} {...register("capacity")} />
+              </Labeled>
+            </Section>
+          </>
+        }
+        aside={
+          <div className="grid gap-5 xl:sticky xl:top-4">
+            <SectionCard title="Summary">
+              <SummaryList
+                items={[
+                  { label: "Name", value: watchedName?.trim() },
+                  { label: "Type", value: typeName },
+                  { label: "Animal", value: animalName },
+                  { label: "Starts", value: formatDayTime(watchedStartAt) },
+                  { label: "Ends", value: formatDayTime(watchedEndAt) },
+                ]}
+              />
+              <p className="text-muted-foreground text-sm">
+                The type and animal are fixed when a competition is created.
+                Registration channels and rules are managed in the Settings tab.
+              </p>
+            </SectionCard>
+            <SectionCard>
+              <Button
+                type="submit"
+                disabled={update.isPending}
+                className="min-h-11 w-full"
+              >
+                {update.isPending ? "Saving…" : "Save changes"}
+              </Button>
+              <Link
+                href={back}
+                className="link-button secondary w-full justify-center"
+              >
+                Cancel
+              </Link>
+            </SectionCard>
+          </div>
+        }
+      />
     </form>
   );
 }

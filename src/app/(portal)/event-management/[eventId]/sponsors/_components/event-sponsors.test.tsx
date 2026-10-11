@@ -69,9 +69,41 @@ describe("EventSponsors", () => {
     const headings = screen
       .getAllByRole("heading", { level: 2 })
       .map((h) => h.textContent);
-    expect(headings).toEqual(["Platinum", "Gold", "Media partner"]);
+    expect(headings).toEqual([
+      "Platinum",
+      "Gold",
+      "Silver",
+      "Bronze",
+      "Media partner",
+      "Sponsorship summary",
+      "Brands not sponsoring yet",
+    ]);
+    // Tier tanpa sponsor tetap tampil dengan kotak kosong.
+    expect(screen.getAllByText("No sponsors in this tier")).toHaveLength(2);
     expect(screen.getByText("Unknown brand")).toBeInTheDocument();
     expect(screen.getByText("0813")).toBeInTheDocument();
+  });
+
+  it("filters sponsors by brand name with the search box", async () => {
+    const user = userEvent.setup();
+    renderTab();
+    await screen.findByText("KibbleWorks");
+    await user.type(screen.getByLabelText("Search sponsors"), "kibble");
+    expect(screen.getByText("KibbleWorks")).toBeInTheDocument();
+    expect(screen.queryByText("FurNutrition")).not.toBeInTheDocument();
+  });
+
+  it("opens the drawer with the brand preselected from the side card", async () => {
+    const user = userEvent.setup();
+    renderTab();
+    await screen.findByText("FurNutrition");
+    await user.click(
+      screen.getByRole("button", { name: "Add PawTech as sponsor" }),
+    );
+    const drawer = await screen.findByRole("dialog");
+    expect(
+      within(drawer).getByRole("button", { name: /PawTech/ }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("hides add, move and remove when the user may not edit the event", async () => {

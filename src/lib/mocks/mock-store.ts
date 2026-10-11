@@ -78,6 +78,133 @@ const GLIDER_PETS: [string, string, string, string][] = [
   ["pet-ubi", "Ubi", "u-eka-u", "morph-platinum"],
 ];
 
+/**
+ * Hewan anjing dan kucing untuk demo platform multi-spesies.
+ * [uuid, nama, pemilik, spesies, morph, gender, tanggal lahir, berat (gram), tinggi (cm)]
+ */
+const DOG_CAT_PETS: [
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+  number,
+  number,
+][] = [
+  [
+    "pet-rufus",
+    "Rufus",
+    "u-hendra",
+    "sp-dog",
+    "morph-pomeranian",
+    "Male",
+    "2023-01-20",
+    2900,
+    24,
+  ],
+  [
+    "pet-cooper",
+    "Cooper",
+    "u-fajar",
+    "sp-dog",
+    "morph-golden-retriever",
+    "Male",
+    "2021-03-12",
+    31000,
+    58,
+  ],
+  [
+    "pet-daisy",
+    "Daisy",
+    "u-gita",
+    "sp-dog",
+    "morph-pembroke-corgi",
+    "Female",
+    "2022-07-04",
+    11500,
+    28,
+  ],
+  [
+    "pet-teddy",
+    "Teddy",
+    "u-indah",
+    "sp-dog",
+    "morph-shih-tzu",
+    "Male",
+    "2022-11-09",
+    6800,
+    25,
+  ],
+  [
+    "pet-pepper",
+    "Pepper",
+    "u-damar-w",
+    "sp-dog",
+    "morph-labrador-retriever",
+    "Female",
+    "2020-05-27",
+    27500,
+    56,
+  ],
+  [
+    "pet-waffle",
+    "Waffle",
+    "u-citra-p",
+    "sp-dog",
+    "morph-pomeranian",
+    "Female",
+    "2023-09-15",
+    2700,
+    23,
+  ],
+  [
+    "pet-oyen",
+    "Oyen",
+    "u-eka-u",
+    "sp-cat",
+    "morph-domestic-shorthair",
+    "Male",
+    "2022-02-14",
+    4300,
+    25,
+  ],
+  [
+    "pet-cleo",
+    "Cleo",
+    "u-eka-s",
+    "sp-cat",
+    "morph-siamese",
+    "Female",
+    "2021-08-30",
+    3600,
+    23,
+  ],
+  [
+    "pet-shiro",
+    "Shiro",
+    "u-damar-p",
+    "sp-cat",
+    "morph-persian",
+    "Male",
+    "2020-12-01",
+    5200,
+    26,
+  ],
+  [
+    "pet-mimi",
+    "Mimi",
+    "u-citra-l",
+    "sp-cat",
+    "morph-persian",
+    "Female",
+    "2023-04-08",
+    3800,
+    24,
+  ],
+];
+
 const pets: MockPet[] = [
   {
     uuid: PET_UUID,
@@ -187,6 +314,30 @@ const pets: MockPet[] = [
     morph_uuid,
     status: "Active",
   })),
+  ...DOG_CAT_PETS.map(
+    ([
+      uuid,
+      name,
+      owner_uuid,
+      species_uuid,
+      morph_uuid,
+      gender,
+      birth_date,
+      weight_grams,
+      height_cm,
+    ]) => ({
+      uuid,
+      owner_uuid,
+      name,
+      species_uuid,
+      morph_uuid,
+      gender,
+      birth_date,
+      weight_grams,
+      height_cm,
+      status: "Active",
+    }),
+  ),
 ];
 
 type Seed = Pick<
@@ -740,7 +891,7 @@ export const store = {
     {
       uuid: FUN_RUN_UUID,
       competition_type_uuid: "ct-race",
-      species_uuid: "sp-sugar-glider",
+      species_uuid: "sp-dog",
       event_uuid: EVENT_UUID,
       name: "Puppy Fun Run",
       arena_name: "Track A",
@@ -802,6 +953,7 @@ export const store = {
     {
       uuid: "comp-kitten-beauty",
       competition_type_uuid: "ct-beauty",
+      species_uuid: "sp-cat",
       event_uuid: "evt-jakarta-cat-show",
       name: "Kitten Beauty Pageant",
       arena_name: "Stage 2",
@@ -1095,9 +1247,12 @@ export const store = {
       ["pet-gigi", PENDING],
     ]),
     ...seedEntries(FUN_RUN_UUID, 15, 40000, null, [
-      [PET_UUID, CHECKED_IN],
-      ["pet-rocky", CHECKED_IN],
-      ["pet-mochi", CHECKED_IN],
+      ["pet-rufus", CHECKED_IN],
+      ["pet-cooper", CHECKED_IN],
+      ["pet-daisy", CHECKED_IN],
+      ["pet-teddy", CHECKED_IN],
+      ["pet-pepper", CHECKED_IN],
+      ["pet-waffle", CHECKED_IN],
     ]),
     ...seedEntries(CAT_RELAY_UUID, 16, 0, null, [
       ["pet-simba", APPROVED],
@@ -1108,7 +1263,7 @@ export const store = {
       ["pet-milo", CHECKED_IN],
     ]),
     ...seedEntries("comp-kitten-beauty", 32, 65000, null, [
-      ["pet-coco", PENDING],
+      ["pet-mimi", PENDING],
     ]),
     ...seedEntries("comp-paw-race-100m", 41, 65000, null, [
       ["pet-rocky", CHECKED_IN],
@@ -1163,6 +1318,8 @@ export const store = {
   ],
   species: [
     { uuid: "sp-sugar-glider", code: "SUGAR_GLIDER", name: "Sugar Glider" },
+    { uuid: "sp-dog", code: "DOG", name: "Dog" },
+    { uuid: "sp-cat", code: "CAT", name: "Cat" },
   ],
   registrationPeriods: [
     {
@@ -1234,6 +1391,30 @@ export const store = {
       uuid: "morph-platinum",
       species_uuid: "sp-sugar-glider",
       name: "Platinum",
+    },
+    {
+      uuid: "morph-golden-retriever",
+      species_uuid: "sp-dog",
+      name: "Golden Retriever",
+    },
+    {
+      uuid: "morph-labrador-retriever",
+      species_uuid: "sp-dog",
+      name: "Labrador Retriever",
+    },
+    {
+      uuid: "morph-pembroke-corgi",
+      species_uuid: "sp-dog",
+      name: "Pembroke Corgi",
+    },
+    { uuid: "morph-pomeranian", species_uuid: "sp-dog", name: "Pomeranian" },
+    { uuid: "morph-shih-tzu", species_uuid: "sp-dog", name: "Shih Tzu" },
+    { uuid: "morph-persian", species_uuid: "sp-cat", name: "Persian" },
+    { uuid: "morph-siamese", species_uuid: "sp-cat", name: "Siamese" },
+    {
+      uuid: "morph-domestic-shorthair",
+      species_uuid: "sp-cat",
+      name: "Domestic Shorthair",
     },
   ] as MockPetMorph[],
   /** The two judged competitions of the event-day dataset carry three criteria that add up to 100. */
