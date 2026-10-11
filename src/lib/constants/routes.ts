@@ -8,7 +8,6 @@ export const ROUTES = {
   dashboard: "/dashboard",
   landing: "/",
   competitorHome: "/my-competitions",
-  sponsorHome: "/sponsor-home",
   eventManagement: {
     root: "/event-management",
     create: "/event-management/create",
@@ -45,7 +44,6 @@ export const ROUTES = {
     profile: (id: string) =>
       `/organization-management/${encodeURIComponent(id)}/profile`,
   },
-  myOrganization: "/my-organization",
   userManagement: "/user-management",
   users: {
     create: "/user-management/create",
