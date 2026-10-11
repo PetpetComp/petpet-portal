@@ -65,7 +65,11 @@ export type ApiDrawingActions = { lock: boolean; swap: boolean };
 export type ApiDrawing = {
   competition_uuid: string;
   status: DrawingStatus;
-  /** Jumlah lane per match dari rule aktif (`lane_total`), bawaan 4 bila rule belum mengisinya. */
+  /**
+   * Jumlah lane per match dari rule aktif (`lane_total`), bawaan 4 bila rule belum mengisinya.
+   * Kompetisi TIME_TRIAL: jumlah peserta yang berhak (N, minimal 1); drawing-nya SATU match
+   * berisi semua peserta, `lane_number` = posisi antrean 1..N (kontrak 14).
+   */
   lanes: number;
   locked_at: string | null;
   locked_by_uuid: string | null;

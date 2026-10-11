@@ -92,6 +92,19 @@ function seedRules(): MockCompetitionRule[] {
       time_limit_ms: 90000,
       ranking_rule: ["POSITION_ASC"],
     }),
+    // Time trial untuk demo Live Mode: tiga attempt per peserta, cut-off 2 menit, hitung mundur 3 detik.
+    rule("comp-glider-time-trial", 1, true, {
+      attempt_limit: 3,
+      time_limit_ms: 120000,
+      countdown_seconds: 3,
+      ranking_rule: ["TIME_ASC"],
+    }),
+    rule("comp-glider-speed-trial", 1, true, {
+      attempt_limit: 3,
+      time_limit_ms: 120000,
+      countdown_seconds: 3,
+      ranking_rule: ["TIME_ASC"],
+    }),
   ];
 }
 

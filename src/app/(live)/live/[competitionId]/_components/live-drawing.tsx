@@ -16,8 +16,16 @@ import {
   DRAWING_API_IS_MOCK,
   DRAWING_MOCK_BANNER,
   DRAWING_UNSUPPORTED_MESSAGE,
+  isDrawableType,
+  isQueueType,
 } from "@/domains/drawing/constants";
-import { buildDrawing, draftMatches, matchSizes } from "@/domains/drawing/draw";
+import {
+  buildDrawing,
+  buildQueue,
+  draftMatches,
+  matchSizes,
+  queueLaneCount,
+} from "@/domains/drawing/draw";
 import {
   useDrawing,
   useLockDrawing,
@@ -55,7 +63,7 @@ function MockBanner() {
   );
 }
 
-/** Kartu angka kecil (checked in, lanes, matches). Di xl menjadi chip satu baris di toolbar. */
+/** Kartu angka kecil (checked in, lanes, matches; Time trial: checked in, in the queue). Di xl menjadi chip satu baris di toolbar. */
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <div className="bg-card grid content-start rounded-2xl p-3.5 xl:flex xl:items-baseline xl:gap-2 xl:rounded-xl xl:px-3.5 xl:py-2">
@@ -83,7 +91,7 @@ function LiveNotice({ message }: { message: string }) {
  * tombol rata kanan), lalu dua kolom: kartu match + Arena preview, dan panel Participants (340px, menempel).
  * md sampai xl: dua kolom (kiri: statistik + tombol; kanan: kartu), panel di bawah kartu.
  * HP: satu kolom; statistik, kartu, panel, lalu bar tombol yang menempel di dasar layar.
- * Urutan DOM: toolbar (stats+intro, tombol), kartu, panel. Di HP pembungkus toolbar memakai
+ * `stats` berisi dua kartu (Time trial) atau tiga (Race). Urutan DOM: toolbar (stats+intro, tombol), kartu, panel. Di HP pembungkus toolbar memakai
  * `contents` supaya tombol bisa dipindah ke akhir lewat `order`. Pembungkus `body` memakai
  * `contents` di bawah xl agar kartu dan panel tetap jadi item grid md; di xl ia menjadi grid dua kolom
  * (toolbar harus saudara, bukan item grid yang sama, supaya `sticky` berlaku sepanjang halaman).
@@ -95,7 +103,7 @@ function DrawingLayout({
   panel,
   children,
 }: {
-  stats: { checkedIn: number; lanes: number; matches: number };
+  stats: { value: number; label: string }[];
   intro: ReactNode;
   actions: ReactNode;
   panel: ReactNode;
@@ -105,10 +113,15 @@ function DrawingLayout({
     <div className="grid gap-4 p-4 md:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] md:grid-rows-[auto_1fr] md:gap-x-6 md:gap-y-4 md:p-7 xl:flex xl:flex-col">
       <div className="xl:bg-background xl:border-border grid content-start gap-4 max-md:contents md:col-start-1 md:row-span-2 md:row-start-1 xl:sticky xl:top-0 xl:z-20 xl:-mx-7 xl:-mt-7 xl:flex xl:items-center xl:justify-between xl:gap-6 xl:border-b xl:px-7 xl:py-3 xl:shadow-sm">
         <div className="grid content-start gap-4 xl:flex xl:min-w-0 xl:flex-1 xl:items-center xl:gap-5">
-          <div className="grid grid-cols-3 gap-2.5 xl:flex xl:shrink-0 xl:gap-2">
-            <Stat value={stats.checkedIn} label="checked in" />
-            <Stat value={stats.lanes} label="lanes" />
-            <Stat value={stats.matches} label="matches" />
+          <div
+            className={cn(
+              "grid gap-2.5 xl:flex xl:shrink-0 xl:gap-2",
+              stats.length === 2 ? "grid-cols-2" : "grid-cols-3",
+            )}
+          >
+            {stats.map((stat) => (
+              <Stat key={stat.label} value={stat.value} label={stat.label} />
+            ))}
           </div>
           <div className="text-muted-foreground grid gap-3 leading-[21px] xl:max-w-xl xl:gap-1 xl:text-[13px] xl:leading-[18px]">
             {intro}
@@ -190,13 +203,18 @@ function plannedMatches(
  * Bila peserta/lane berubah, LiveDrawing me-remount komponen ini (key) sehingga kembali ke pending.
  * Shuffle again mengundi ulang; Lock mengirim susunan entry id ke API lalu pindah ke tab Matches.
  * Tombol Lock mengikuti `actions.lock` dan `lock_blocked_reason` dari API, bukan aturan di sini.
+ * `queue` = Time trial: undiannya SATU antrean ("Running order", posisi 1..N, `buildQueue`) tanpa
+ * lane, match, dan Arena; alur reveal, Shuffle, dan Lock sama persis dengan Race. Lock lalu pindah
+ * ke tab Run (rute yang sama dengan tab Matches).
  */
 function DraftDrawing({
   competitionId,
   drawing,
+  queue,
 }: {
   competitionId: string;
   drawing: CompetitionDrawing;
+  queue: boolean;
 }) {
   const router = useRouter();
   const online = useOnlineStatus();
@@ -210,8 +228,11 @@ function DraftDrawing({
     () =>
       draft
         ? draftMatches(participants, draft)
-        : plannedMatches(participants.length, lanes),
-    [participants, lanes, draft],
+        : plannedMatches(
+            participants.length,
+            queue ? queueLaneCount(participants.length) : lanes,
+          ),
+    [participants, lanes, draft, queue],
   );
 
   const reveal = useDrawReveal(participants.length);
@@ -236,7 +257,7 @@ function DraftDrawing({
    */
   function shuffleAgain() {
     lock.reset();
-    setDraft(buildDrawing(entryIds, lanes));
+    setDraft(queue ? buildQueue(entryIds) : buildDrawing(entryIds, lanes));
     reveal.start();
   }
 
@@ -265,18 +286,34 @@ function DraftDrawing({
 
   return (
     <DrawingLayout
-      stats={{
-        checkedIn: participants.length,
-        lanes,
-        matches: matches.length,
-      }}
+      stats={
+        queue
+          ? [
+              { value: participants.length, label: "checked in" },
+              { value: participants.length, label: "in the queue" },
+            ]
+          : [
+              { value: participants.length, label: "checked in" },
+              { value: lanes, label: "lanes" },
+              { value: matches.length, label: "matches" },
+            ]
+      }
       intro={
-        <p>
-          Only approved, paid and checked-in participants are drawn. Press Start
-          drawing to draw. Shuffle as often as you like until you lock: nothing
-          is saved before that. After locking, you can still swap two
-          participants until their match starts.
-        </p>
+        queue ? (
+          <p>
+            Only approved, paid and checked-in participants are drawn. Press
+            Start drawing to draw the running order. Shuffle as often as you
+            like until you lock: nothing is saved before that. After locking,
+            you can still swap two participants until the first attempt starts.
+          </p>
+        ) : (
+          <p>
+            Only approved, paid and checked-in participants are drawn. Press
+            Start drawing to draw. Shuffle as often as you like until you lock:
+            nothing is saved before that. After locking, you can still swap two
+            participants until their match starts.
+          </p>
+        )
       }
       panel={
         <DrawingParticipantsPanel
@@ -284,6 +321,7 @@ function DraftDrawing({
           assignments={assignments}
           activeId={activeId}
           onActive={setActiveId}
+          queue={queue}
         />
       }
       actions={
@@ -293,8 +331,13 @@ function DraftDrawing({
               role="alert"
               className="text-danger-ink text-sm font-semibold xl:basis-full xl:text-right"
             >
-              {mutationMessage(lock.error, "Unable to lock the drawing.")} Press
-              Lock again to retry.
+              {mutationMessage(
+                lock.error,
+                queue
+                  ? "Unable to lock the running order."
+                  : "Unable to lock the drawing.",
+              )}{" "}
+              Press Lock again to retry.
             </p>
           )}
           {blockedReason && (
@@ -307,7 +350,9 @@ function DraftDrawing({
           )}
           <p aria-live="polite" className="sr-only">
             {!reveal.revealing && reveal.completions > 0
-              ? `Drawing complete, ${matches.length} ${matches.length === 1 ? "match" : "matches"}`
+              ? queue
+                ? `Running order drawn, ${participants.length} ${participants.length === 1 ? "participant" : "participants"}`
+                : `Drawing complete, ${matches.length} ${matches.length === 1 ? "match" : "matches"}`
               : ""}
           </p>
           {reveal.revealing && (
@@ -342,7 +387,11 @@ function DraftDrawing({
             onClick={() => void lockDrawing()}
           >
             <Lock size={16} aria-hidden />
-            {lock.isPending ? "Locking..." : "Lock drawing & go to matches"}
+            {lock.isPending
+              ? "Locking..."
+              : queue
+                ? "Lock running order & go to run"
+                : "Lock drawing & go to matches"}
           </Button>
         </>
       }
@@ -361,6 +410,7 @@ function DraftDrawing({
               busy={false}
               onPick={() => undefined}
               pending={pending}
+              variant={queue ? "queue" : "match"}
               reveal={{
                 firstSlot: offsets[index],
                 settledCount: reveal.settledCount,
@@ -376,7 +426,7 @@ function DraftDrawing({
           ))}
         </MatchGrid>
       )}
-      {matches.length > 0 && (
+      {!queue && matches.length > 0 && (
         <DrawingArenaPreview
           matches={matches}
           selectedNumber={previewNumber}
@@ -390,12 +440,21 @@ function DraftDrawing({
   );
 }
 
-/** Mencari posisi (nomor match dan lane) satu peserta untuk kalimat konfirmasi swap. */
-function describeEntry(matches: readonly DrawingMatch[], entryId: string) {
+/**
+ * Mencari posisi satu peserta untuk kalimat konfirmasi swap: "Pet (Match 1, lane 2)" pada Race,
+ * "Pet (Position 2)" pada antrean Time trial.
+ */
+function describeEntry(
+  matches: readonly DrawingMatch[],
+  entryId: string,
+  queue = false,
+) {
   for (const match of matches) {
     const lane = match.lanes.find((l) => l.entryId === entryId);
     if (lane)
-      return `${lane.petName} (Match ${match.number}, lane ${lane.laneNumber})`;
+      return queue
+        ? `${lane.petName} (Position ${lane.laneNumber})`
+        : `${lane.petName} (Match ${match.number}, lane ${lane.laneNumber})`;
   }
   return null;
 }
@@ -415,14 +474,16 @@ function formatLockedAt(iso: string | null): string {
  * Drawing yang sudah di-lock: hanya baca, dengan badge "Locked". Bila API mengizinkan swap
  * (`actions.swap`), pengguna memilih satu peserta lalu peserta lain, dan panel di kolom kiri
  * meminta konfirmasi sebelum `useSwapDrawing` dikirim (dua langkah supaya tidak salah tukar).
- * Dipanggil dari LiveDrawing saat status LOCKED.
+ * Dipanggil dari LiveDrawing saat status LOCKED. `queue` = Time trial (satu kartu "Running order").
  */
 function LockedDrawing({
   competitionId,
   drawing,
+  queue,
 }: {
   competitionId: string;
   drawing: CompetitionDrawing;
+  queue: boolean;
 }) {
   const online = useOnlineStatus();
   const swap = useSwapDrawing(competitionId);
@@ -444,7 +505,9 @@ function LockedDrawing({
     return () => clearTimeout(timer);
   }, [flashIds]);
   // Pilihan yang sudah tidak ada di drawing (mis. setelah refresh) dibuang.
-  const selected = picked.filter((id) => describeEntry(matches, id) !== null);
+  const selected = picked.filter(
+    (id) => describeEntry(matches, id, queue) !== null,
+  );
   const canSwap = drawing.actions.swap;
 
   /** Memilih/membatalkan pilihan satu peserta; maksimal dua, pilihan ketiga menggantikan yang kedua. */
@@ -470,17 +533,26 @@ function LockedDrawing({
     toast.success("Participants swapped");
   }
 
-  const first = selected[0] ? describeEntry(matches, selected[0]) : null;
-  const second = selected[1] ? describeEntry(matches, selected[1]) : null;
+  const first = selected[0] ? describeEntry(matches, selected[0], queue) : null;
+  const second = selected[1]
+    ? describeEntry(matches, selected[1], queue)
+    : null;
   const lockedAt = formatLockedAt(drawing.lockedAt);
 
   return (
     <DrawingLayout
-      stats={{
-        checkedIn: drawing.participants.length,
-        lanes: drawing.lanes,
-        matches: matches.length,
-      }}
+      stats={
+        queue
+          ? [
+              { value: drawing.participants.length, label: "checked in" },
+              { value: matches[0]?.lanes.length ?? 0, label: "in the queue" },
+            ]
+          : [
+              { value: drawing.participants.length, label: "checked in" },
+              { value: drawing.lanes, label: "lanes" },
+              { value: matches.length, label: "matches" },
+            ]
+      }
       intro={
         <>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -495,9 +567,13 @@ function LockedDrawing({
             )}
           </p>
           <p>
-            {canSwap
-              ? "The drawing is locked. To swap two participants, select one and then the other. Matches that have started cannot be changed."
-              : "The drawing is locked. Swapping is not available right now."}
+            {queue
+              ? canSwap
+                ? "The running order is locked. To swap two participants, select one and then the other. The order cannot be changed once the first attempt has started."
+                : "The running order is locked. Swapping is not available right now."
+              : canSwap
+                ? "The drawing is locked. To swap two participants, select one and then the other. Matches that have started cannot be changed."
+                : "The drawing is locked. Swapping is not available right now."}
           </p>
         </>
       }
@@ -507,6 +583,7 @@ function LockedDrawing({
           assignments={assignments}
           activeId={activeId}
           onActive={setActiveId}
+          queue={queue}
         />
       }
       actions={
@@ -569,7 +646,7 @@ function LockedDrawing({
               "min-h-12 w-full rounded-xl text-base xl:w-auto xl:px-5",
             )}
           >
-            Go to matches
+            {queue ? "Go to run" : "Go to matches"}
           </Link>
         </>
       }
@@ -588,10 +665,11 @@ function LockedDrawing({
             onActive={setActiveId}
             previewSelected={match.number === previewNumber}
             onPreview={setPreviewNumber}
+            variant={queue ? "queue" : "match"}
           />
         ))}
       </MatchGrid>
-      {matches.length > 0 && (
+      {!queue && matches.length > 0 && (
         <DrawingArenaPreview
           matches={matches}
           selectedNumber={previewNumber}
@@ -620,16 +698,18 @@ function Loading() {
 
 /**
  * Layar Drawing Live Mode (langkah 1). Dipanggil dari `drawing/page.tsx`.
- * Memuat kompetisi + jenisnya; selain Race hanya menampilkan penjelasan. Untuk Race memuat
- * drawing dan memilih tampilan: draf (NOT_DRAWN) atau terkunci (LOCKED). 403 pada drawing
+ * Memuat kompetisi + jenisnya; selain Race dan Time trial hanya menampilkan penjelasan. Untuk
+ * keduanya memuat drawing dan memilih tampilan: draf (NOT_DRAWN) atau terkunci (LOCKED). Time trial
+ * (`isQueueType`) memakai tampilan yang sama dalam varian antrean "Running order". 403 pada drawing
  * menampilkan halaman "No access"; error lain kartu error dengan "Try again".
  */
 export function LiveDrawing({ competitionId }: { competitionId: string }) {
   const competition = useCompetition(competitionId);
   const types = useCompetitionTypes();
   const type = types.data?.find((t) => t.id === competition.data?.typeId);
-  const isRace = type?.code === "RACE";
-  const drawing = useDrawing(competitionId, isRace);
+  const drawable = isDrawableType(type?.code);
+  const queue = isQueueType(type?.code);
+  const drawing = useDrawing(competitionId, drawable);
 
   if (competition.isError || types.isError)
     return (
@@ -645,7 +725,7 @@ export function LiveDrawing({ competitionId }: { competitionId: string }) {
       </div>
     );
   if (!competition.data || !type) return <Loading />;
-  if (!isRace)
+  if (!drawable)
     return (
       <div className="p-4 md:p-7">
         <LiveNotice
@@ -680,12 +760,17 @@ export function LiveDrawing({ competitionId }: { competitionId: string }) {
         </div>
       )}
       {data.locked ? (
-        <LockedDrawing competitionId={competitionId} drawing={data} />
+        <LockedDrawing
+          competitionId={competitionId}
+          drawing={data}
+          queue={queue}
+        />
       ) : (
         <DraftDrawing
           key={draftKey}
           competitionId={competitionId}
           drawing={data}
+          queue={queue}
         />
       )}
     </div>

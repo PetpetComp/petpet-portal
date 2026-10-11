@@ -112,7 +112,7 @@ function DisqualifyForm({
   onCancel,
   onConfirm,
 }: {
-  lane: MatchLane;
+  lane: { petName: string };
   busy: boolean;
   error: string | null;
   onCancel: () => void;
@@ -182,26 +182,29 @@ function DisqualifyForm({
  * Dialog Disqualify satu lane: konfirmasi + alasan wajib (keputusan pengguna).
  * Dipanggil dari layar Run Match; `onConfirm(reason)` memanggil `useDisqualify`.
  */
-export function DisqualifyDialog({
+export function DisqualifyDialog<T extends { petName: string }>({
   lane,
   onOpenChange,
   busy,
   error,
   onConfirm,
+  description = "The pet is removed from the ranking of this match. You can revoke it until the result is confirmed.",
 }: {
-  /** Lane yang akan didiskualifikasi; null = dialog tertutup. */
-  lane: MatchLane | null;
+  /** Yang akan didiskualifikasi (lane Race atau peserta Time trial); null = dialog tertutup. */
+  lane: T | null;
   onOpenChange: (open: boolean) => void;
   busy: boolean;
   error: string | null;
-  onConfirm: (lane: MatchLane, reason: string) => void;
+  onConfirm: (lane: T, reason: string) => void;
+  /** Kalimat penjelasan di bawah judul; Time trial memberi teksnya sendiri. */
+  description?: string;
 }) {
   return (
     <RunDialog
       open={lane !== null}
       onOpenChange={onOpenChange}
       title={lane ? `Disqualify ${lane.petName}?` : "Disqualify"}
-      description="The pet is removed from the ranking of this match. You can revoke it until the result is confirmed."
+      description={description}
     >
       {lane && (
         <DisqualifyForm

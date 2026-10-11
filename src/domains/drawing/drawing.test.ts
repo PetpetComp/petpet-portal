@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { lockBody } from "./api";
+import { DRAWABLE_TYPE_CODES, isDrawableType, isQueueType } from "./constants";
 import { fromApi, type ApiDrawing } from "./types";
 
 const api: ApiDrawing = {
@@ -117,5 +118,21 @@ describe("lockBody", () => {
         { lanes: [{ lane_number: 1, entry_uuid: "c" }] },
       ],
     });
+  });
+});
+
+describe("drawable types", () => {
+  it("allows Race and Time trial, refuses the rest", () => {
+    expect(DRAWABLE_TYPE_CODES).toEqual(["RACE", "TIME_TRIAL"]);
+    expect(isDrawableType("RACE")).toBe(true);
+    expect(isDrawableType("TIME_TRIAL")).toBe(true);
+    for (const code of ["BEAUTY", "CHECKPOINT", "", null, undefined])
+      expect(isDrawableType(code)).toBe(false);
+  });
+
+  it("treats only Time trial as a single queue", () => {
+    expect(isQueueType("TIME_TRIAL")).toBe(true);
+    expect(isQueueType("RACE")).toBe(false);
+    expect(isQueueType(null)).toBe(false);
   });
 });

@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { timetrialKeys } from "@/domains/timetrial/keys";
 import { getDrawing, lockDrawing, swapDrawing } from "./api";
 import { drawingKeys } from "./keys";
 
 export { drawingKeys };
 
-/** Drawing satu kompetisi. `enabled=false` untuk tipe selain Race (tidak ada datanya). */
+/** Drawing satu kompetisi. `enabled=false` untuk tipe selain Race dan Time trial (tidak ada datanya). */
 export function useDrawing(competitionId: string, enabled = true) {
   return useQuery({
     queryKey: drawingKeys.forCompetition(competitionId),
@@ -22,8 +23,13 @@ export function useLockDrawing(competitionId: string) {
   return useMutation({
     mutationFn: (matches: readonly (readonly string[])[]) =>
       lockDrawing(competitionId, matches),
-    onSuccess: (data) =>
-      client.setQueryData(drawingKeys.forCompetition(competitionId), data),
+    onSuccess: (data) => {
+      client.setQueryData(drawingKeys.forCompetition(competitionId), data);
+      // Time trial: antreannya baru ada setelah Lock.
+      return client.invalidateQueries({
+        queryKey: timetrialKeys.queue(competitionId),
+      });
+    },
   });
 }
 
@@ -33,8 +39,13 @@ export function useSwapDrawing(competitionId: string) {
   return useMutation({
     mutationFn: (v: { entryIdA: string; entryIdB: string }) =>
       swapDrawing(competitionId, v.entryIdA, v.entryIdB),
-    onSuccess: (data) =>
-      client.setQueryData(drawingKeys.forCompetition(competitionId), data),
+    onSuccess: (data) => {
+      client.setQueryData(drawingKeys.forCompetition(competitionId), data);
+      // Time trial: urutan antrean ikut berubah.
+      return client.invalidateQueries({
+        queryKey: timetrialKeys.queue(competitionId),
+      });
+    },
     onError: () =>
       client.invalidateQueries({
         queryKey: drawingKeys.forCompetition(competitionId),

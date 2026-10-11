@@ -17,6 +17,7 @@ import type { ApiCompetitionUpdate, NewCompetition } from "./schema";
 import type { SettingsChanges } from "./settings";
 import type { CompetitionAction } from "./types";
 import { drawingKeys } from "@/domains/drawing/keys";
+import { timetrialKeys } from "@/domains/timetrial/keys";
 import { entryKeys } from "@/domains/entries/queries";
 
 export const competitionKeys = {
@@ -112,6 +113,7 @@ export function useSaveCompetitionSettings(id: string) {
       Promise.all([
         client.invalidateQueries({ queryKey: competitionKeys.all }),
         client.invalidateQueries({ queryKey: drawingKeys.all }),
+        client.invalidateQueries({ queryKey: timetrialKeys.all }),
       ]),
   });
 }
@@ -155,6 +157,8 @@ export function useCompetitionAction(eventId: string) {
         client.invalidateQueries({ queryKey: entryKeys.forEvent(eventId) }),
         // Reopen registration deletes the locked drawing (contract 13 section 11).
         client.invalidateQueries({ queryKey: drawingKeys.all }),
+        // Antrean Time trial ikut hilang bersama undiannya.
+        client.invalidateQueries({ queryKey: timetrialKeys.all }),
       ]),
   });
 }

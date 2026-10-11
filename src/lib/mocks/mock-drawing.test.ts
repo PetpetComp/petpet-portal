@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { buildDrawing } from "@/domains/drawing/draw";
+import { buildDrawing, buildQueue } from "@/domains/drawing/draw";
 import { lockBody } from "@/domains/drawing/api";
 import type { ApiDrawing } from "@/domains/drawing/types";
 import {
@@ -307,5 +307,127 @@ describe("reopen registration (finding D6)", () => {
       call("POST", `/competitions/${SPRINT}/reopen-registration`, {}),
     ).rejects.toMatchObject({ status: 403 });
     expect(drawingStore.drawings[SPRINT]).toBeDefined();
+  });
+});
+
+describe("time trial drawing (one ordered queue)", () => {
+  const TRIAL = "comp-glider-time-trial"; // TIME_TRIAL, SCHEDULED, registrasi tutup, BELUM di-lock (6 peserta)
+  const SPEED = "comp-glider-speed-trial"; // TIME_TRIAL, ONGOING, SUDAH di-lock dan sudah jalan (4 peserta)
+  const queueFor = (uuid: string, seed = 1) =>
+    buildQueue(
+      eligibleEntries(uuid).map((e) => e.uuid),
+      seed,
+    );
+
+  it("seeds one open time trial (6 eligible, lanes = 6) and one locked and running", async () => {
+    await asOrganizer();
+    const open = await get(TRIAL);
+    expect(open.status).toBe("NOT_DRAWN");
+    expect(open.lanes).toBe(6);
+    expect(open.participants).toHaveLength(6);
+    expect(open.matches).toEqual([]);
+    expect(open.actions).toEqual({ lock: true, swap: false });
+    const locked = await get(SPEED);
+    expect(locked.status).toBe("LOCKED");
+    expect(locked.lanes).toBe(4);
+    expect(locked.matches).toHaveLength(1);
+    expect(locked.matches[0].lanes.map((l) => l.lane_number)).toEqual([
+      1, 2, 3, 4,
+    ]);
+    expect(locked.matches[0].status).toBe("IN_PROGRESS");
+  });
+
+  it("names the single match after the round, since a time trial has no heats", async () => {
+    await asOrganizer();
+    expect((await get(SPEED)).matches[0].uuid).toBe(
+      "round-comp-glider-speed-trial-1",
+    );
+  });
+
+  it("locks the queue as ONE match whose lanes are the positions 1..N", async () => {
+    await asOrganizer();
+    const order = queueFor(TRIAL);
+    expect(order).toHaveLength(1);
+    const locked = await lock(TRIAL, order);
+    expect(locked.status).toBe("LOCKED");
+    expect(locked.matches).toHaveLength(1);
+    expect(locked.matches[0]).toMatchObject({
+      uuid: "round-comp-glider-time-trial-1",
+      match_number: 1,
+      status: "SCHEDULED",
+    });
+    expect(locked.matches[0].lanes.map((l) => l.entry_uuid)).toEqual(order[0]);
+    expect(locked.matches[0].lanes.map((l) => l.lane_number)).toEqual([
+      1, 2, 3, 4, 5, 6,
+    ]);
+    expect(locked.actions).toEqual({ lock: false, swap: true });
+    expect(locked.lock_blocked_reason).toBe("ALREADY_LOCKED");
+  });
+
+  it("refuses a time trial drawing split over more than one match (422)", async () => {
+    await asOrganizer();
+    const [first] = queueFor(TRIAL);
+    await expect(
+      lock(TRIAL, [first.slice(0, 3), first.slice(3)]),
+    ).rejects.toMatchObject({ status: 422 });
+    expect(drawingStore.drawings[TRIAL]).toBeUndefined();
+  });
+
+  it("still requires every eligible participant exactly once (422)", async () => {
+    await asOrganizer();
+    const [first] = queueFor(TRIAL);
+    await expect(lock(TRIAL, [first.slice(1)])).rejects.toMatchObject({
+      status: 422,
+    });
+    await expect(
+      lock(TRIAL, [[...first.slice(1), first[1]]]),
+    ).rejects.toMatchObject({ status: 422 });
+    await expect(
+      lock(TRIAL, [[...first, "entry-nobody"]]),
+    ).rejects.toMatchObject({ status: 422 });
+  });
+
+  it("refuses to lock twice (409) and a competitor (403)", async () => {
+    await asOrganizer();
+    await lock(TRIAL, queueFor(TRIAL));
+    await expect(lock(TRIAL, queueFor(TRIAL, 2))).rejects.toMatchObject({
+      status: 409,
+    });
+    await asCompetitor();
+    await expect(get(TRIAL)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("swaps two positions of a queue that has not started, and refuses once it runs", async () => {
+    await asOrganizer();
+    const [order] = queueFor(TRIAL);
+    await lock(TRIAL, [order]);
+    const swapped = await swap(TRIAL, order[0], order[5]);
+    const lanes = swapped.matches[0].lanes.map((l) => l.entry_uuid);
+    expect(lanes[0]).toBe(order[5]);
+    expect(lanes[5]).toBe(order[0]);
+    const running = (await get(SPEED)).matches[0].lanes.map(
+      (l) => l.entry_uuid,
+    );
+    await expect(swap(SPEED, running[0], running[3])).rejects.toMatchObject({
+      status: 409,
+    });
+  });
+
+  it("is removed again when registration is reopened (the order is no longer valid)", async () => {
+    await asOrganizer();
+    await lock(TRIAL, queueFor(TRIAL));
+    await call("POST", `/competitions/${TRIAL}/reopen-registration`, {});
+    const after = await get(TRIAL);
+    expect(after.status).toBe("NOT_DRAWN");
+    expect(after.matches).toEqual([]);
+    expect(drawingStore.drawings[TRIAL]).toBeUndefined();
+  });
+
+  it("keeps Race behaviour: a Race still splits over lanes and a non-drawable type is still refused", async () => {
+    await asOrganizer();
+    expect((await get(SPRINT)).matches.map((m) => m.lanes.length)).toEqual([
+      4, 4, 3,
+    ]);
+    await expect(get(BEAUTY)).rejects.toMatchObject({ status: 422 });
   });
 });

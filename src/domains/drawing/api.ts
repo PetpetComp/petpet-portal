@@ -9,7 +9,7 @@ import {
   type CompetitionDrawing,
 } from "./types";
 
-/** Keadaan drawing satu kompetisi Race. MOCK: belum ada di backend (draf kontrak drawing). */
+/** Keadaan drawing satu kompetisi Race atau Time trial. MOCK: belum ada di backend (draf kontrak drawing). */
 export async function getDrawing(
   competitionId: string,
 ): Promise<CompetitionDrawing> {

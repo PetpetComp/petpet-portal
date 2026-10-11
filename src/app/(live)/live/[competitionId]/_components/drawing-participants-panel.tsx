@@ -33,17 +33,20 @@ export function buildAssignments(
  * Panel "Participants": jumlah, kotak cari, dan daftar semua peserta yang berhak (pet + bib + pemilik).
  * Setelah diundi tiap baris punya chip "Match n - Lane m". Hover pada baris menyorot slot-nya
  * (lewat `activeId`/`onActive`). Di bawah xl panel bisa dilipat; di xl selalu terbuka.
+ * `queue` (Time trial): chip berbunyi "Position n" karena hanya ada satu antrean.
  */
 export const DrawingParticipantsPanel = memo(function DrawingParticipantsPanel({
   participants,
   assignments,
   activeId,
   onActive,
+  queue = false,
 }: {
   participants: readonly DrawingParticipant[];
   assignments: ReadonlyMap<string, Assignment>;
   activeId: string | null;
   onActive: (entryId: string | null) => void;
+  queue?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(true);
@@ -125,7 +128,9 @@ export const DrawingParticipantsPanel = memo(function DrawingParticipantsPanel({
                   </span>
                   {place && (
                     <span className="bg-primary-soft text-primary-dark shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap">
-                      Match {place.matchNumber} - Lane {place.laneNumber}
+                      {queue
+                        ? `Position ${place.laneNumber}`
+                        : `Match ${place.matchNumber} - Lane ${place.laneNumber}`}
                     </span>
                   )}
                 </li>

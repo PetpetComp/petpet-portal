@@ -6,24 +6,47 @@ import { ChevronLeft } from "lucide-react";
 import { Forbidden } from "@/components/common/can";
 import { ErrorState } from "@/components/common/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCompetition } from "@/domains/competitions/queries";
+import {
+  useCompetition,
+  useCompetitionTypes,
+} from "@/domains/competitions/queries";
 import { useEvent } from "@/domains/events/queries";
+import { TIMETRIAL_TYPE_CODE } from "@/domains/timetrial/constants";
+import { useQueue } from "@/domains/timetrial/queries";
 import { ApiError } from "@/lib/api-client";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
 import { ConnectionBadge } from "./live-connection";
 import { LiveSponsorStrip } from "./live-sponsor-strip";
 
-/** Tiga langkah Live Mode, urut. Tab Matches tetap aktif di layar Run Match (`/matches/[matchId]`) karena dicocokkan per awalan rute. */
-export function liveTabs(competitionId: string) {
+/**
+ * Tiga langkah Live Mode, urut. Race: Drawing, Matches, Results. Time trial (`timeTrial = true`):
+ * Running order, Run, Results. Rutenya sama untuk keduanya (/drawing, /matches, /results); hanya
+ * labelnya yang berubah. Tab Matches/Run tetap aktif di layar Run Match (`/matches/[matchId]`)
+ * karena dicocokkan per awalan rute.
+ */
+export function liveTabs(competitionId: string, timeTrial = false) {
   return [
-    { label: "Drawing", number: 1, href: ROUTES.liveDrawing(competitionId) },
-    { label: "Matches", number: 2, href: ROUTES.liveMatches(competitionId) },
+    {
+      label: timeTrial ? "Running order" : "Drawing",
+      number: 1,
+      href: ROUTES.liveDrawing(competitionId),
+    },
+    {
+      label: timeTrial ? "Run" : "Matches",
+      number: 2,
+      href: ROUTES.liveMatches(competitionId),
+    },
     { label: "Results", number: 3, href: ROUTES.liveResults(competitionId) },
   ];
 }
 
-/** Subjudul header di bawah nama kompetisi: "Drawing - Round 1" di langkah Drawing, selain itu nama event. */
+/**
+ * Subjudul header di bawah nama kompetisi. Race: "Drawing - Round 1" di langkah Drawing, selain
+ * itu nama event. Time trial: "Running order" di langkah pertama, selain itu
+ * "Time trial - best of N attempts" (N dari rule `attempt_limit` lewat antrean; "Time trial"
+ * saja selama belum dimuat atau bila antrean tidak bisa dibaca).
+ */
 function Subtitle({
   eventId,
   onDrawing,
@@ -34,6 +57,26 @@ function Subtitle({
   const event = useEvent(eventId);
   if (onDrawing) return <>Drawing - Round 1</>;
   return <>{event.data?.name ?? ""}</>;
+}
+
+/** Subjudul Time trial; komponen terpisah supaya antrean hanya dimuat untuk tipe ini. */
+function TimeTrialSubtitle({
+  competitionId,
+  onDrawing,
+}: {
+  competitionId: string;
+  onDrawing: boolean;
+}) {
+  const queue = useQueue(competitionId);
+  if (onDrawing) return <>Running order</>;
+  const limit = queue.data?.rules.attemptLimit;
+  return (
+    <>
+      {limit
+        ? `Time trial - best of ${limit} ${limit === 1 ? "attempt" : "attempts"}`
+        : "Time trial"}
+    </>
+  );
 }
 
 /**
@@ -85,9 +128,13 @@ export function LiveShell({
   children: ReactNode;
 }) {
   const competition = useCompetition(competitionId);
+  const types = useCompetitionTypes();
   const pathname = usePathname();
-  const tabs = liveTabs(competitionId);
   const c = competition.data;
+  // Jenis belum dimuat (atau gagal) -> tampilan Race; berganti begitu jenisnya diketahui.
+  const timeTrial =
+    types.data?.find((t) => t.id === c?.typeId)?.code === TIMETRIAL_TYPE_CODE;
+  const tabs = liveTabs(competitionId, timeTrial);
   const onDrawing = pathname.startsWith(ROUTES.liveDrawing(competitionId));
   const backHref = c
     ? ROUTES.eventManagement.competitionDetail(c.eventId, c.id)
@@ -114,7 +161,14 @@ export function LiveShell({
             )}
             {c ? (
               <p className="text-muted-foreground min-h-5 text-[13px]">
-                <Subtitle eventId={c.eventId} onDrawing={onDrawing} />
+                {timeTrial ? (
+                  <TimeTrialSubtitle
+                    competitionId={competitionId}
+                    onDrawing={onDrawing}
+                  />
+                ) : (
+                  <Subtitle eventId={c.eventId} onDrawing={onDrawing} />
+                )}
               </p>
             ) : (
               <Skeleton className="mt-1 h-4 w-32" />

@@ -16,10 +16,12 @@ import {
   type MatchRunStatus,
   type MatchSummary,
 } from "@/domains/matches/types";
+import { TIMETRIAL_TYPE_CODE } from "@/domains/timetrial/constants";
 import { ApiError } from "@/lib/api-client";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
 import { MatchesMockBanner } from "./run/run-match";
+import { TimeTrialRun } from "./time-trial/time-trial-run";
 
 const STATUS_STYLE: Record<MatchRunStatus, string> = {
   NOT_STARTED: "bg-muted text-muted-foreground",
@@ -155,7 +157,9 @@ function Notice({
 
 /**
  * Tab Matches Live Mode (langkah 2). Dipanggil dari `matches/page.tsx`.
- * Memuat kompetisi + jenisnya (selain Race hanya penjelasan), lalu daftar match.
+ * Memuat kompetisi + jenisnya. Time trial menampilkan layar Run-nya sendiri (`TimeTrialRun`,
+ * satu antrean peserta, bukan daftar match); jenis lain selain Race hanya penjelasan. Untuk Race:
+ * daftar match.
  * Kondisi: loading, error (403 -> No access), belum diundi (link ke tab Drawing), dan daftar.
  * Ringkasan "N of M matches done"; match berikutnya (`nextMatchId`) disorot dengan tombol utama.
  */
@@ -180,6 +184,8 @@ export function LiveMatches({ competitionId }: { competitionId: string }) {
       </div>
     );
   if (!competition.data || !type) return <Loading />;
+  if (type.code === TIMETRIAL_TYPE_CODE)
+    return <TimeTrialRun competitionId={competitionId} />;
   if (!isRace)
     return (
       <div className="p-4 md:p-7">

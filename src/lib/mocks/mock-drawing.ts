@@ -2,9 +2,12 @@ import { ApiError } from "@/lib/api-client";
 import { PERMISSION } from "@/lib/auth/permissions";
 import {
   buildDrawing,
+  buildQueue,
   DEFAULT_LANES,
+  queueLaneCount,
   swapInDrawing,
 } from "@/domains/drawing/draw";
+import { isDrawableType, isQueueType } from "@/domains/drawing/constants";
 import type {
   ApiDrawing,
   ApiDrawingActions,
@@ -21,11 +24,18 @@ import { findOrThrow, store } from "./mock-store";
 import type { MockCompetition, MockEntry, MockUser } from "./mock-types";
 
 /**
- * Backend palsu untuk drawing kompetisi Race (draf kontrak petpet-docs/_draft-drawing.md).
+ * Backend palsu untuk drawing kompetisi Race dan Time trial (draf kontrak petpet-docs/_draft-drawing.md,
+ * bagian Time trial di kontrak 14).
  * Backend asli belum punya endpoint ini; di sana satu Lock ditulis dalam satu transaksi ke
  * `competition_rounds` (ronde 1, tipe GENERAL), `competition_heats` (satu per match), dan
  * `heat_entries` (satu per lane). Aturan (siapa boleh lock, syarat kompetisi, aturan swap)
  * hidup di sini; layar hanya membaca `actions` dan `lock_blocked_reason`.
+ *
+ * TIME_TRIAL memakai kontrak yang sama sebagai SATU antrean berurutan: drawing berisi tepat satu
+ * match yang lane-nya adalah posisi antrean 1..N (`lanes` = N, jumlah peserta yang berhak). Di
+ * backend asli ini ditulis sebagai ronde 1 (GENERAL) + `round_entries` (`queue_number`,
+ * `queue_position`, `drawing_order`), tanpa heat; uuid match di respons = uuid ronde itu.
+ * Aturan lain (eligibility, Lock, Swap, invalidasi saat registrasi dibuka lagi) sama dengan Race.
  */
 
 /** Satu match tersimpan. Indeks `entry_uuids` + 1 = nomor lane (`heat_entries.lane_number`). */
@@ -46,6 +56,8 @@ export type StoredDrawing = {
 /** Benih tetap untuk seed supaya susunan awal sama di setiap reload. */
 const SEED_SHUFFLE = 20261012;
 const SEED_COMPETITION_UUID = "comp-glider-sprint-heats";
+/** Time trial yang sudah di-lock dan sudah berjalan (attempt-nya di-seed mock-timetrial.ts). */
+export const SEED_TIME_TRIAL_UUID = "comp-glider-speed-trial";
 
 /**
  * Seed: Glider Sprint Heats (Race, SCHEDULED, registrasi tutup) sudah di-lock. Dengan 11 peserta
@@ -59,6 +71,8 @@ function seedDrawings(): Record<string, StoredDrawing> {
     laneLimit(SEED_COMPETITION_UUID),
     SEED_SHUFFLE,
   );
+  // Time trial: satu antrean, matchnya sudah IN_PROGRESS karena attempt pertama sudah jalan.
+  const queue = [seedTimeTrialOrder()];
   return {
     [SEED_COMPETITION_UUID]: {
       locked_at: "2026-10-11T07:00:00+00:00",
@@ -67,7 +81,29 @@ function seedDrawings(): Record<string, StoredDrawing> {
         storedMatch(SEED_COMPETITION_UUID, index + 1, ids),
       ),
     },
+    [SEED_TIME_TRIAL_UUID]: {
+      locked_at: "2026-10-11T08:00:00+00:00",
+      locked_by_uuid: "u-organizer",
+      matches: queue.map((ids, index) => ({
+        ...storedMatch(SEED_TIME_TRIAL_UUID, index + 1, ids),
+        status: "IN_PROGRESS" as const,
+      })),
+    },
   };
+}
+
+/**
+ * Urutan antrean seed Time trial yang sudah di-lock (entry uuid, posisi 1..N). Acak berbenih
+ * tetap, jadi sama di setiap reload. Dipakai seed drawing di sini dan seed attempt di
+ * mock-timetrial.ts supaya keduanya merujuk peserta yang sama.
+ */
+export function seedTimeTrialOrder(): string[] {
+  return (
+    buildQueue(
+      eligibleEntries(SEED_TIME_TRIAL_UUID).map((e) => e.uuid),
+      SEED_SHUFFLE,
+    )[0] ?? []
+  );
 }
 
 export const drawingStore: { drawings: Record<string, StoredDrawing> } = {
@@ -125,14 +161,44 @@ export function invalidateDrawing(competitionUuid: string) {
   delete drawingStore.drawings[competitionUuid];
 }
 
-/** Match tersimpan baru. Uuid heat di mock dibuat dari nomor kompetisi dan match. */
+/**
+ * Uuid ronde 1 satu kompetisi di mock (juga dipakai Run Match dan Time trial). Untuk Time trial
+ * uuid ini menjadi uuid "match" antrean (tidak ada heat).
+ */
+export const roundUuidOf = (competitionUuid: string) =>
+  `round-${competitionUuid}-1`;
+
+/** Kode tipe (`RACE`, `TIME_TRIAL`, ...) dari uuid tipe kompetisi; null bila tidak dikenal. */
+function typeCodeOf(competitionTypeUuid: string): string | null {
+  return (
+    store.competitionTypes.find((t) => t.uuid === competitionTypeUuid)?.code ??
+    null
+  );
+}
+
+/** True bila kompetisi ini TIME_TRIAL (drawing berupa satu antrean). */
+export function isQueueCompetition(competitionUuid: string): boolean {
+  const competition = store.competitions.find(
+    (c) => c.uuid === competitionUuid,
+  );
+  return competition
+    ? isQueueType(typeCodeOf(competition.competition_type_uuid))
+    : false;
+}
+
+/**
+ * Match tersimpan baru. Uuid heat di mock dibuat dari nomor kompetisi dan match; untuk Time trial
+ * uuid-nya adalah uuid ronde (satu antrean, tanpa heat).
+ */
 function storedMatch(
   competitionUuid: string,
   matchNumber: number,
   entryUuids: string[],
 ): StoredMatch {
   return {
-    uuid: `heat-${competitionUuid.replace(/^comp-/, "")}-${matchNumber}`,
+    uuid: isQueueCompetition(competitionUuid)
+      ? roundUuidOf(competitionUuid)
+      : `heat-${competitionUuid.replace(/^comp-/, "")}-${matchNumber}`,
     match_number: matchNumber,
     status: "SCHEDULED",
     entry_uuids: entryUuids,
@@ -142,8 +208,11 @@ function storedMatch(
 /**
  * Jumlah lane per match dari rule aktif (yang `is_active`, kalau tidak ada versi tertinggi).
  * Bawaan 4 bila rule belum ada atau `lane_total` kosong. Dipanggil dari seed dan `drawingRecord`.
+ * TIME_TRIAL: jumlah peserta yang berhak (minimal 1), karena semua peserta ada di satu antrean.
  */
 export function laneLimit(competitionUuid: string): number {
+  if (isQueueCompetition(competitionUuid))
+    return queueLaneCount(eligibleEntries(competitionUuid).length);
   const rules = competitionRuleStore.rules.filter(
     (r) => r.competition_uuid === competitionUuid,
   );
@@ -180,12 +249,9 @@ export function eligibleEntries(competitionUuid: string): MockEntry[] {
 const fullName = (user: MockUser) =>
   [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username;
 
-/** Hanya tipe RACE punya drawing; tipe lain 422. */
-function requireRace(competitionTypeUuid: string) {
-  const type = store.competitionTypes.find(
-    (t) => t.uuid === competitionTypeUuid,
-  );
-  if (type?.code !== "RACE")
+/** Hanya tipe RACE dan TIME_TRIAL punya drawing; tipe lain 422. */
+function requireDrawable(competitionTypeUuid: string) {
+  if (!isDrawableType(typeCodeOf(competitionTypeUuid)))
     throw new ApiError(
       422,
       "Drawing is not available for this competition type.",
@@ -312,16 +378,22 @@ function invalidMatches(message: string): never {
  * Memeriksa body Lock dan mengubahnya menjadi susunan entry id per match (urut lane).
  * Aturan: `matches` array tidak kosong; tiap match punya 1..lanes lane bernomor 1..k tanpa lubang;
  * setiap `entry_uuid` berhak diundi; tidak ada yang dobel; SEMUA yang berhak harus ada.
+ * `singleMatch` (Time trial): tepat SATU match, karena itu satu antrean.
  * Dipanggil dari `lockDrawingRecord`.
  */
 function parseLockBody(
   body: Record<string, unknown> | undefined,
   lanes: number,
   eligibleIds: string[],
+  singleMatch = false,
 ): string[][] {
   const matches = body?.matches;
   if (!Array.isArray(matches) || matches.length === 0)
     invalidMatches("The matches field is required.");
+  if (singleMatch && (matches as unknown[]).length !== 1)
+    invalidMatches(
+      "A time trial has one running order: send exactly one match.",
+    );
   const result: string[][] = [];
   const seen = new Set<string>();
   for (const match of matches as unknown[]) {
@@ -358,7 +430,7 @@ function parseLockBody(
 
 /**
  * `GET /competitions/{uuid}/drawing`. Butuh login, terkait event, dan `scoring.view`.
- * Tipe selain Race 422. Kompetisi tanpa drawing mengembalikan `status: NOT_DRAWN`, `matches: []`.
+ * Tipe selain Race dan Time trial 422. Kompetisi tanpa drawing mengembalikan `status: NOT_DRAWN`, `matches: []`.
  */
 export function getDrawingRecord(
   user: MockUser,
@@ -371,7 +443,7 @@ export function getDrawingRecord(
   );
   const caller = callerFor(user, competition.event_uuid);
   forbidUnless(canView(caller));
-  requireRace(competition.competition_type_uuid);
+  requireDrawable(competition.competition_type_uuid);
   return drawingRecord(competition, caller);
 }
 
@@ -392,7 +464,7 @@ export function lockDrawingRecord(
   );
   const caller = callerFor(user, competition.event_uuid);
   forbidUnless(canChange(caller));
-  requireRace(competition.competition_type_uuid);
+  requireDrawable(competition.competition_type_uuid);
   const eligible = eligibleEntries(competitionUuid);
   const reason = lockBlockedReason(
     competition,
@@ -408,6 +480,7 @@ export function lockDrawingRecord(
     body,
     laneLimit(competitionUuid),
     eligible.map((e) => e.uuid),
+    isQueueCompetition(competitionUuid),
   );
   drawingStore.drawings[competitionUuid] = {
     locked_at: iso(new Date()),
@@ -421,7 +494,7 @@ export function lockDrawingRecord(
 
 /**
  * `POST /competitions/{uuid}/drawing/swap`. Menukar match dan lane dua peserta. Urutan cek: 404,
- * 403, 422 (bukan Race, body salah, peserta tidak ada di drawing), 409 (belum di-lock, atau salah
+ * 403, 422 (bukan Race atau Time trial, body salah, peserta tidak ada di drawing), 409 (belum di-lock, atau salah
  * satu match sudah mulai).
  */
 export function swapDrawingRecord(
@@ -436,7 +509,7 @@ export function swapDrawingRecord(
   );
   const caller = callerFor(user, competition.event_uuid);
   forbidUnless(canChange(caller));
-  requireRace(competition.competition_type_uuid);
+  requireDrawable(competition.competition_type_uuid);
   const a = body?.entry_uuid_a;
   const b = body?.entry_uuid_b;
   if (typeof a !== "string" || typeof b !== "string")

@@ -17,6 +17,12 @@ vi.mock("@/domains/competitions/api", async () => {
     listCompetitionTypes: vi.fn().mockResolvedValue([
       { id: "race", code: "RACE", name: "Race", resultMode: "POSITION" },
       { id: "tt", code: "TIME_TRIAL", name: "Time trial", resultMode: "TIME" },
+      {
+        id: "other",
+        code: "CONTEST",
+        name: "Contest",
+        resultMode: "JUDGED_SCORE",
+      },
     ]),
   };
 });
@@ -184,7 +190,7 @@ describe("LiveMatches", () => {
   });
 
   it("explains that other competition types have no matches and does not call the API", async () => {
-    state.typeId = "tt";
+    state.typeId = "other";
     renderScreen();
     expect(
       await screen.findByText(/only available for Race competitions/),

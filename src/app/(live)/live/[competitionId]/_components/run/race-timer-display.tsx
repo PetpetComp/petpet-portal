@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { formatTimer, type Clock } from "@/domains/matches/time";
+import { cn } from "@/lib/utils";
 import { timerCountdown, timerElapsed, type TimerState } from "./race-timer";
 
 /**
@@ -32,9 +33,15 @@ function useFrameTick(active: boolean) {
 export function RaceTimerDisplay({
   state,
   clock,
+  label = "Race timer",
+  large = false,
 }: {
   state: TimerState;
   clock: Clock;
+  /** Nama timer untuk pembaca layar (Time trial memakai "Attempt timer"). */
+  label?: string;
+  /** Ukuran besar sampai 96px berwarna teks utama (layar Time trial); bawaan ukuran Run Match. */
+  large?: boolean;
 }) {
   useFrameTick(state.kind === "countdown" || state.kind === "running");
   const countdown = timerCountdown(state, clock);
@@ -45,9 +52,14 @@ export function RaceTimerDisplay({
     <div
       role="timer"
       aria-live="off"
-      aria-label="Race timer"
+      aria-label={label}
       data-timer-state={state.kind}
-      className="text-primary-dark min-w-0 font-mono text-[2.75rem] leading-none font-bold tabular-nums sm:text-6xl"
+      className={cn(
+        "min-w-0 font-mono leading-none font-bold tabular-nums",
+        large
+          ? "text-foreground text-[clamp(3rem,10vw,6rem)]"
+          : "text-primary-dark text-[2.75rem] sm:text-6xl",
+      )}
     >
       <span
         key={countdown ? text : "clock"}

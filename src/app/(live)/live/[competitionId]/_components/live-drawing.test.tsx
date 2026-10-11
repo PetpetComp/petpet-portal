@@ -34,6 +34,12 @@ vi.mock("@/domains/competitions/api", async () => {
     listCompetitionTypes: vi.fn().mockResolvedValue([
       { id: "race", code: "RACE", name: "Race", resultMode: "POSITION" },
       { id: "tt", code: "TIME_TRIAL", name: "Time trial", resultMode: "TIME" },
+      {
+        id: "other",
+        code: "CONTEST",
+        name: "Contest",
+        resultMode: "JUDGED_SCORE",
+      },
     ]),
   };
 });
@@ -46,6 +52,7 @@ vi.mock("@/domains/drawing/api", () => ({
 vi.mock("@/domains/drawing/draw", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/domains/drawing/draw")>()),
   buildDrawing: vi.fn(),
+  buildQueue: vi.fn(),
 }));
 
 const FIRST_DRAW = [
@@ -442,12 +449,12 @@ describe("LiveDrawing: locked", () => {
 });
 
 describe("LiveDrawing: other cases", () => {
-  it("explains that Live Drawing applies to Race for other competition types", async () => {
-    state.typeId = "tt";
+  it("explains that Live Drawing applies to Race and Time trial for other competition types", async () => {
+    state.typeId = "other";
     renderScreen();
     expect(
       await screen.findByText(
-        /Drawing is only available for Race competitions/,
+        /Drawing is only available for Race and Time trial competitions/,
       ),
     ).toBeInTheDocument();
     expect(getDrawing).not.toHaveBeenCalled();

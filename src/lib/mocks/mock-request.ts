@@ -140,6 +140,21 @@ import {
   updateHeatEntryRecord,
   voidFinishRecord,
 } from "./mock-matches";
+import {
+  createAttemptRecord,
+  createPenaltyRecord as createTimeTrialPenaltyRecord,
+  getAttemptRecord,
+  getQueueRecord,
+  isTimeTrialEntry,
+  isTimeTrialPenalty,
+  recordTimerResultRecord,
+  revokePenaltyRecord as revokeTimeTrialPenaltyRecord,
+  skipParticipantRecord,
+  startAttemptRecord,
+  stopAttemptRecord,
+  updateAttemptStatusRecord,
+  updateRoundEntryRecord,
+} from "./mock-timetrial";
 
 function matchPath(
   pattern: string,
@@ -783,13 +798,70 @@ const routes: Route[] = [
   {
     method: "POST",
     pattern: "/entries/:uuid/penalties",
+    // Peserta antrean Time trial ditangani mock-timetrial.ts, sisanya Run Match.
     handler: (params, body) =>
-      createPenaltyRecord(requireSession(), params.uuid, body),
+      isTimeTrialEntry(params.uuid)
+        ? createTimeTrialPenaltyRecord(requireSession(), params.uuid, body)
+        : createPenaltyRecord(requireSession(), params.uuid, body),
   },
   {
     method: "POST",
     pattern: "/penalties/:uuid/revoke",
-    handler: (params) => revokePenaltyRecord(requireSession(), params.uuid),
+    handler: (params) =>
+      isTimeTrialPenalty(params.uuid)
+        ? revokeTimeTrialPenaltyRecord(requireSession(), params.uuid)
+        : revokePenaltyRecord(requireSession(), params.uuid),
+  },
+  // Time trial (kontrak 14, MOCK ONLY sebagian): aturannya ada di mock-timetrial.ts.
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid/queue",
+    handler: (params) => getQueueRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/queue/:entryUuid/skip",
+    handler: (params) =>
+      skipParticipantRecord(requireSession(), params.uuid, params.entryUuid),
+  },
+  {
+    method: "POST",
+    pattern: "/rounds/:uuid/attempts",
+    handler: (params, body) =>
+      createAttemptRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "GET",
+    pattern: "/attempts/:uuid",
+    handler: (params) => getAttemptRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/attempts/:uuid/start",
+    handler: (params) => startAttemptRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/attempts/:uuid/stop",
+    handler: (params) => stopAttemptRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "PATCH",
+    pattern: "/attempts/:uuid/status",
+    handler: (params, body) =>
+      updateAttemptStatusRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "POST",
+    pattern: "/attempts/:uuid/timer-result",
+    handler: (params, body) =>
+      recordTimerResultRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "PATCH",
+    pattern: "/round-entries/:uuid",
+    handler: (params, body) =>
+      updateRoundEntryRecord(requireSession(), params.uuid, body),
   },
   // Committee (kontrak 13 bagian 3): aturannya ada di mock-staff.ts.
   {

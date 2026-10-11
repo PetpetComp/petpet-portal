@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDrawing,
+  buildQueue,
   draftMatches,
   entryIdsOf,
   matchCount,
   matchSizes,
+  queueLaneCount,
   shuffled,
   swapInDrawing,
 } from "./draw";
@@ -168,5 +170,40 @@ describe("draftMatches and entryIdsOf", () => {
   });
   it("throws for an unknown participant", () => {
     expect(() => draftMatches(participants, [["zzz"]])).toThrow();
+  });
+});
+
+describe("time trial queue", () => {
+  it("uses as many lanes as participants, at least one", () => {
+    expect(queueLaneCount(6)).toBe(6);
+    expect(queueLaneCount(1)).toBe(1);
+    expect(queueLaneCount(0)).toBe(1);
+  });
+
+  it("draws ONE match holding every participant once (lane = queue position)", () => {
+    for (const n of [1, 2, 6, 13, 45]) {
+      const queue = buildQueue(ids(n), 3);
+      expect(queue).toHaveLength(1);
+      expect(queue[0]).toHaveLength(n);
+      expect([...queue[0]].sort()).toEqual([...ids(n)].sort());
+    }
+  });
+
+  it("is deterministic for the same seed, shuffles, and gives no match for nobody", () => {
+    expect(buildQueue(ids(10), 5)).toEqual(buildQueue(ids(10), 5));
+    expect(buildQueue(ids(10), 5)[0]).not.toEqual(ids(10));
+    expect(buildQueue([], 5)).toEqual([]);
+  });
+
+  it("leaves Race drawing untouched (11 pets on 5 lanes stay 4+4+3)", () => {
+    expect(buildDrawing(ids(11), 5, 7).map((m) => m.length)).toEqual([4, 4, 3]);
+  });
+
+  it("round-trips with swap like any drawing", () => {
+    const queue = buildQueue(ids(4), 1);
+    const [a, b] = [queue[0][0], queue[0][3]];
+    const swapped = swapInDrawing(queue, a, b);
+    expect(swapped[0][0]).toBe(b);
+    expect(swapped[0][3]).toBe(a);
   });
 });

@@ -27,11 +27,22 @@ export type CardReveal = {
   animate: boolean;
 };
 
-/** Isi satu baris lane: nomor lane besar (mono), nama hewan + bib (mono), dan nama pemilik. */
-function LaneContent({ lane }: { lane: DrawingLane }) {
+/** Isi satu baris lane: nomor lane besar (mono), nama hewan + bib (mono), dan nama pemilik. Varian antrean memakai aksen teal. */
+function LaneContent({
+  lane,
+  queue = false,
+}: {
+  lane: DrawingLane;
+  queue?: boolean;
+}) {
   return (
     <>
-      <span className="text-primary-dark w-8 shrink-0 text-center font-mono text-2xl leading-none font-bold">
+      <span
+        className={cn(
+          "w-8 shrink-0 text-center font-mono text-2xl leading-none font-bold",
+          queue ? "text-time-trial" : "text-primary-dark",
+        )}
+      >
         {lane.laneNumber}
       </span>
       <span className="grid min-w-0 text-left">
@@ -60,6 +71,8 @@ function LaneContent({ lane }: { lane: DrawingLane }) {
  * disembunyikan dari pembaca layar), `flashIds` (sorot sebentar setelah swap), serta
  * `activeId`/`onActive` (sorot dua arah dengan panel Participants), serta
  * `previewSelected`/`onPreview` (hover, fokus, atau klik kartu memilih match di Arena preview).
+ * `variant="queue"` (Time trial): kartu SATU antrean berjudul "Running order" dengan aksen teal;
+ * nomor lane dibaca sebagai posisi antrean, daftar satu kolom, dan tidak ada pratinjau Arena.
  */
 export function DrawingMatchCard({
   match,
@@ -74,6 +87,7 @@ export function DrawingMatchCard({
   previewSelected = false,
   onPreview,
   pending = false,
+  variant = "match",
 }: {
   match: DrawingMatch;
   swappable: boolean;
@@ -88,13 +102,16 @@ export function DrawingMatchCard({
   onPreview?: (matchNumber: number) => void;
   /** Belum diundi: baris hanya berisi nomor lane dan "?", tanpa nama. */
   pending?: boolean;
+  variant?: "match" | "queue";
 }) {
+  const queue = variant === "queue";
+  const title = queue ? "Running order" : `Match ${match.number}`;
   const note = MATCH_STATUS_NOTE[match.status];
   const canPick = swappable && match.status === "SCHEDULED";
   const count = match.lanes.length;
   return (
     <section
-      aria-label={`Match ${match.number}`}
+      aria-label={title}
       onMouseEnter={() => onPreview?.(match.number)}
       onFocus={() => onPreview?.(match.number)}
       onClick={() => onPreview?.(match.number)}
@@ -103,10 +120,20 @@ export function DrawingMatchCard({
         previewSelected ? "border-primary" : "border-border",
       )}
     >
-      <div className="bg-race h-1.5" aria-hidden />
+      <div
+        className={cn("h-1.5", queue ? "bg-time-trial" : "bg-race")}
+        aria-hidden
+      />
       <div className="grid content-start gap-2 p-4">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-race text-lg font-bold">Match {match.number}</h3>
+          <h3
+            className={cn(
+              "text-lg font-bold",
+              queue ? "text-time-trial" : "text-race",
+            )}
+          >
+            {title}
+          </h3>
           <span className="flex items-center gap-2">
             {note && (
               <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-semibold">
@@ -118,13 +145,18 @@ export function DrawingMatchCard({
             </span>
           </span>
         </div>
-        <ul className="grid gap-1.5 @xl:grid-cols-2">
+        <ul className={cn("grid gap-1.5", !queue && "@xl:grid-cols-2")}>
           {match.lanes.map((lane, index) => {
             if (pending)
               return (
                 <li key={lane.entryId} data-slot-state="pending">
                   <div className="flex min-h-11 items-center gap-2.5 rounded-xl px-2 py-1 text-sm">
-                    <span className="text-primary-dark w-8 shrink-0 text-center font-mono text-2xl leading-none font-bold">
+                    <span
+                      className={cn(
+                        "w-8 shrink-0 text-center font-mono text-2xl leading-none font-bold",
+                        queue ? "text-time-trial" : "text-primary-dark",
+                      )}
+                    >
                       {lane.laneNumber}
                     </span>
                     <span
@@ -150,6 +182,7 @@ export function DrawingMatchCard({
                   >
                     <LaneContent
                       lane={{ ...shown, laneNumber: lane.laneNumber }}
+                      queue={queue}
                     />
                   </div>
                 </li>
@@ -173,7 +206,7 @@ export function DrawingMatchCard({
                   <button
                     type="button"
                     aria-pressed={selected}
-                    aria-label={`Lane ${lane.laneNumber}, ${lane.petName}`}
+                    aria-label={`${queue ? "Position" : "Lane"} ${lane.laneNumber}, ${lane.petName}`}
                     disabled={busy}
                     onClick={() => onPick(lane.entryId)}
                     onMouseEnter={() => onActive?.(lane.entryId)}
@@ -189,7 +222,7 @@ export function DrawingMatchCard({
                       rowClass,
                     )}
                   >
-                    <LaneContent lane={lane} />
+                    <LaneContent lane={lane} queue={queue} />
                   </button>
                 ) : (
                   <div
@@ -200,7 +233,7 @@ export function DrawingMatchCard({
                       rowClass,
                     )}
                   >
-                    <LaneContent lane={lane} />
+                    <LaneContent lane={lane} queue={queue} />
                   </div>
                 )}
               </li>

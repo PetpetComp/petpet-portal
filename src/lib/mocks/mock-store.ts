@@ -39,6 +39,10 @@ const CAT_RELAY_UUID = "comp-cat-agility-relay";
 const SPRINT_HEATS_UUID = "comp-glider-sprint-heats";
 /** Race SCHEDULED, registration closed, 13 eligible entries: NO drawing, so Shuffle and Lock can be tried. */
 const DERBY_UUID = "comp-glider-derby";
+/** Time trial SCHEDULED, registration closed, 6 eligible entries: NO drawing, so the running order can be drawn and locked. */
+const TIME_TRIAL_UUID = "comp-glider-time-trial";
+/** Time trial ONGOING, registration closed, 4 eligible entries: running order locked, two pets already have attempts (mock-timetrial.ts). */
+const SPEED_TRIAL_UUID = "comp-glider-speed-trial";
 
 /** Sugar glider owners of the event-day dataset: [uuid, username, first, last, phone]. */
 const GLIDER_OWNERS: [string, string, string, string, string][] = [
@@ -945,6 +949,32 @@ export const store = {
       status: "SCHEDULED",
     },
     {
+      uuid: TIME_TRIAL_UUID,
+      competition_type_uuid: "ct-time-trial",
+      species_uuid: "sp-sugar-glider",
+      event_uuid: EVENT_UUID,
+      name: "Glider Time Trial",
+      arena_name: "Track C",
+      capacity: 30,
+      scheduled_start_at: "2026-10-13T09:00:00+07:00",
+      scheduled_end_at: "2026-10-13T11:00:00+07:00",
+      registration_closed_at: "2026-10-10T17:00:00+07:00",
+      status: "SCHEDULED",
+    },
+    {
+      uuid: SPEED_TRIAL_UUID,
+      competition_type_uuid: "ct-time-trial",
+      species_uuid: "sp-sugar-glider",
+      event_uuid: EVENT_UUID,
+      name: "Glider Speed Trial",
+      arena_name: "Track C",
+      capacity: 30,
+      scheduled_start_at: "2026-10-11T09:00:00+07:00",
+      scheduled_end_at: "2026-10-11T11:00:00+07:00",
+      registration_closed_at: "2026-10-10T17:00:00+07:00",
+      status: "ONGOING",
+    },
+    {
       uuid: COMPETITION_UUID,
       competition_type_uuid: "ct-checkpoint",
       event_uuid: EVENT_UUID,
@@ -1322,6 +1352,23 @@ export const store = {
       ["pet-nana", { ...APPROVED, payment_status: "UNPAID" }],
       ["pet-niko", PENDING],
       ["pet-kona", { ...CHECKED_IN, withdrawn: true }],
+    ]),
+    // Time trial demo (Live Mode): 6 eligible + 1 approved but not checked in (must NOT be drawn).
+    ...seedEntries(TIME_TRIAL_UUID, 19, 0, null, [
+      ["pet-hana", CHECKED_IN],
+      ["pet-yuki", CHECKED_IN],
+      ["pet-ziggy", CHECKED_IN],
+      ["pet-ochi", CHECKED_IN],
+      ["pet-rara", CHECKED_IN],
+      ["pet-suki", CHECKED_IN],
+      ["pet-ubi", APPROVED],
+    ]),
+    // Time trial already running: 4 eligible, locked order, attempts seeded by mock-timetrial.ts.
+    ...seedEntries(SPEED_TRIAL_UUID, 20, 0, null, [
+      ["pet-bubu", CHECKED_IN],
+      ["pet-dodo", CHECKED_IN],
+      ["pet-gigi", CHECKED_IN],
+      ["pet-lulu", CHECKED_IN],
     ]),
     // Other events.
     ...seedEntries("comp-best-in-show-cat", 31, 65000, null, [

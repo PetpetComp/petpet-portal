@@ -129,7 +129,7 @@ export function resetMatchStore() {
  * dan MARSHAL; finish: TIMER_OPERATOR dan HEAD_JUDGE; heat-entry: MARSHAL dan TIMER_OPERATOR) dan
  * tidak menyertakan EVENT_MANAGER atau COMPETITION_PIC; kontrak melebarkannya (celah di dokumen).
  */
-const RUN_ROLES = [
+export const RUN_ROLES = [
   "EVENT_MANAGER",
   "COMPETITION_PIC",
   "TIMER_OPERATOR",
@@ -137,14 +137,14 @@ const RUN_ROLES = [
 ] as const;
 
 /** Peran yang boleh memberi dan mencabut penalti (Disqualify): peran jalan ditambah juri. */
-const PENALTY_ROLES = [...RUN_ROLES, "JUDGE", "HEAD_JUDGE"] as const;
+export const PENALTY_ROLES = [...RUN_ROLES, "JUDGE", "HEAD_JUDGE"] as const;
 
 /**
  * Meniru `ChecksStaffAssignment::requireStaffAccess` backend: super admin, OWNER atau ADMIN
  * organisasi pemilik event, atau penugasan aktif dengan peran yang diminta pada kompetisi itu
  * (atau pada seluruh event). Dipanggil dari `canRun` dan `canPenalize`.
  */
-function hasStaffAccess(
+export function hasStaffAccess(
   user: MockUser,
   competition: MockCompetition,
   roles: readonly string[],
@@ -202,7 +202,8 @@ type HeatRef = {
   match: StoredMatch;
 };
 
-const notFound = (label: string) => new ApiError(404, `${label} not found.`);
+export const notFound = (label: string) =>
+  new ApiError(404, `${label} not found.`);
 
 /** Mencari heat menurut uuid; 404 bila tidak ada di drawing mana pun. */
 function heatRef(heatUuid: string): HeatRef {
@@ -400,7 +401,11 @@ function contextFor(
 const dataContext = (ref: HeatRef) => contextFor(ref, true, true);
 
 /** Melempar `status` dengan `message` bila `allowed` salah. */
-function requireState(allowed: boolean, status: 409 | 422, message: string) {
+export function requireState(
+  allowed: boolean,
+  status: 409 | 422,
+  message: string,
+) {
   if (!allowed) throw new ApiError(status, message);
 }
 
@@ -447,7 +452,7 @@ function heatEntryRecord(ref: HeatRef, entryUuid: string): ApiHeatEntry {
 }
 
 /** Nama hewan, morph, pemilik, dan bib satu entry dari pets/users yang sudah ada. */
-function participantInfo(entryUuid: string) {
+export function participantInfo(entryUuid: string) {
   const entry = findOrThrow(store.entries, entryUuid, "Entry");
   const pet = store.pets.find((p) => p.uuid === entry.pet_uuid);
   const morph = store.petMorphs.find((m) => m.uuid === pet?.morph_uuid);
@@ -524,7 +529,7 @@ function matchRecord(ref: HeatRef, user: MockUser): ApiMatch {
 // ---------------------------------------------------------------------------
 
 /** Melempar 422 dengan pesan per field, seperti validasi Laravel. */
-function invalid(errors: Record<string, string[]>): never {
+export function invalid(errors: Record<string, string[]>): never {
   throw new ApiError(422, Object.values(errors).flat().join(" "), errors);
 }
 
@@ -537,7 +542,7 @@ function toInt(value: unknown): number | null {
 }
 
 /** Aturan field bilangan bulat: mengembalikan nilainya atau menambah pesan ke `errors`. */
-function intField(
+export function intField(
   body: Record<string, unknown> | undefined,
   field: string,
   min: number,

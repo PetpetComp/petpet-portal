@@ -94,6 +94,37 @@ export const ENDPOINTS = {
     revokePenalty: (penaltyUuid: string) =>
       `/penalties/${id(penaltyUuid)}/revoke`,
   },
+  /**
+   * Time trial (Live Mode). Paths marked "backend" exist in petpet-service already (routes/api
+   * rounds, attempts, round-entries; penalties reuse `race.penalties`). The rest is MOCK ONLY
+   * (contract 14): the queue read and Skip to next. The queue itself is drawn with the Drawing
+   * endpoints (`drawing`), which also accept TIME_TRIAL competitions.
+   */
+  timetrial: {
+    /** MOCK ONLY: GET the ordered queue with attempts, best times and flags. */
+    queue: (competitionUuid: string) =>
+      `/competitions/${id(competitionUuid)}/queue`,
+    /** MOCK ONLY: POST moves a participant to the end of the queue. */
+    skip: (competitionUuid: string, entryUuid: string) =>
+      `/competitions/${id(competitionUuid)}/queue/${id(entryUuid)}/skip`,
+    /** Backend: POST creates an attempt (status WAITING) in a round. */
+    attempts: (roundUuid: string) => `/rounds/${id(roundUuid)}/attempts`,
+    /** Backend: GET one attempt (with its timer result). */
+    attempt: (attemptUuid: string) => `/attempts/${id(attemptUuid)}`,
+    /** Backend: POST starts a WAITING attempt. */
+    startAttempt: (attemptUuid: string) => `/attempts/${id(attemptUuid)}/start`,
+    /** Backend: POST stops a RUNNING attempt (status FINISHED). */
+    stopAttempt: (attemptUuid: string) => `/attempts/${id(attemptUuid)}/stop`,
+    /** Backend: PATCH sets a manual status (TIMEOUT, DNF, RETRY, FALSE_START, DSQ). */
+    attemptStatus: (attemptUuid: string) =>
+      `/attempts/${id(attemptUuid)}/status`,
+    /** Backend: POST records the official time of an attempt. */
+    timerResult: (attemptUuid: string) =>
+      `/attempts/${id(attemptUuid)}/timer-result`,
+    /** Backend: PATCH changes a participant's round entry status (COMPLETED, DNS, ...). */
+    roundEntry: (roundEntryUuid: string) =>
+      `/round-entries/${id(roundEntryUuid)}`,
+  },
   periods: { detail: (uuid: string) => `/registration-periods/${id(uuid)}` },
   criteria: { detail: (uuid: string) => `/score-criteria/${id(uuid)}` },
   sponsors: {

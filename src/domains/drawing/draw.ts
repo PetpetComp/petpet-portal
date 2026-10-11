@@ -93,6 +93,27 @@ export function buildDrawing(
 }
 
 /**
+ * Jumlah "lane" untuk drawing antrean Time trial: sebanyak peserta (N), minimal 1. Satu match
+ * berisi semua peserta, lane = posisi antrean 1..N. Sama dengan `lanes` pada respons drawing
+ * kompetisi TIME_TRIAL. Dipanggil dari layar Drawing dan mock.
+ */
+export function queueLaneCount(participantCount: number): number {
+  return Math.max(1, participantCount);
+}
+
+/**
+ * Mengundi urutan antrean Time trial: SATU match berisi semua peserta dalam urutan acak (posisi
+ * antrean 1..N). Memakai `buildDrawing` dengan lane sebanyak peserta, jadi hasilnya selalu satu
+ * match. Tanpa peserta -> tidak ada match. Dipanggil dari Shuffle dan seed mock.
+ */
+export function buildQueue(
+  entryIds: readonly string[],
+  seed?: number,
+): string[][] {
+  return buildDrawing(entryIds, queueLaneCount(entryIds.length), seed);
+}
+
+/**
  * Menukar posisi (match + lane) dua peserta. Dipanggil dari layar untuk pratinjau lokal
  * dan menjadi aturan yang sama dengan `POST .../drawing/swap` di backend/mock.
  * Mengembalikan salinan baru; melempar error bila salah satu id tidak ada atau keduanya sama.

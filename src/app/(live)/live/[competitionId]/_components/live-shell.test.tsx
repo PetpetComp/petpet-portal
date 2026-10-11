@@ -3,7 +3,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-client";
 import { getCompetition } from "@/domains/competitions/api";
+import { getQueue } from "@/domains/timetrial/api";
+import type { Queue } from "@/domains/timetrial/types";
 import { listEventSponsorLinks } from "@/domains/sponsors/api";
+import { competitionFixture } from "@/test/fixtures";
 import { LiveShell, liveTabs } from "./live-shell";
 
 const nav = vi.hoisted(() => ({ pathname: "/live/c1/drawing" }));
@@ -23,10 +26,16 @@ vi.mock("@/domains/competitions/api", async () => {
         id: "c1",
         eventId: "e1",
         name: "Paw Sprint 100M",
+        typeId: "race",
       }),
     ),
+    listCompetitionTypes: vi.fn().mockResolvedValue([
+      { id: "race", code: "RACE", name: "Race", resultMode: "POSITION" },
+      { id: "tt", code: "TIME_TRIAL", name: "Time trial", resultMode: "TIME" },
+    ]),
   };
 });
+vi.mock("@/domains/timetrial/api", () => ({ getQueue: vi.fn() }));
 vi.mock("@/domains/sponsors/api", () => ({
   listEventSponsorLinks: vi.fn().mockResolvedValue([
     {
@@ -86,6 +95,73 @@ describe("liveTabs", () => {
       ["Matches", "/live/c1/matches"],
       ["Results", "/live/c1/results"],
     ]);
+  });
+
+  it("renames the steps for a Time trial and keeps the same routes", () => {
+    expect(liveTabs("c1", true).map((t) => [t.label, t.href])).toEqual([
+      ["Running order", "/live/c1/drawing"],
+      ["Run", "/live/c1/matches"],
+      ["Results", "/live/c1/results"],
+    ]);
+  });
+});
+
+/** Antrean seminimal: hanya `rules` yang dibaca header. */
+function queueWithLimit(attemptLimit: number): Queue {
+  return {
+    competitionId: "c1",
+    roundId: "r1",
+    drawingLocked: false,
+    rules: {
+      attemptLimit,
+      cutoffMs: 120000,
+      countdownSeconds: 3,
+      rankingRule: [],
+    },
+    currentEntryId: null,
+    participants: [],
+    summary: { total: 0, notStarted: 0, inProgress: 0, done: 0, dns: 0, dq: 0 },
+    finished: false,
+  };
+}
+
+describe("LiveShell: Time trial", () => {
+  beforeEach(() => {
+    vi.mocked(getCompetition).mockResolvedValueOnce(
+      competitionFixture({
+        id: "c1",
+        eventId: "e1",
+        name: "Quick Paw Time Trial",
+        typeId: "tt",
+      }),
+    );
+    vi.mocked(getQueue).mockReset().mockResolvedValue(queueWithLimit(3));
+  });
+
+  it("shows the Running order, Run and Results tabs and the Running order subtitle", async () => {
+    renderShell();
+    expect(
+      await screen.findByRole("link", { name: "1 Running order" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "2 Run" })).toHaveAttribute(
+      "href",
+      "/live/c1/matches",
+    );
+    expect(screen.getByRole("link", { name: "3 Results" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "1 Drawing" })).toBeNull();
+    expect(screen.getByText("Running order")).toBeInTheDocument();
+  });
+
+  it("shows best of N attempts from the rule on the other steps", async () => {
+    nav.pathname = "/live/c1/matches";
+    renderShell();
+    expect(
+      await screen.findByText("Time trial - best of 3 attempts"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "2 Run" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });
 
