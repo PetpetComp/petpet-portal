@@ -131,19 +131,35 @@ describe("CompetitionShell", () => {
     expect(screen.getByText("tab content")).toBeInTheDocument();
   });
 
-  it("links Edit to the edit page and disables Open Live Mode", async () => {
+  it("links Edit to the edit page and Open Live Mode to Live Mode", async () => {
     auth.canUpdate = true;
     renderShell();
     expect(await screen.findByRole("link", { name: "Edit" })).toHaveAttribute(
       "href",
       "/event-management/e1/competitions/c1/edit",
     );
-    const live = screen.getByRole("button", { name: /Open Live Mode/ });
-    expect(live).toBeDisabled();
-    expect(live.parentElement).toHaveAttribute(
-      "title",
-      "Live Mode comes in the next phase",
+    expect(
+      await screen.findByRole("link", { name: /Open Live Mode/ }),
+    ).toHaveAttribute("href", "/live/c1");
+  });
+
+  it("disables Open Live Mode for a cancelled competition", async () => {
+    const { competitionFixture } = await import("@/test/fixtures");
+    vi.mocked(getCompetition).mockResolvedValueOnce(
+      competitionFixture({
+        id: "c1",
+        eventId: "e1",
+        typeId: "race",
+        name: "Paw Sprint 100M",
+        status: "CANCELLED",
+      }),
     );
+    renderShell();
+    await screen.findByRole("heading", { name: "Paw Sprint 100M" });
+    expect(screen.queryByRole("link", { name: /Open Live Mode/ })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /Open Live Mode/ }),
+    ).toBeDisabled();
   });
 
   it("hides Edit from someone who may not update competitions", async () => {

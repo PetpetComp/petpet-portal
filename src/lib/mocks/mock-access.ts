@@ -2,6 +2,7 @@ import { SUPERADMIN_EMAILS, store } from "./mock-store";
 import type { MockUser } from "./mock-types";
 import { PERMISSION as P } from "@/lib/auth/permissions";
 import { findMockRole, permissionsOfRoles } from "./mock-roles";
+import { activeAssignmentsOfUser } from "./mock-staff";
 
 /**
  * Mock of what `GET /auth/me` returns for roles, permissions, and org membership.
@@ -52,12 +53,7 @@ export function mockAccess(user: MockUser) {
         ("ADMIN" as const),
       status: "ACTIVE",
     })),
-    staff_assignments: [] as {
-      uuid: string;
-      event_uuid: string;
-      competition_uuid: string | null;
-      assignment_role: string;
-      status: string;
-    }[],
+    // Penugasan aktif dari mock-staff (bentuk sama dengan UserData backend asli).
+    staff_assignments: activeAssignmentsOfUser(user.uuid),
   };
 }

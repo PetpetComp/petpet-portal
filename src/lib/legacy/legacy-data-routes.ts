@@ -9,6 +9,7 @@ const EVENT_LEGACY_PAGES =
 
 const MIGRATED: RegExp[] = [
   /^\/home\/?$/, // Home
+  /^\/assignments\/?$/, // My assignments
   /^\/event-management\/?$/, // Events list
   /^\/event-management\/create\/?$/, // New event wizard
   new RegExp(`^/event-management/(?!(?:${EVENT_LEGACY_PAGES})/?$)[^/]+/?$`), // Event overview

@@ -1,4 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useCompetitionRules,
+  useCompetitionTypes,
+} from "@/domains/competitions/queries";
+import type { Competition } from "@/domains/competitions/types";
+import { useDrawing } from "@/domains/drawing/queries";
 import { eventKeys } from "@/domains/events/queries";
 import {
   getAssignmentRoles,
@@ -8,6 +14,7 @@ import {
   revokeAssignment,
   revokeInvitation,
 } from "./api";
+import { liveProgressLine } from "./live-progress";
 import type { ApiStaffInvitationBody } from "./types";
 
 export const staffKeys = {
@@ -85,5 +92,26 @@ export function useRevokeInvitation(eventId: string) {
       await revokeInvitation(id);
     },
     onSuccess: refresh,
+  });
+}
+
+/**
+ * Baris progres kartu Live ("Match 2 of 9 - 5 lanes") untuk satu kompetisi.
+ * Dipanggil dari kartu di My assignments dan kartu "Live now" di Home. Drawing hanya dibaca
+ * untuk tipe Race; gagal membaca (mis. akun tidak berhak) tidak menjadi error layar, barisnya
+ * jatuh ke teks cadangan (lane dari rule dan status).
+ */
+export function useLiveProgress(competition: Competition): string {
+  const types = useCompetitionTypes();
+  const isRace =
+    types.data?.find((t) => t.id === competition.typeId)?.code === "RACE";
+  const drawing = useDrawing(competition.id, isRace);
+  const rules = useCompetitionRules(competition.id);
+  const activeRule = rules.data?.find((r) => r.isActive) ?? null;
+  return liveProgressLine({
+    status: competition.status,
+    isRace,
+    drawing: drawing.data ?? null,
+    laneTotal: activeRule?.laneTotal ?? null,
   });
 }

@@ -3,6 +3,7 @@ import {
   Building2,
   CalendarDays,
   ChartNoAxesCombined,
+  ClipboardList,
   PawPrint,
   ShieldCheck,
   Tag,
@@ -24,6 +25,8 @@ export interface NavGroup {
   items?: NavItem[];
   /** Hidden unless the user holds this permission. No permission = every signed-in user. */
   permission?: Permission;
+  /** Hidden unless the user has at least one staff assignment (committee, judge, ...). */
+  requiresAssignment?: boolean;
   /** Heading shown above the first group of a section. */
   section?: "Main" | "Data" | "Insight" | "Transitional";
 }
@@ -35,6 +38,13 @@ export interface NavGroup {
  */
 export const navigation: NavGroup[] = [
   { label: "Home", icon: House, href: ROUTES.home, section: "Main" },
+  {
+    label: "My assignments",
+    icon: ClipboardList,
+    href: ROUTES.assignments,
+    requiresAssignment: true,
+    section: "Main",
+  },
   {
     label: "Events",
     icon: CalendarDays,
@@ -113,14 +123,21 @@ export const navigation: NavGroup[] = [
   },
 ];
 
-/** Drops what the user may not open; a group with no visible item disappears. */
+/**
+ * Drops what the user may not open; a group with no visible item disappears.
+ * `hasAssignments` = the user holds at least one staff assignment; groups marked
+ * `requiresAssignment` (My assignments) stay hidden without it. Called from `portal-shell.tsx`.
+ */
 export function visibleNavigation(
   groups: NavGroup[],
   can: (permission: Permission) => boolean,
+  hasAssignments = false,
 ): NavGroup[] {
   const ok = (p?: Permission) => !p || can(p);
   return groups
-    .filter((g) => ok(g.permission))
+    .filter(
+      (g) => ok(g.permission) && (!g.requiresAssignment || hasAssignments),
+    )
     .map((g) =>
       g.items ? { ...g, items: g.items.filter((i) => ok(i.permission)) } : g,
     )

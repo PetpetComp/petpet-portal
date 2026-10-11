@@ -35,6 +35,10 @@ const MINI_AGILITY_UUID = "comp-glider-mini-agility";
 const COSTUME_UUID = "comp-costume-parade";
 const FUN_RUN_UUID = "comp-puppy-fun-run";
 const CAT_RELAY_UUID = "comp-cat-agility-relay";
+/** Race SCHEDULED, registration closed, 11 eligible entries: seeded with a LOCKED drawing (mock-drawing.ts). */
+const SPRINT_HEATS_UUID = "comp-glider-sprint-heats";
+/** Race SCHEDULED, registration closed, 13 eligible entries: NO drawing, so Shuffle and Lock can be tried. */
+const DERBY_UUID = "comp-glider-derby";
 
 /** Sugar glider owners of the event-day dataset: [uuid, username, first, last, phone]. */
 const GLIDER_OWNERS: [string, string, string, string, string][] = [
@@ -915,6 +919,32 @@ export const store = {
       status: "CANCELLED",
     },
     {
+      uuid: SPRINT_HEATS_UUID,
+      competition_type_uuid: "ct-race",
+      species_uuid: "sp-sugar-glider",
+      event_uuid: EVENT_UUID,
+      name: "Glider Sprint Heats",
+      arena_name: "Track A",
+      capacity: 30,
+      scheduled_start_at: "2026-10-12T13:00:00+07:00",
+      scheduled_end_at: "2026-10-12T15:00:00+07:00",
+      registration_closed_at: "2026-10-10T17:00:00+07:00",
+      status: "SCHEDULED",
+    },
+    {
+      uuid: DERBY_UUID,
+      competition_type_uuid: "ct-race",
+      species_uuid: "sp-sugar-glider",
+      event_uuid: EVENT_UUID,
+      name: "Glider Derby",
+      arena_name: "Track B",
+      capacity: 30,
+      scheduled_start_at: "2026-10-12T15:30:00+07:00",
+      scheduled_end_at: "2026-10-12T17:30:00+07:00",
+      registration_closed_at: "2026-10-10T17:00:00+07:00",
+      status: "SCHEDULED",
+    },
+    {
       uuid: COMPETITION_UUID,
       competition_type_uuid: "ct-checkpoint",
       event_uuid: EVENT_UUID,
@@ -1257,6 +1287,41 @@ export const store = {
     ...seedEntries(CAT_RELAY_UUID, 16, 0, null, [
       ["pet-simba", APPROVED],
       ["pet-nala", PENDING],
+    ]),
+    // Drawing demo (Live Mode): 11 eligible (approved, paid, checked in) + 1 not checked in.
+    ...seedEntries(SPRINT_HEATS_UUID, 17, 0, null, [
+      ["pet-chibi", CHECKED_IN],
+      ["pet-puffy", CHECKED_IN],
+      ["pet-sora", CHECKED_IN],
+      ["pet-mika", CHECKED_IN],
+      ["pet-nana", CHECKED_IN],
+      ["pet-niko", CHECKED_IN],
+      ["pet-kona", CHECKED_IN],
+      ["pet-kiwi", CHECKED_IN],
+      ["pet-lulu", CHECKED_IN],
+      ["pet-momo", CHECKED_IN],
+      ["pet-pipi", CHECKED_IN],
+      ["pet-tofu", APPROVED],
+    ]),
+    // 13 eligible + four that must NOT be drawn (not checked in, unpaid, pending, withdrawn).
+    ...seedEntries(DERBY_UUID, 18, 0, null, [
+      ["pet-bubu", CHECKED_IN],
+      ["pet-dodo", CHECKED_IN],
+      ["pet-gigi", CHECKED_IN],
+      ["pet-hana", CHECKED_IN],
+      ["pet-yuki", CHECKED_IN],
+      ["pet-ziggy", CHECKED_IN],
+      ["pet-ochi", CHECKED_IN],
+      ["pet-rara", CHECKED_IN],
+      ["pet-suki", CHECKED_IN],
+      ["pet-ubi", CHECKED_IN],
+      ["pet-chibi", CHECKED_IN],
+      ["pet-puffy", CHECKED_IN],
+      ["pet-sora", CHECKED_IN],
+      ["pet-mika", APPROVED],
+      ["pet-nana", { ...APPROVED, payment_status: "UNPAID" }],
+      ["pet-niko", PENDING],
+      ["pet-kona", { ...CHECKED_IN, withdrawn: true }],
     ]),
     // Other events.
     ...seedEntries("comp-best-in-show-cat", 31, 65000, null, [

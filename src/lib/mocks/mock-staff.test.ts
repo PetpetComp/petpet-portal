@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api-client";
 import {
+  activeAssignmentsOfUser,
   createInvitationRecord,
   listAssignmentRoles,
   listCompetitionStaff,
@@ -12,6 +13,7 @@ import {
   staffActions,
   staffStore,
 } from "./mock-staff";
+import { mockAccess } from "./mock-access";
 import { store } from "./mock-store";
 import type { MockCaller } from "./mock-rules";
 import type { MockUser } from "./mock-types";
@@ -411,5 +413,39 @@ describe("revoke", () => {
     expect(
       apiErrorOf(() => revokeAssignmentRecord(competitor, row.uuid)).status,
     ).toBe(403);
+  });
+});
+
+describe("activeAssignmentsOfUser", () => {
+  it("returns the active assignments of a user in the /auth/me shape", () => {
+    expect(
+      activeAssignmentsOfUser("u-competitor-2").filter(
+        (a) => a.event_uuid === SURABAYA,
+      ),
+    ).toEqual([
+      {
+        uuid: expect.any(String),
+        event_uuid: SURABAYA,
+        competition_uuid: PAW_RACE_100M,
+        assignment_role: "COMPETITION_PIC",
+        status: "ACTIVE",
+      },
+    ]);
+    expect(
+      activeAssignmentsOfUser("u-competitor-5").map((a) => a.assignment_role),
+    ).toEqual(["JUDGE", "JUDGE"]);
+  });
+  it("skips revoked assignments and users without any", () => {
+    for (const a of activeAssignmentsOfUser("u-competitor-2"))
+      staffStore.assignments.find((x) => x.uuid === a.uuid)!.status = "REVOKED";
+    expect(activeAssignmentsOfUser("u-competitor-2")).toEqual([]);
+    expect(activeAssignmentsOfUser("nobody")).toEqual([]);
+  });
+  it("is what GET /auth/me sends as staff_assignments", () => {
+    const sari = userBy("sari.wulandari@petpet.dev");
+    expect(mockAccess(sari).staff_assignments).toEqual(
+      activeAssignmentsOfUser(sari.uuid),
+    );
+    expect(mockAccess(sari).staff_assignments).toHaveLength(3);
   });
 });

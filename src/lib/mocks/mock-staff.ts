@@ -50,6 +50,10 @@ const INVITATION_TTL_DAYS = 7;
 
 const SURABAYA_EVENT_UUID = "evt-surabaya-paw-race";
 const PAW_RACE_100M_UUID = "comp-paw-race-100m";
+const JAKARTA_EVENT_UUID = "evt-jakarta-pet-festival";
+const GLIDER_DERBY_UUID = "comp-glider-derby";
+const GLIDER_SPRINT_HEATS_UUID = "comp-glider-sprint-heats";
+const BEAUTY_CLASS_OPEN_UUID = "comp-beauty-class-open";
 
 /**
  * Data awal: tim Surabaya Paw Race 2026 punya satu Event manager, dan Paw Race 100m punya
@@ -60,9 +64,10 @@ function seedAssignments(): MockStaffAssignment[] {
     competitionUuid: string | null,
     userUuid: string,
     role: string,
+    eventUuid = SURABAYA_EVENT_UUID,
   ): MockStaffAssignment => ({
     uuid: nextUuid(),
-    event_uuid: SURABAYA_EVENT_UUID,
+    event_uuid: eventUuid,
     competition_uuid: competitionUuid,
     user_uuid: userUuid,
     assignment_role: role,
@@ -74,6 +79,25 @@ function seedAssignments(): MockStaffAssignment[] {
     assign(PAW_RACE_100M_UUID, "u-competitor-3", "COMPETITION_PIC"),
     assign(PAW_RACE_100M_UUID, "u-competitor-4", "COMPETITION_PIC"),
     assign(PAW_RACE_100M_UUID, "u-competitor-5", "JUDGE"),
+    // Demo hari event (Jakarta Pet Festival 2026): login staf langsung punya kartu di My assignments.
+    assign(
+      GLIDER_DERBY_UUID,
+      "u-competitor-2",
+      "COMPETITION_PIC",
+      JAKARTA_EVENT_UUID,
+    ),
+    assign(
+      GLIDER_SPRINT_HEATS_UUID,
+      "u-competitor-2",
+      "COMPETITION_PIC",
+      JAKARTA_EVENT_UUID,
+    ),
+    assign(
+      BEAUTY_CLASS_OPEN_UUID,
+      "u-competitor-5",
+      "JUDGE",
+      JAKARTA_EVENT_UUID,
+    ),
   ];
 }
 
@@ -151,6 +175,30 @@ export function invitationRecord(
     invitee_name: user ? fullName(user) : null,
     actions: staffActions(caller),
   };
+}
+
+/**
+ * Penugasan AKTIF milik satu user, dalam bentuk `staff_assignments` di `GET /auth/me`
+ * (UserData backend asli). Dipanggil dari `mockAccess` supaya login staf/juri membawa
+ * penugasannya; layar Home dan My assignments membacanya lewat `useAuth().assignments`.
+ * Input: uuid user. Output: array datar (kosong bila tidak punya penugasan).
+ */
+export function activeAssignmentsOfUser(userUuid: string): {
+  uuid: string;
+  event_uuid: string;
+  competition_uuid: string | null;
+  assignment_role: string;
+  status: string;
+}[] {
+  return staffStore.assignments
+    .filter((a) => a.user_uuid === userUuid && a.status === "ACTIVE")
+    .map((a) => ({
+      uuid: a.uuid,
+      event_uuid: a.event_uuid,
+      competition_uuid: a.competition_uuid,
+      assignment_role: a.assignment_role,
+      status: a.status,
+    }));
 }
 
 /** `GET /master/assignment-roles`: array datar, terurut menurut `sort_order`. */

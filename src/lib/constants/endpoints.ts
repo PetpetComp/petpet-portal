@@ -52,6 +52,12 @@ export const ENDPOINTS = {
     list: (uuid: string) => `/competitions/${id(uuid)}/results`,
     verify: (uuid: string) => `/competitions/${id(uuid)}/results/verify`,
   },
+  /** MOCK ONLY: no such endpoints in the backend yet (draft contract drawing). */
+  drawing: {
+    /** GET reads the drawing, POST locks it. */
+    detail: (uuid: string) => `/competitions/${id(uuid)}/drawing`,
+    swap: (uuid: string) => `/competitions/${id(uuid)}/drawing/swap`,
+  },
   periods: { detail: (uuid: string) => `/registration-periods/${id(uuid)}` },
   criteria: { detail: (uuid: string) => `/score-criteria/${id(uuid)}` },
   sponsors: {

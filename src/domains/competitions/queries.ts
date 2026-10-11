@@ -16,6 +16,7 @@ import {
 import type { ApiCompetitionUpdate, NewCompetition } from "./schema";
 import type { SettingsChanges } from "./settings";
 import type { CompetitionAction } from "./types";
+import { drawingKeys } from "@/domains/drawing/keys";
 import { entryKeys } from "@/domains/entries/queries";
 
 export const competitionKeys = {
@@ -148,6 +149,8 @@ export function useCompetitionAction(eventId: string) {
         // All competition queries: the workspace header reads the detail entry.
         client.invalidateQueries({ queryKey: competitionKeys.all }),
         client.invalidateQueries({ queryKey: entryKeys.forEvent(eventId) }),
+        // Reopen registration deletes the locked drawing (contract 13 section 11).
+        client.invalidateQueries({ queryKey: drawingKeys.all }),
       ]),
   });
 }

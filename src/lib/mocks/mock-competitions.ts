@@ -81,6 +81,17 @@ function seedRules(): MockCompetitionRule[] {
       ranking_rule: ["CHECKPOINT_DESC", "TIME_ASC"],
     }),
     rule("comp-glider-mini-agility", 1, true, { time_limit_ms: 90000 }),
+    // Race dengan 5 lane untuk demo Drawing (11 peserta -> 4+4+3, 13 peserta -> 5+4+4).
+    rule("comp-glider-sprint-heats", 1, true, {
+      lane_total: 5,
+      time_limit_ms: 90000,
+      ranking_rule: ["POSITION_ASC"],
+    }),
+    rule("comp-glider-derby", 1, true, {
+      lane_total: 5,
+      time_limit_ms: 90000,
+      ranking_rule: ["POSITION_ASC"],
+    }),
   ];
 }
 

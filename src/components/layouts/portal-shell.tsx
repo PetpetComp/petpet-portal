@@ -23,8 +23,8 @@ import { needsLegacyData } from "@/lib/legacy/legacy-data-routes";
 import { toast } from "sonner";
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const { can } = useAuth();
-  const visible = visibleNavigation(navigation, can);
+  const { can, assignments } = useAuth();
+  const visible = visibleNavigation(navigation, can, assignments.length > 0);
   return (
     <nav className="sidebar-nav" aria-label="Main navigation">
       {visible.map((group, index) => (

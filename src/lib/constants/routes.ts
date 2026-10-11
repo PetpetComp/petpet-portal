@@ -5,6 +5,8 @@ export const ROUTES = {
     resetPassword: "/reset-password",
   },
   home: "/home",
+  /** My assignments (HP): kompetisi hari ini milik staf/juri, pintu masuk ke Live Mode. */
+  assignments: "/assignments",
   dashboard: "/dashboard",
   landing: "/",
   competitorHome: "/my-competitions",
@@ -35,6 +37,14 @@ export const ROUTES = {
     timeTrial: (id: string) =>
       `/competition/${encodeURIComponent(id)}/time-trial`,
   },
+  /** Live Mode (layar penuh per kompetisi): Drawing -> Matches -> Results. */
+  live: (competitionId: string) => `/live/${encodeURIComponent(competitionId)}`,
+  liveDrawing: (competitionId: string) =>
+    `/live/${encodeURIComponent(competitionId)}/drawing`,
+  liveMatches: (competitionId: string) =>
+    `/live/${encodeURIComponent(competitionId)}/matches`,
+  liveResults: (competitionId: string) =>
+    `/live/${encodeURIComponent(competitionId)}/results`,
   organizationManagement: "/organization-management",
   organizations: {
     create: "/organization-management/create",

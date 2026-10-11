@@ -114,6 +114,12 @@ import {
   updatePetRecord,
 } from "./mock-pets";
 
+import {
+  getDrawingRecord,
+  invalidateDrawing,
+  lockDrawingRecord,
+  swapDrawingRecord,
+} from "./mock-drawing";
 import { getResultsRecord, verifyResultsRecord } from "./mock-results";
 
 function matchPath(
@@ -634,14 +640,17 @@ const routes: Route[] = [
   },
   {
     // MOCK ONLY (contract 13 section 9): the real backend has no reopen endpoint yet.
-    // A drawing would be invalidated here too; there is no drawing in the mock yet.
+    // Reopening also deletes the competition's locked drawing (draft contract drawing, D6).
     method: "POST",
     pattern: "/competitions/:uuid/reopen-registration",
     handler: (params) =>
       competitionAction(
         params.uuid,
         "reopen_registration",
-        (c) => (c.registration_closed_at = null),
+        (c) => {
+          c.registration_closed_at = null;
+          invalidateDrawing(c.uuid);
+        },
         "Registration can only be reopened for a scheduled competition that was closed.",
       ),
   },
@@ -658,6 +667,24 @@ const routes: Route[] = [
       );
       return null;
     },
+  },
+  // Drawing (draf kontrak drawing, MOCK ONLY): aturannya ada di mock-drawing.ts.
+  {
+    method: "GET",
+    pattern: "/competitions/:uuid/drawing",
+    handler: (params) => getDrawingRecord(requireSession(), params.uuid),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/drawing",
+    handler: (params, body) =>
+      lockDrawingRecord(requireSession(), params.uuid, body),
+  },
+  {
+    method: "POST",
+    pattern: "/competitions/:uuid/drawing/swap",
+    handler: (params, body) =>
+      swapDrawingRecord(requireSession(), params.uuid, body),
   },
   // Results (draf kontrak results, MOCK ONLY): aturannya ada di mock-results.ts.
   {

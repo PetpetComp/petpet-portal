@@ -19,6 +19,7 @@ import {
 import {
   COMPETITION_STATUS_LABEL,
   currentRule,
+  type CompetitionStatus,
 } from "@/domains/competitions/types";
 import { useCompetitionEntryCounts, useEvent } from "@/domains/events/queries";
 import { useEventStaff } from "@/domains/staff/queries";
@@ -31,6 +32,12 @@ import {
   CompetitionNotFound,
 } from "./competition-load-error";
 import { TypeBadge } from "./type-badge";
+
+/** Status yang membuat Live Mode tidak berguna (belum dipublikasikan atau dibatalkan). */
+const LIVE_BLOCKED_STATUSES: readonly CompetitionStatus[] = [
+  "DRAFT",
+  "CANCELLED",
+];
 
 /**
  * Lima tab kompetisi sesuai desain CompHeader. Hitungan `null` berarti belum ada atau gagal
@@ -62,7 +69,7 @@ export function competitionTabs(
 /**
  * Header + tab yang dipakai semua halaman kompetisi (layout `[competitionId]/(workspace)`):
  * breadcrumb, badge jenis dan status, nama, baris meta, tombol Edit (hanya bila berhak)
- * dan Open Live Mode (dinonaktifkan sampai Live Mode dibangun), lalu bar tab dengan hitungan.
+ * dan Open Live Mode (tautan ke Live Mode; nonaktif untuk Draft/Cancelled), lalu bar tab dengan hitungan.
  * Hitungan memakai query yang sama dengan halaman tab, jadi tidak ada request tambahan.
  */
 export function CompetitionShell({
@@ -186,12 +193,30 @@ export function CompetitionShell({
               Edit
             </Link>
           )}
-          {/* Tooltip ada di span: tombol disabled tidak menerima hover. */}
-          <span title="Live Mode comes in the next phase">
-            <Button disabled className="min-h-11 rounded-xl px-4 font-bold">
+          {/* Live Mode tidak berarti untuk kompetisi Draft/Cancelled; tooltip di span karena tombol disabled tidak menerima hover. */}
+          {c && !LIVE_BLOCKED_STATUSES.includes(c.status) ? (
+            <Link
+              href={ROUTES.live(competitionId)}
+              className={cn(
+                buttonVariants(),
+                "min-h-11 rounded-xl px-4 font-bold",
+              )}
+            >
               <Play size={14} aria-hidden /> Open Live Mode
-            </Button>
-          </span>
+            </Link>
+          ) : (
+            <span
+              title={
+                c
+                  ? "Live Mode is not available for a draft or cancelled competition"
+                  : undefined
+              }
+            >
+              <Button disabled className="min-h-11 rounded-xl px-4 font-bold">
+                <Play size={14} aria-hidden /> Open Live Mode
+              </Button>
+            </span>
+          )}
         </div>
       </header>
 
